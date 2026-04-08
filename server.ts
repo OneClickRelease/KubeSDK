@@ -28,7 +28,15 @@ async function startServer() {
     let totalMemoryRequest = 0;
 
     run.components.forEach(comp => {
-      const compMem = parseInt(comp.resources.original.memory);
+      // Use SDK resources for capacity checks, fallback to original or generic defaults
+      const rawMem = comp.resources.sdk?.memory || comp.resources.original?.memory || "0Mi";
+      const val = parseFloat(rawMem) || 0;
+      let compMem = val; // in Gi
+      if (rawMem.includes('Mi') || rawMem.includes('m')) {
+        compMem = val / 1024;
+      } else if (!rawMem.includes('Gi') && !rawMem.includes('G')) {
+        compMem = val / (1024 * 1024 * 1024);
+      }
       totalMemoryRequest += compMem;
 
       if (compMem > laptopMemory / 2) {
@@ -36,11 +44,11 @@ async function startServer() {
           id: `mem-limit-${comp.id}`,
           component: comp.id,
           severity: 'warning',
-          message: `Memory request (${comp.resources.original.memory}) for ${comp.id} is high for this laptop profile.`,
+          message: `Memory request (${rawMem}) for ${comp.id} is high for this laptop profile.`,
           suggestion: {
             issueId: `mem-limit-${comp.id}`,
             proposedChange: {
-              path: `components.${comp.id}.resources.original.memory`,
+              path: `components.${comp.id}.resources.sdk.memory`,
               value: `${Math.floor(laptopMemory / 4)}Gi`
             },
             rationale: "Fits better within laptop memory constraints."
@@ -195,11 +203,43 @@ async function startServer() {
                     namespaces.add(res.metadata.name); // Correctly add the namespace being defined
                   }
 
-                  // Any other categories? We can just add them as is, or filter them out if unknown.
                   if (category !== 'unknown') {
                     // Only add namespace to set if it's not a namespace object
                     if (kindStr !== 'namespace') {
                       namespaces.add(ns);
+                    }
+
+                    let properties: any = {};
+                    let cpu = '100m';
+                    let memory = '128Mi';
+
+                    if (category === 'application') {
+                      const spec = res.spec?.template?.spec || res.spec;
+                      if (spec?.containers && spec.containers.length > 0) {
+                        properties.image = spec.containers[0].image;
+                        const reqs = spec.containers[0].resources?.requests;
+                        if (reqs) {
+                          cpu = reqs.cpu || cpu;
+                          memory = reqs.memory || memory;
+                        }
+                      }
+                    } else if (category === 'service') {
+                      if (res.spec?.ports && res.spec.ports.length > 0) {
+                        properties.port = res.spec.ports[0].port;
+                        properties.targetPort = res.spec.ports[0].targetPort || res.spec.ports[0].port;
+                      }
+                      properties.serviceType = res.spec?.type || 'ClusterIP';
+                    } else if (category === 'ingress') {
+                      if (res.spec?.rules && res.spec.rules.length > 0) {
+                        properties.hostname = res.spec.rules[0].host;
+                        const paths = res.spec.rules[0].http?.paths;
+                        if (paths && paths.length > 0) {
+                          properties.path = paths[0].path;
+                          properties.targetService = paths[0].backend?.service?.name || paths[0].backend?.serviceName;
+                        }
+                      }
+                    } else if (category === 'config') {
+                      properties.data = res.data || res.stringData || {};
                     }
 
                     components.push({
@@ -209,11 +249,17 @@ async function startServer() {
                       category,
                       mandatory: true,
                       runtimeClass: kind === 'workload' ? 'application' : 'infra',
+                      properties,
                       resources: {
                         original: {
-                          cpu: '100m',
-                          memory: '128Mi',
+                          cpu,
+                          memory,
                           replicas: res.spec?.replicas || 1
+                        },
+                        sdk: {
+                          cpu: '100m',
+                          memory: '512Mi',
+                          replicas: 1
                         }
                       }
                     });
@@ -243,7 +289,10 @@ async function startServer() {
              category: 'namespace',
              mandatory: true,
              runtimeClass: 'infra',
-             resources: { original: { cpu: '0', memory: '0', replicas: 1 } }
+             resources: { 
+               original: { cpu: '0', memory: '0', replicas: 1 },
+               sdk: { cpu: '0', memory: '0', replicas: 1 } 
+             }
           });
         }
       });

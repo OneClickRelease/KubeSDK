@@ -27,6 +27,7 @@ export interface WizardSession {
     type: LocalRuntimeType;
     versionConstraint: string;
   };
+  ignoredNamespaces?: string[];
   connectivity?: {
     apiServerUrl: string;
     token: string;
@@ -80,6 +81,12 @@ export interface Component {
   };
   resources: {
     original: {
+      cpu: string;
+      memory: string;
+      storage?: string;
+      replicas: number;
+    };
+    sdk: {
       cpu: string;
       memory: string;
       storage?: string;
