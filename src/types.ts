@@ -86,6 +86,7 @@ export interface Component {
       replicas: number;
     };
   };
+  properties?: Record<string, any>;
 }
 
 export interface Capability {

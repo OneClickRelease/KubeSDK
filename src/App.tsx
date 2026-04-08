@@ -22,7 +22,10 @@ import {
   Zap,
   ShieldCheck,
   Network,
-  Cpu
+  Cpu,
+  AlertTriangle,
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -35,9 +38,9 @@ import {
 
 const WIZARD_STEPS = [
   { id: 'source', title: 'Local Run Source' },
-  { id: 'runtime', title: 'Runtime Selection' },
   { id: 'mode', title: 'Cluster Definition Mode' },
   { id: 'import', title: 'Live Cluster Import' },
+  { id: 'upload', title: 'Offline Cluster Upload' },
   { id: 'model', title: 'Cluster Model & Components' },
   { id: 'mapping', title: 'Dependency Mapping' },
   { id: 'laptop', title: 'Laptop Resource Profile' },
@@ -107,13 +110,45 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isFitting, setIsFitting] = useState(false);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState(0);
   const [selectedNamespace, setSelectedNamespace] = useState<string>('default');
+  const [validationStatus, setValidationStatus] = useState<Record<string, { status: 'checking' | 'valid' | 'invalid', message?: string }>>({});
+
+  React.useEffect(() => {
+    const selectedComponent = config.components[selectedComponentIndex];
+    if (!selectedComponent) return;
+
+    if (selectedComponent.category === 'application') {
+      const image = selectedComponent.properties?.image;
+      if (!image) {
+        setValidationStatus(prev => ({ ...prev, [selectedComponent.id]: { status: 'invalid', message: 'Image is required' } }));
+        return;
+      }
+      
+      const timer = setTimeout(async () => {
+        setValidationStatus(prev => ({ ...prev, [selectedComponent.id]: { status: 'checking' } }));
+        try {
+          const res = await fetch('/api/validate-resource', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'image', value: image })
+          });
+          const data = await res.json();
+          setValidationStatus(prev => ({ ...prev, [selectedComponent.id]: { status: data.valid ? 'valid' : 'invalid', message: data.message } }));
+        } catch (e: any) {
+          setValidationStatus(prev => ({ ...prev, [selectedComponent.id]: { status: 'invalid', message: 'Validation failed' } }));
+        }
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [config.components[selectedComponentIndex]?.id, config.components[selectedComponentIndex]?.properties?.image]);
 
   // Filter steps based on source
   const visibleSteps = WIZARD_STEPS.filter(step => {
     if (step.id === 'import' && config.wizard.source === 'manual') return false;
+    if (step.id === 'upload' && config.wizard.source === 'live') return false;
     return true;
   });
 
@@ -137,6 +172,37 @@ export default function App() {
       ...prev, 
       wizard: { ...prev.wizard, source } 
     }));
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('export', file);
+
+    try {
+      const response = await fetch('/api/upload-export', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setConfig(prev => ({
+          ...prev,
+          components: data.components
+        }));
+        nextStep();
+      } else {
+        alert('Upload failed: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Upload failed', error);
+      alert('Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleFetchCluster = async () => {
@@ -293,7 +359,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto p-12">
+        <div className={cn("mx-auto p-8 lg:p-12 transition-all duration-300 w-full", ['model', 'mapping', 'feasibility', 'laptop'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl")}>
           <AnimatePresence mode="wait">
             {activeMenu === 'define' ? (
               <motion.div
@@ -357,38 +423,8 @@ export default function App() {
                             </div>
                             <span className="font-bold">Manual Definition</span>
                           </div>
-                          <p className="text-sm text-[#6C757D]">Define your cluster components and dependencies from scratch.</p>
+                          <p className="text-sm text-[#6C757D]">Upload an offline export or define cluster components from scratch.</p>
                         </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {visibleSteps[currentStep].id === 'runtime' && (
-                    <div className="space-y-6">
-                      <p className="text-[#495057]">Select the local execution engine.</p>
-                      <div className="max-w-md">
-                        <label className="block text-sm font-medium text-[#495057] mb-2">Local Runtime</label>
-                        <div className="relative">
-                          <select 
-                            value={config.wizard.runtime.type}
-                            onChange={(e) => {
-                              const type = e.target.value as any;
-                              setConfig(prev => ({
-                                ...prev,
-                                wizard: { ...prev.wizard, runtime: { ...prev.wizard.runtime, type } },
-                                runtimeExecution: { ...prev.runtimeExecution, type }
-                              }));
-                            }}
-                            className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] bg-white text-[#1A1A1A] outline-none appearance-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all cursor-pointer"
-                          >
-                            <option value="rancher-desktop">Rancher Desktop</option>
-                            <option value="k3d">k3d</option>
-                          </select>
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <ChevronRight size={16} className="rotate-90 text-[#6C757D]" />
-                          </div>
-                        </div>
-                        <p className="mt-2 text-xs text-[#6C757D]">Select your preferred local execution engine. Rancher Desktop is recommended for most users.</p>
                       </div>
                     </div>
                   )}
@@ -428,68 +464,241 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <label className="block text-sm font-medium text-[#495057]">API Server URL</label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. https://1.2.3.4:6443" 
-                          value={config.wizard.connectivity?.apiServerUrl}
-                          onChange={(e) => setConfig(prev => ({
-                            ...prev,
-                            wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, apiServerUrl: e.target.value } }
-                          }))}
-                          className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20" 
-                        />
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex gap-3">
+                        <AlertCircle size={18} className="text-yellow-600 shrink-0 mt-0.5" />
+                        <p className="text-sm text-yellow-800">
+                          <strong>Note:</strong> This step will only read the cluster configuration. It will <strong>not</strong> perform any modifications.
+                        </p>
                       </div>
 
-                      <div className="space-y-4">
-                        <label className="block text-sm font-medium text-[#495057]">Authentication Token</label>
-                        <input 
-                          type="password" 
-                          placeholder="Bearer token..." 
-                          value={config.wizard.connectivity?.token}
-                          onChange={(e) => setConfig(prev => ({
-                            ...prev,
-                            wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, token: e.target.value } }
-                          }))}
-                          className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20" 
-                        />
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Form Section */}
+                        <div className="space-y-6">
+                          <div className="space-y-4">
+                            <label className="block text-sm font-medium text-[#495057]">API Server URL</label>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. https://1.2.3.4:6443" 
+                              value={config.wizard.connectivity?.apiServerUrl}
+                              onChange={(e) => setConfig(prev => ({
+                                ...prev,
+                                wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, apiServerUrl: e.target.value } }
+                              }))}
+                              className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20" 
+                            />
+                          </div>
+
+                          <div className="space-y-4">
+                            <label className="block text-sm font-medium text-[#495057]">Authentication Token</label>
+                            <input 
+                              type="password" 
+                              placeholder="Bearer token..." 
+                              value={config.wizard.connectivity?.token}
+                              onChange={(e) => setConfig(prev => ({
+                                ...prev,
+                                wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, token: e.target.value } }
+                              }))}
+                              className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20" 
+                            />
+                          </div>
+
+                          <div className="space-y-4">
+                            <label className="block text-sm font-medium text-[#495057]">CA Certificate (Optional)</label>
+                            <textarea 
+                              placeholder="-----BEGIN CERTIFICATE-----" 
+                              rows={4}
+                              value={config.wizard.connectivity?.caCert}
+                              onChange={(e) => setConfig(prev => ({
+                                ...prev,
+                                wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, caCert: e.target.value } }
+                              }))}
+                              className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 font-mono text-xs" 
+                            />
+                          </div>
+
+                          <div className="pt-4">
+                            <button 
+                              onClick={handleFetchCluster}
+                              disabled={isFetching}
+                              className="w-full py-4 bg-[#0D6EFD] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#0B5ED7] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isFetching ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Search size={20} />
+                              )}
+                              {isFetching ? 'Fetching...' : 'Fetch Cluster Configuration'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Guide Section */}
+                        <div className="bg-[#F8F9FA] rounded-xl border border-[#E9ECEF] p-6 text-sm text-[#495057] overflow-y-auto max-h-[calc(100vh-320px)] min-h-[600px]">
+                          <h5 className="font-bold text-[#1A1A1A] mb-4 flex items-center gap-2">
+                            <Terminal size={18} />
+                            How to get cluster credentials
+                          </h5>
+                          
+                          <div className="space-y-6">
+                            <div>
+                              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🧭 1. Get Kubernetes API Server URL</h6>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre">
+                                {`kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'`}
+                              </div>
+                              <p className="mt-2 text-xs">Example output: <code className="bg-[#E9ECEF] px-1 py-0.5 rounded">https://127.0.0.1:6443</code></p>
+                            </div>
+
+                            <hr className="border-[#DEE2E6]" />
+
+                            <div>
+                              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🔐 2. Get Auth Token (Service Account)</h6>
+                              <p className="text-xs mb-2"><strong>Step 1:</strong> Create Service Account</p>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
+                                {`kubectl create serviceaccount api-user -n foundation`}
+                              </div>
+                              
+                              <p className="text-xs mb-2 mt-4"><strong>Step 2:</strong> Bind Cluster Role (admin for testing)</p>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
+                                {`kubectl create clusterrolebinding api-user-binding \\
+  --clusterrole=cluster-admin \\
+  --serviceaccount=foundation:api-user`}
+                              </div>
+
+                              <p className="text-xs mb-2 mt-4"><strong>Step 3:</strong> Get Token (v1.24+)</p>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
+                                {`kubectl create token api-user -n foundation`}
+                              </div>
+                              <p className="mt-2 text-xs">This gives you a JWT token to use in your API calls.</p>
+                            </div>
+
+                            <hr className="border-[#DEE2E6]" />
+
+                            <div>
+                              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🪪 3. Get CA Certificate</h6>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
+                                {`kubectl config view --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 --decode > ca.crt`}
+                              </div>
+                            </div>
+
+                            <hr className="border-[#DEE2E6]" />
+
+                            <div>
+                              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🧪 4. Test API Access (curl)</h6>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
+                                {`curl https://127.0.0.1:6443/api \\
+  --header "Authorization: Bearer <YOUR_TOKEN>" \\
+  --cacert ca.crt`}
+                              </div>
+                            </div>
+
+                            <hr className="border-[#DEE2E6]" />
+
+                            <div>
+                              <h6 className="font-bold text-yellow-700 mb-2 flex items-center gap-2">⚠️ Rancher Desktop Specific Notes</h6>
+                              <p className="text-xs mb-1"><strong>1. API URL is local</strong> (<code className="bg-[#E9ECEF] px-1 py-0.5 rounded">https://127.0.0.1:6443</code>)</p>
+                              <p className="text-xs mb-4 text-[#6C757D]">Only accessible from your machine.</p>
+
+                              <p className="text-xs mb-2"><strong>2. Skip TLS (Dev only)</strong></p>
+                              <p className="text-xs mb-2 text-[#6C757D]">If you don't want CA cert:</p>
+                              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
+                                {`curl -k https://127.0.0.1:6443/api \\
+  -H "Authorization: Bearer <TOKEN>"`}
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {visibleSteps[currentStep].id === 'upload' && (
+                    <div className="space-y-8">
+                      <div className="p-6 bg-[#F8F9FA] rounded-xl border border-[#E9ECEF] flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white rounded-lg border border-[#DEE2E6] flex items-center justify-center text-[#0D6EFD]">
+                          <Download size={24} className="rotate-180" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-sm">Offline Cluster Upload</h4>
+                          <p className="text-xs text-[#6C757D]">Upload an export.zip from an existing cluster to auto-generate the resource map.</p>
+                        </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <label className="block text-sm font-medium text-[#495057]">CA Certificate (Optional)</label>
-                        <textarea 
-                          placeholder="-----BEGIN CERTIFICATE-----" 
-                          rows={4}
-                          value={config.wizard.connectivity?.caCert}
-                          onChange={(e) => setConfig(prev => ({
-                            ...prev,
-                            wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, caCert: e.target.value } }
-                          }))}
-                          className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 font-mono text-xs" 
-                        />
-                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Upload Section */}
+                        <div className="space-y-6">
+                          <div className="space-y-4">
+                            <label className="block text-sm font-medium text-[#495057]">Upload Export ZIP</label>
+                            <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-[#DEE2E6] border-dashed rounded-xl cursor-pointer bg-white hover:bg-[#F8F9FA] transition-all relative overflow-hidden">
+                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                {isUploading ? (
+                                   <div className="w-10 h-10 border-4 border-[#0D6EFD] border-t-transparent rounded-full animate-spin mb-4" />
+                                ) : (
+                                   <Cloud size={40} className="text-[#ADB5BD] mb-4" />
+                                )}
+                                <p className="mb-2 text-sm text-[#495057] font-bold">
+                                  {isUploading ? 'Extracting and parsing...' : 'Click to select export.zip'}
+                                </p>
+                                <p className="text-xs text-[#6C757D]">ZIP containing Kubernetes YAML manifests</p>
+                              </div>
+                              <input type="file" accept=".zip" onChange={handleUpload} className="hidden" disabled={isUploading} />
+                            </label>
+                          </div>
+                          
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex gap-3">
+                            <AlertCircle size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                            <p className="text-sm text-blue-800">
+                              <strong>Note:</strong> Uploading a fresh export zip will overwrite manually modified components.
+                            </p>
+                          </div>
+                        </div>
 
-                      <div className="pt-4">
-                        <button 
-                          onClick={handleFetchCluster}
-                          disabled={isFetching}
-                          className="w-full py-4 bg-[#0D6EFD] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#0B5ED7] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isFetching ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Search size={20} />
-                          )}
-                          {isFetching ? 'Fetching...' : 'Fetch Cluster Configuration'}
-                        </button>
+                        {/* Guide Section */}
+                        <div className="bg-[#F8F9FA] rounded-xl border border-[#E9ECEF] p-6 text-sm text-[#495057] overflow-y-auto max-h-[calc(100vh-320px)] min-h-[600px]">
+                          <h5 className="font-bold text-[#1A1A1A] mb-4 flex items-center gap-2">
+                            <Terminal size={18} />
+                            How to generate export.zip
+                          </h5>
+                          
+                          <div className="space-y-6">
+                            <p className="text-xs">Run this script on your local machine that is connected to the source Kubernetes cluster.</p>
+                            
+                            <div className="bg-[#1E1E1E] text-[#D4D4D4] p-4 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre">
+{`# Create export folder structure
+mkdir -p export/{cluster,namespaces}
+
+# -------------------------
+# Export cluster-level resources
+# -------------------------
+for r in $(kubectl api-resources --verbs=list --namespaced=false -o name); do
+  echo "Exporting cluster resource: $r"
+  kubectl get "$r" -o yaml > export/cluster/$r.yaml 2>/dev/null
+done
+
+# -------------------------
+# Export namespaced resources
+# -------------------------
+for ns in $(kubectl get ns -o jsonpath='{.items[*].metadata.name}'); do
+  echo "Exporting namespace: $ns"
+  mkdir -p export/namespaces/$ns
+  kubectl get all -n "$ns" -o yaml > export/namespaces/$ns/all.yaml 2>/dev/null
+done
+
+# -------------------------
+# Create a zip file of the export folder
+# -------------------------
+zip -r export.zip export
+echo "Export completed! File created: export.zip"`}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {visibleSteps[currentStep].id === 'model' && (
                     <div className="space-y-6">
-                      <div className="flex gap-6 h-[700px]">
+                      <div className="flex gap-6 h-[calc(100vh-320px)] min-h-[600px]">
                         {/* Namespaces Sidebar */}
                         <div className="w-64 flex flex-col bg-white rounded-2xl border border-[#E9ECEF] overflow-hidden">
                           <div className="p-4 border-b border-[#E9ECEF] flex items-center justify-between bg-[#F8F9FA]">
@@ -517,19 +726,26 @@ export default function App() {
                             </button>
                           </div>
                           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                            {Array.from(new Set(['default', ...config.components.filter(c => c.category === 'namespace').map(c => c.id)])).map(ns => (
+                            {Array.from(new Set(['default', ...config.components.filter(c => c.category === 'namespace').map(c => c.id)])).map(ns => {
+                              const hasError = config.components.some(c => c.namespace === ns && c.category === 'application' && !c.properties?.image);
+                              return (
                               <button
                                 key={ns}
                                 onClick={() => setSelectedNamespace(ns)}
                                 className={cn(
-                                  "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center gap-3",
-                                  selectedNamespace === ns ? "bg-[#0D6EFD] text-white shadow-lg shadow-[#0D6EFD]/20" : "text-[#495057] hover:bg-[#F8F9FA]"
+                                  "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between gap-3",
+                                  selectedNamespace === ns 
+                                    ? hasError ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-[#0D6EFD] text-white shadow-lg shadow-[#0D6EFD]/20" 
+                                    : hasError ? "text-red-600 bg-red-50 hover:bg-red-100" : "text-[#495057] hover:bg-[#F8F9FA]"
                                 )}
                               >
-                                <Layers size={16} className={selectedNamespace === ns ? "text-white/80" : "text-[#ADB5BD]"} />
-                                {ns}
+                                <div className="flex items-center gap-3">
+                                  <Layers size={16} className={selectedNamespace === ns ? "text-white/80" : hasError ? "text-red-400" : "text-[#ADB5BD]"} />
+                                  {ns}
+                                </div>
+                                {hasError && <span title="Namespace has invalid components"><AlertTriangle size={14} className={selectedNamespace === ns ? "text-white" : "text-red-500"} /></span>}
                               </button>
-                            ))}
+                            )})}
                           </div>
                         </div>
 
@@ -575,21 +791,26 @@ export default function App() {
                                   </button>
                                 </div>
                                 <div className="p-2 space-y-1">
-                                  {config.components
-                                    .map((c, i) => ({ ...c, originalIndex: i }))
-                                    .filter(c => c.namespace === selectedNamespace && c.category === layer.category)
-                                    .map((comp) => (
+                                    {config.components
+                                      .map((c, i) => ({ ...c, originalIndex: i }))
+                                      .filter(c => c.namespace === selectedNamespace && c.category === layer.category)
+                                      .map((comp) => {
+                                        const isMissingRequired = comp.category === 'application' && !comp.properties?.image;
+                                        return (
                                       <div 
                                         key={comp.id} 
                                         onClick={() => setSelectedComponentIndex(comp.originalIndex)}
                                         className={cn(
-                                          "group flex items-center justify-between px-4 py-2 rounded-lg text-sm cursor-pointer transition-all",
-                                          selectedComponentIndex === comp.originalIndex ? "bg-[#E7F1FF] text-[#0D6EFD] font-bold" : "hover:bg-[#F8F9FA] text-[#495057]"
+                                          "group flex items-center justify-between px-4 py-2 rounded-lg text-sm cursor-pointer transition-all border",
+                                          selectedComponentIndex === comp.originalIndex 
+                                            ? isMissingRequired ? "bg-red-50 text-red-700 border-red-200 font-bold" : "bg-[#E7F1FF] text-[#0D6EFD] border-transparent font-bold" 
+                                            : isMissingRequired ? "bg-white text-red-600 border-red-100 hover:bg-red-50" : "bg-white border-transparent hover:bg-[#F8F9FA] text-[#495057]"
                                         )}
                                       >
                                         <div className="flex items-center gap-2">
-                                          <div className={cn("w-2 h-2 rounded-full", selectedComponentIndex === comp.originalIndex ? "bg-[#0D6EFD]" : "bg-[#DEE2E6]")} />
+                                          <div className={cn("w-2 h-2 rounded-full", selectedComponentIndex === comp.originalIndex ? "bg-[#0D6EFD]" : isMissingRequired ? "bg-red-400" : "bg-[#DEE2E6]")} />
                                           {comp.id}
+                                          {isMissingRequired && <span title="Missing required fields"><AlertTriangle size={12} className="text-red-500 ml-1" /></span>}
                                         </div>
                                         <button 
                                           onClick={(e) => {
@@ -602,7 +823,7 @@ export default function App() {
                                           <Trash2 size={14} />
                                         </button>
                                       </div>
-                                    ))}
+                                    )})}
                                   {config.components.filter(c => c.namespace === selectedNamespace && c.category === layer.category).length === 0 && (
                                     <p className="text-xs text-[#ADB5BD] italic p-2">No {layer.name.toLowerCase()} defined.</p>
                                   )}
@@ -685,12 +906,130 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                <div className="pt-6 border-t border-[#E9ECEF] space-y-4">
-                                  <h5 className="text-xs font-bold text-[#212529] flex items-center gap-2">
-                                    <Cpu size={14} />
-                                    Resource Allocation
-                                  </h5>
-                                  <div className="grid grid-cols-2 gap-4">
+                                  <div className="pt-6 border-t border-[#E9ECEF] space-y-4">
+                                    <h5 className="text-xs font-bold text-[#212529] flex items-center gap-2 uppercase tracking-wider">
+                                      {config.components[selectedComponentIndex].category} Details
+                                    </h5>
+                                    
+                                    {config.components[selectedComponentIndex].category === 'ingress' && (
+                                      <div className="space-y-4">
+                                        <div>
+                                          <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Hostname / Domain</label>
+                                          <input type="text" placeholder="e.g. api.example.com" value={config.components[selectedComponentIndex].properties?.hostname || ''} onChange={(e) => {
+                                            const newComps = [...config.components];
+                                            newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), hostname: e.target.value };
+                                            setConfig({ ...config, components: newComps });
+                                          }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Path</label>
+                                            <input type="text" placeholder="/api" value={config.components[selectedComponentIndex].properties?.path || ''} onChange={(e) => {
+                                              const newComps = [...config.components];
+                                              newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), path: e.target.value };
+                                              setConfig({ ...config, components: newComps });
+                                            }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
+                                          </div>
+                                          <div>
+                                            <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Target Service</label>
+                                            <input type="text" placeholder="svc-name" value={config.components[selectedComponentIndex].properties?.targetService || ''} onChange={(e) => {
+                                              const newComps = [...config.components];
+                                              newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), targetService: e.target.value };
+                                              setConfig({ ...config, components: newComps });
+                                            }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {config.components[selectedComponentIndex].category === 'service' && (
+                                       <div className="space-y-4">
+                                          <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                              <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Type</label>
+                                              <select value={config.components[selectedComponentIndex].properties?.serviceType || 'ClusterIP'} onChange={(e) => {
+                                                const newComps = [...config.components];
+                                                newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), serviceType: e.target.value };
+                                                setConfig({ ...config, components: newComps });
+                                              }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all bg-white text-sm">
+                                                <option value="ClusterIP">ClusterIP</option>
+                                                <option value="NodePort">NodePort</option>
+                                                <option value="LoadBalancer">LoadBalancer</option>
+                                              </select>
+                                            </div>
+                                            <div>
+                                              <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Port</label>
+                                              <input type="number" placeholder="80" value={config.components[selectedComponentIndex].properties?.port || ''} onChange={(e) => {
+                                                const newComps = [...config.components];
+                                                newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), port: e.target.value };
+                                                setConfig({ ...config, components: newComps });
+                                              }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
+                                            </div>
+                                            <div>
+                                              <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Target Port</label>
+                                              <input type="number" placeholder="8080" value={config.components[selectedComponentIndex].properties?.targetPort || ''} onChange={(e) => {
+                                                const newComps = [...config.components];
+                                                newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), targetPort: e.target.value };
+                                                setConfig({ ...config, components: newComps });
+                                              }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
+                                            </div>
+                                          </div>
+                                       </div>
+                                    )}
+
+                                    {config.components[selectedComponentIndex].category === 'application' && (
+                                       <div className="space-y-4">
+                                         <div>
+                                           <label className="flex items-center justify-between text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">
+                                             <span>Container Image <span className="text-red-500">*</span></span>
+                                             {validationStatus[config.components[selectedComponentIndex].id]?.status === 'checking' && (
+                                                <span className="flex items-center gap-1 text-blue-500"><Loader2 size={12} className="animate-spin" /> Checking...</span>
+                                             )}
+                                             {validationStatus[config.components[selectedComponentIndex].id]?.status === 'valid' && (
+                                                <span className="flex items-center gap-1 text-green-500" title={validationStatus[config.components[selectedComponentIndex].id]?.message}><CheckCircle2 size={12} /> Valid</span>
+                                             )}
+                                             {validationStatus[config.components[selectedComponentIndex].id]?.status === 'invalid' && (
+                                                <span className="flex items-center gap-1 text-red-500" title={validationStatus[config.components[selectedComponentIndex].id]?.message}><XCircle size={12} /> Invalid</span>
+                                             )}
+                                           </label>
+                                           <input type="text" placeholder="nginx:latest" value={config.components[selectedComponentIndex].properties?.image || ''} onChange={(e) => {
+                                             const newComps = [...config.components];
+                                             newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), image: e.target.value };
+                                             setConfig({ ...config, components: newComps });
+                                           }} className={cn("w-full px-4 py-2.5 rounded-xl border outline-none focus:ring-2 transition-all font-mono text-sm", validationStatus[config.components[selectedComponentIndex].id]?.status === 'invalid' ? "border-red-300 focus:ring-red-500/20" : "border-[#DEE2E6] focus:ring-[#0D6EFD]/20")} />
+                                         </div>
+                                         <div>
+                                           <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Environment Variables</label>
+                                           <textarea placeholder="KEY=value&#10;ANOTHER_KEY=value" rows={3} value={config.components[selectedComponentIndex].properties?.envVars || ''} onChange={(e) => {
+                                             const newComps = [...config.components];
+                                             newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), envVars: e.target.value };
+                                             setConfig({ ...config, components: newComps });
+                                           }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-xs" />
+                                         </div>
+                                       </div>
+                                    )}
+
+                                    {config.components[selectedComponentIndex].category === 'config' && (
+                                      <div className="space-y-4">
+                                        <div>
+                                          <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Key-Value Data</label>
+                                          <textarea placeholder="key1: value1&#10;key2: value2" rows={5} value={config.components[selectedComponentIndex].properties?.configData || ''} onChange={(e) => {
+                                            const newComps = [...config.components];
+                                            newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), configData: e.target.value };
+                                            setConfig({ ...config, components: newComps });
+                                          }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-xs" />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                  </div>
+
+                                  <div className="pt-6 border-t border-[#E9ECEF] space-y-4">
+                                    <h5 className="text-xs font-bold text-[#212529] flex items-center gap-2 uppercase tracking-wider">
+                                      <Cpu size={14} />
+                                      Resource Allocation
+                                    </h5>
+                                    <div className="grid grid-cols-2 gap-4">
                                     <div>
                                       <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">CPU Request</label>
                                       <input 
@@ -1075,15 +1414,26 @@ export default function App() {
                     <ChevronLeft size={20} /> Back
                   </button>
                   
-                  {currentStep < visibleSteps.length - 1 && (
+                  {currentStep < visibleSteps.length - 1 && (() => {
+                    const isModelStep = visibleSteps[currentStep].id === 'model';
+                    const hasValidationErrors = isModelStep && config.components.some(c => c.category === 'application' && !c.properties?.image);
+
+                    return (
                     <button 
                       onClick={nextStep}
-                      disabled={isFetching || isValidating || isFitting}
-                      className="flex items-center gap-2 px-8 py-3 bg-[#0D6EFD] text-white rounded-xl font-bold hover:bg-[#0B5ED7] transition-all shadow-lg shadow-[#0D6EFD]/20 disabled:opacity-50"
+                      disabled={isFetching || isValidating || isFitting || hasValidationErrors}
+                      className={cn(
+                        "flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all shadow-lg",
+                        hasValidationErrors 
+                          ? "bg-red-50 text-red-500 border border-red-200 cursor-not-allowed shadow-none"
+                          : "bg-[#0D6EFD] text-white hover:bg-[#0B5ED7] shadow-[#0D6EFD]/20 disabled:opacity-50"
+                      )}
+                      title={hasValidationErrors ? "Please complete all required fields or delete invalid components." : ""}
                     >
-                      {isFetching || isValidating || isFitting ? 'Processing...' : 'Next Step'} <ChevronRight size={20} />
+                      {isFetching || isValidating || isFitting ? 'Processing...' : hasValidationErrors ? 'Fix errors to proceed' : 'Next Step'} <ChevronRight size={20} />
                     </button>
-                  )}
+                    );
+                  })()}
                 </div>
               </motion.div>
             ) : activeMenu === 'home' ? (

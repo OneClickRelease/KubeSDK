@@ -3,7 +3,9 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import cors from "cors";
 import yaml from "js-yaml";
-import { KubeSDKLocalRun, ValidationResult, ResourcePlan } from "./src/types";
+import multer from "multer";
+import AdmZip from "adm-zip";
+import { KubeSDKLocalRun, ValidationResult, ResourcePlan, Component } from "./src/types";
 
 async function startServer() {
   const app = express();
@@ -11,6 +13,8 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json());
+
+  const upload = multer({ storage: multer.memoryStorage() });
 
   // --- API Routes ---
 
@@ -90,6 +94,168 @@ async function startServer() {
         }
       }
     });
+  });
+
+  app.post("/api/validate-resource", async (req, res) => {
+    const { type, value } = req.body;
+    if (!value) return res.json({ valid: false, message: 'Empty value' });
+    
+    try {
+      if (type === 'url') {
+        let response = await fetch(value, { method: 'HEAD' }).catch(() => null);
+        if (!response || !response.ok) {
+          response = await fetch(value, { method: 'GET' }).catch(() => null);
+        }
+        if (response && response.ok) {
+          return res.json({ valid: true });
+        }
+        return res.json({ valid: false, message: `Unreachable (HTTP ${response?.status || 'Error'})` });
+      }
+
+      if (type === 'image') {
+        let image = value;
+        let tag = 'latest';
+        if (image.includes(':')) {
+          const parts = image.split(':');
+          image = parts[0];
+          tag = parts[1] || 'latest';
+        }
+        
+        // If it doesn't contain a dot in the first registry part, assume docker hub
+        // e.g. "nginx" -> library/nginx. "quay.io/coreos/prometheus" -> contains dot
+        const registryPart = image.split('/')[0];
+        const isDockerHub = !registryPart.includes('.');
+        
+        if (isDockerHub) {
+          let repository = image;
+          if (!repository.includes('/')) {
+            repository = 'library/' + repository;
+          }
+          const url = `https://hub.docker.com/v2/repositories/${repository}/tags/${tag}`;
+          const response = await fetch(url);
+          if (response.ok) {
+            return res.json({ valid: true, message: 'Verified on Docker Hub' });
+          } else if (response.status === 404) {
+            return res.json({ valid: false, message: 'Image not found on Docker Hub' });
+          } else {
+            return res.json({ valid: false, message: `Docker Hub error: HTTP ${response.status}` });
+          }
+        } else {
+          // generic registry: best effort check or just assume ok
+          return res.json({ valid: true, message: 'Custom registry (unverified)' });
+        }
+      }
+
+      res.json({ valid: false, message: 'Unknown validation type' });
+    } catch (e: any) {
+      res.json({ valid: false, message: e.message });
+    }
+  });
+
+  app.post("/api/upload-export", upload.single("export"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    try {
+      const zip = new AdmZip(req.file.buffer);
+      const zipEntries = zip.getEntries();
+      
+      const components: Component[] = [];
+      const namespaces = new Set<string>();
+
+      zipEntries.forEach(entry => {
+        if (!entry.isDirectory && entry.entryName.endsWith('.yaml')) {
+          try {
+            const content = entry.getData().toString('utf8');
+            yaml.loadAll(content, (doc: any) => {
+              const processResource = (res: any) => {
+                if (res && res.kind && res.metadata && res.metadata.name) {
+                  const kindStr = res.kind.toLowerCase();
+                  const ns = res.metadata.namespace || 'default';
+                  
+                  let kind: 'workload' | 'infra' | 'capability' = 'infra';
+                  let category = 'unknown';
+
+                  if (['deployment', 'statefulset', 'daemonset', 'pod', 'job', 'cronjob', 'replicaset'].includes(kindStr)) {
+                    kind = 'workload';
+                    category = 'application';
+                  } else if (kindStr === 'service') {
+                    kind = 'workload';
+                    category = 'service';
+                  } else if (['ingress', 'endpoints', 'endpointslice'].includes(kindStr)) {
+                    kind = 'infra';
+                    category = 'ingress';
+                  } else if (['configmap', 'secret'].includes(kindStr)) {
+                    kind = 'infra';
+                    category = 'config';
+                  } else if (kindStr === 'namespace') {
+                    kind = 'infra';
+                    category = 'namespace';
+                    namespaces.add(res.metadata.name); // Correctly add the namespace being defined
+                  }
+
+                  // Any other categories? We can just add them as is, or filter them out if unknown.
+                  if (category !== 'unknown') {
+                    // Only add namespace to set if it's not a namespace object
+                    if (kindStr !== 'namespace') {
+                      namespaces.add(ns);
+                    }
+
+                    components.push({
+                      id: res.metadata.name,
+                      kind,
+                      namespace: kindStr === 'namespace' ? 'cluster' : ns,
+                      category,
+                      mandatory: true,
+                      runtimeClass: kind === 'workload' ? 'application' : 'infra',
+                      resources: {
+                        original: {
+                          cpu: '100m',
+                          memory: '128Mi',
+                          replicas: res.spec?.replicas || 1
+                        }
+                      }
+                    });
+                  }
+                }
+              };
+
+              if (doc && doc.items && Array.isArray(doc.items)) {
+                doc.items.forEach(processResource);
+              } else {
+                processResource(doc);
+              }
+            });
+          } catch (e) {
+            console.error(`Failed to parse yaml entry ${entry.entryName}`, e);
+          }
+        }
+      });
+
+      // Ensure explicit namespace components exist
+      namespaces.forEach(ns => {
+        if (!components.find(c => c.kind === 'infra' && c.category === 'namespace' && c.id === ns)) {
+          components.push({
+             id: ns,
+             kind: 'infra',
+             namespace: 'cluster',
+             category: 'namespace',
+             mandatory: true,
+             runtimeClass: 'infra',
+             resources: { original: { cpu: '0', memory: '0', replicas: 1 } }
+          });
+        }
+      });
+
+      res.json({
+        status: 'success',
+        components
+      });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post("/api/generate", (req, res) => {
