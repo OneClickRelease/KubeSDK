@@ -1,0 +1,5 @@
+{
+  "name": "Remix: KubeSDK Local Runtime Simulator",
+  "description": "A local runtime simulator tool for platform engineers to define, simulate, and deploy local Kubernetes clusters using k3d.",
+  "requestFramePermissions": []
+}
