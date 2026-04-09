@@ -57,10 +57,10 @@ const INITIAL_CONFIG: KubeSDKLocalRun = {
   apiVersion: 'kubesdk.dev/v1alpha1',
   kind: 'LocalRunDefinition',
   metadata: {
-    name: 'my-kubesdk-run',
-    createdBy: 'platform-engineer',
+    name: 'kubesdk-simulation',
+    createdBy: 'sdk-user',
     createdAt: new Date().toISOString(),
-    toolVersion: '0.1.0',
+    toolVersion: '1.0.0',
   },
   wizard: {
     source: 'manual',
@@ -79,17 +79,7 @@ const INITIAL_CONFIG: KubeSDKLocalRun = {
       caCert: '',
     }
   },
-  components: [
-    {
-      id: 'tenant-a',
-      kind: 'infra',
-      namespace: 'cluster',
-      category: 'namespace',
-      mandatory: true,
-      runtimeClass: 'infra',
-      resources: { original: { cpu: '0', memory: '0', replicas: 1 }, sdk: { cpu: '0', memory: '0', replicas: 1 } }
-    }
-  ],
+  components: [],
   capabilities: [],
   dependencyGraph: {
     edges: [],
@@ -903,7 +893,7 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
           name: comp.id, 
           namespace: comp.namespace,
           annotations: { 
-            'kubernetes.io/ingress.class': 'traefik',
+            'kubernetes.io/ingress.class': comp.properties?.ingressClass || 'traefik',
             ...annotations
           }
         },
@@ -916,8 +906,8 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
              kind: 'Simulator',
              metadata: { name: comp.id, namespace: comp.namespace, annotations },
              spec: {
-               type: 'postgres',
-               image: comp.properties?.image || 'infra/sim-postgres:latest',
+               type: comp.properties?.simulatorType || "generic",
+               image: comp.properties?.image || `infra/sim-${comp.properties?.simulatorType || "generic"}:latest`,
                mode: 'scripted',
                seedDataConfigMap: `${comp.id}-seed`,
                behavior: { latencyMs: 20 }
@@ -983,7 +973,7 @@ export default function App() {
   const [isFitting, setIsFitting] = useState(false);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState(0);
   const [selectedNamespace, setSelectedNamespace] = useState<string>(() => {
-    try { return localStorage.getItem('kubesdksim_ns') || 'tenant-a'; } catch { return 'tenant-a'; }
+    try { return localStorage.getItem('kubesdksim_ns') || ''; } catch { return ''; }
   });
   const [selectedDagId, setSelectedDagId] = useState<string>('');
   const [selectedDagType, setSelectedDagType] = useState<'app' | 'namespace'>('app');
@@ -1443,8 +1433,8 @@ export default function App() {
                           <Cloud size={24} />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-bold text-sm">Cluster Connectivity Details</h4>
-                          <p className="text-xs text-[#6C757D]">Provide details to connect to your cluster (anywhere: local, cloud, on-prem).</p>
+                          <h4 className="font-bold text-sm">Cluster Endpoint Access</h4>
+                          <p className="text-xs text-[#6C757D]">Provide details to connect to the target Kubernetes cluster environment.</p>
                         </div>
                       </div>
 
@@ -2615,8 +2605,8 @@ echo "Export completed! File created: export.zip"`}
                 className="space-y-8"
               >
                 <div className="space-y-2">
-                  <h2 className="text-4xl font-bold">Welcome to KubeSDK Simulator</h2>
-                  <p className="text-xl text-[#6C757D]">The internal developer platform runtime compiler.</p>
+                  <h2 className="text-4xl font-bold">KubeSDK Cluster Model Simulator</h2>
+                  <p className="text-xl text-[#6C757D]">The high-performance Kubernetes localized runtime compiler.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
