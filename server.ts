@@ -185,7 +185,14 @@ async function startServer() {
                   let kind: 'workload' | 'infra' | 'capability' = 'infra';
                   let category = 'unknown';
 
-                  if (['deployment', 'statefulset', 'daemonset', 'pod', 'job', 'cronjob', 'replicaset'].includes(kindStr)) {
+                  if (['pod', 'replicaset'].includes(kindStr)) {
+                    // Skip: transient runtime instances auto-created by Deployments.
+                    // The Deployment is the canonical definition — Pods and ReplicaSets
+                    // are just running copies and would create duplicate cards in the UI.
+                    return;
+                  }
+
+                  if (['deployment', 'statefulset', 'daemonset', 'job', 'cronjob'].includes(kindStr)) {
                     kind = 'workload';
                     category = 'application';
                   } else if (kindStr === 'service') {
@@ -223,6 +230,8 @@ async function startServer() {
                           memory = reqs.memory || memory;
                         }
                       }
+                      // Store the canonical Kubernetes kind so the UI can label it correctly
+                      properties.sourceKind = res.kind; // e.g. "Deployment", "StatefulSet"
                     } else if (category === 'service') {
                       if (res.spec?.ports && res.spec.ports.length > 0) {
                         properties.port = res.spec.ports[0].port;
@@ -297,9 +306,22 @@ async function startServer() {
         }
       });
 
+      // Deduplicate: guard against any remaining duplicates by id+namespace.
+      // Keep the first occurrence (Deployment entries are processed before Pods/RS
+      // due to how kubectl outputs resources, but this is a safety net).
+      const seenKeys = new Set<string>();
+      const dedupedComponents: Component[] = [];
+      for (const comp of components) {
+        const key = `${comp.namespace}/${comp.id}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          dedupedComponents.push(comp);
+        }
+      }
+
       res.json({
         status: 'success',
-        components
+        components: dedupedComponents
       });
     } catch (e: any) {
       console.error(e);

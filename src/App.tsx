@@ -26,7 +26,8 @@ import {
   Cpu,
   AlertTriangle,
   XCircle,
-  Loader2
+  Loader2,
+  List
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -113,24 +114,422 @@ const INITIAL_CONFIG: KubeSDKLocalRun = {
   },
 };
 
+const NS_PALETTE = [
+  { bg: '#5B8DD9', dark: '#3A6DB5', edge: '#93B8F0', text: '#EEF4FF' },
+  { bg: '#7C5CBF', dark: '#5A3FA0', edge: '#A88EE0', text: '#F3EEFF' },
+  { bg: '#2D9E6B', dark: '#1E7050', edge: '#5EC99A', text: '#EAFAF2' },
+  { bg: '#D97C14', dark: '#B06210', edge: '#F0AA55', text: '#FFF8EE' },
+  { bg: '#D94F4F', dark: '#B03535', edge: '#F08080', text: '#FFF0F0' },
+  { bg: '#C94B9A', dark: '#A03278', edge: '#E880C0', text: '#FFF0F8' },
+  { bg: '#3DA8B5', dark: '#2A7A88', edge: '#70CEE0', text: '#EEF9FA' },
+];
+
+const LayeredDependencyMap = ({ config, setConfig }: {
+  config: KubeSDKLocalRun;
+  setConfig: React.Dispatch<React.SetStateAction<KubeSDKLocalRun>>;
+}) => {
+  const [selectedAppId, setSelectedAppId] = React.useState<string | null>(null);
+  const ignoredNS = config.wizard.ignoredNamespaces || [];
+
+  // Derive namespaces from BOTH:
+  // 1. Explicit namespace components (category === 'namespace')
+  // 2. The namespace field on any workload/service component
+  // This ensures apps always show even if namespace component ID doesn't exactly match
+  const nsFromComponents = Array.from(new Set(
+    config.components
+      .filter(c => c.category === 'namespace' && !ignoredNS.includes(c.id))
+      .map(c => c.id)
+  ));
+  const nsFromWorkloads = Array.from(new Set(
+    config.components
+      .filter(c => c.category !== 'namespace' && c.namespace && c.namespace !== 'cluster' && !ignoredNS.includes(c.namespace))
+      .map(c => c.namespace!)
+  ));
+  const namespaces = Array.from(new Set([...nsFromComponents, ...nsFromWorkloads]));
+
+  // Only hide namespace definitions and configmap/secret entries from the card view.
+  // Everything else (Deployments, Services, Ingresses, Jobs, Simulators, etc.)
+  // should all appear as cards so the user can see what runs in each namespace.
+  const INFRA_CATEGORIES = ['namespace', 'config'];
+  const getApps = (ns: string) => config.components.filter(c =>
+    c.namespace === ns && !INFRA_CATEGORIES.includes(c.category)
+  );
+  const getInfra = (ns: string) => config.components.filter(c => ['service','ingress'].includes(c.category) && c.namespace === ns);
+  const allTargets = config.components.filter(c => ['service','ingress','simulator'].includes(c.category));
+  const selectedApp = selectedAppId ? config.components.find(c => c.id === selectedAppId) : null;
+  const connectedIds = selectedAppId ? config.dependencyGraph.edges.filter(e => e.from === selectedAppId).map(e => e.to) : [];
+
+  const toggleTarget = (targetId: string) => {
+    if (!selectedAppId) return;
+    const newEdges = [...config.dependencyGraph.edges];
+    const newComponents = [...config.components];
+    const appIdx = newComponents.findIndex(c => c.id === selectedAppId);
+    if (appIdx === -1) return;
+    const edgeIdx = newEdges.findIndex(e => e.from === selectedAppId && e.to === targetId);
+    if (edgeIdx > -1) {
+      newEdges.splice(edgeIdx, 1);
+    } else {
+      newEdges.push({ from: selectedAppId, to: targetId });
+      const target = config.components.find(c => c.id === targetId);
+      if (target) {
+        const prefix = targetId.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+        let env = newComponents[appIdx].properties?.envVars || '';
+        if (!env.includes(`${prefix}_`)) {
+          let snippet = `\n# ${targetId}\n`;
+          if (target.category === 'service') snippet += `${prefix}_HOST=${targetId}.${target.namespace||'default'}.svc.cluster.local\n${prefix}_PORT=${target.properties?.port||80}\n`;
+          else if (target.category === 'ingress') snippet += `${prefix}_URL=http://${target.properties?.hostname||targetId+'.local'}\n`;
+          else snippet += `${prefix}_ENDPOINT=${targetId}\n`;
+          newComponents[appIdx] = { ...newComponents[appIdx], properties: { ...(newComponents[appIdx].properties||{}), envVars: env + snippet } };
+        }
+      }
+    }
+    setConfig(prev => ({ ...prev, dependencyGraph: { edges: newEdges }, components: newComponents }));
+  };
+
+  // Sort namespaces: ones that have incoming deps go lower
+  const sortedNS = [...namespaces].sort((a, b) => {
+    const aDeps = config.dependencyGraph.edges.filter(e => {
+      const fromComp = config.components.find(c => c.id === e.from);
+      const toComp = config.components.find(c => c.id === e.to);
+      return fromComp?.namespace === a && toComp?.namespace !== a;
+    }).length;
+    const bDeps = config.dependencyGraph.edges.filter(e => {
+      const fromComp = config.components.find(c => c.id === e.from);
+      const toComp = config.components.find(c => c.id === e.to);
+      return fromComp?.namespace === b && toComp?.namespace !== b;
+    }).length;
+    return bDeps - aDeps;
+  });
+
+  // Collect ALL workload components for debug panel
+  const allApps = config.components.filter(c => !INFRA_CATEGORIES.includes(c.category) && c.namespace !== 'cluster');
+  const allNSIds = namespaces;
+
+  // Show the data table whenever there are namespaces but layers are empty
+  const layersAreEmpty = sortedNS.length > 0 && sortedNS.every(ns => getApps(ns).length === 0);
+
+  return (
+    <div className="flex gap-6">
+      {/* Left: Layered diagram */}
+      <div className="flex-1 space-y-2 min-w-0">
+
+        {/* Raw data dump — shown when layers are empty so user/dev can see exact state */}
+        {layersAreEmpty && (
+          <div className="mb-4 p-4 bg-[#1A1A2E] border border-[#2D2D4E] rounded-xl text-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-white flex items-center gap-2">
+                <AlertCircle size={14} className="text-amber-400" />
+                No components visible — raw state dump
+              </p>
+              <button
+                onClick={() => {
+                  if (confirm('This will clear all saved data and reload. Continue?')) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="px-3 py-1 bg-red-500 text-white rounded-lg text-[10px] font-bold hover:bg-red-600"
+              >
+                Clear Cache &amp; Reload
+              </button>
+            </div>
+            <p className="text-[#ADB5BD]">Namespaces derived: <span className="font-mono text-emerald-400">[{allNSIds.join(', ')}]</span></p>
+            <p className="text-[#ADB5BD]">Total components: <span className="font-bold text-white">{config.components.length}</span></p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[10px] font-mono">
+                <thead>
+                  <tr className="text-[#6C757D] border-b border-[#2D2D4E]">
+                    <th className="text-left py-1 pr-4">id</th>
+                    <th className="text-left py-1 pr-4">namespace</th>
+                    <th className="text-left py-1 pr-4">category</th>
+                    <th className="text-left py-1 pr-4">kind</th>
+                    <th className="text-left py-1">runtimeClass</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {config.components.slice(0, 30).map((c, i) => (
+                    <tr key={i} className={`border-b border-[#2D2D4E]/50 ${INFRA_CATEGORIES.includes(c.category) ? 'text-[#6C757D]' : 'text-emerald-400'}`}>
+                      <td className="py-0.5 pr-4 truncate max-w-[120px]">{c.id}</td>
+                      <td className="py-0.5 pr-4">{c.namespace}</td>
+                      <td className="py-0.5 pr-4">{c.category}</td>
+                      <td className="py-0.5 pr-4">{c.kind}</td>
+                      <td className="py-0.5">{c.runtimeClass}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {config.components.length > 30 && <p className="text-[#6C757D] mt-1">... and {config.components.length - 30} more</p>}
+            </div>
+            <p className="text-amber-400 text-[10px]">Green rows = would appear as app cards. Grey rows = infra (filtered out). If all grey, your data has wrong categories — click "Clear Cache &amp; Reload" then re-import.</p>
+          </div>
+        )}
+
+        {sortedNS.map((ns, nsIdx) => {
+          const pal = NS_PALETTE[nsIdx % NS_PALETTE.length];
+          const apps = getApps(ns);
+          const infra = getInfra(ns);
+          const isActiveNS = selectedApp?.namespace === ns;
+          return (
+            <div key={ns} className={cn('transition-all duration-300', isActiveNS ? 'scale-[1.01]' : '')}>
+              <div className="flex items-stretch gap-0">
+                {/* 3D Hexagonal layer label */}
+                <div className="relative shrink-0 flex items-center" style={{ width: 140, minHeight: 80 }}>
+                  {/* Shadow/depth layer */}
+                  <div className="absolute" style={{
+                    left: 6, top: 8, right: 0, bottom: -4,
+                    clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)',
+                    background: pal.dark,
+                    opacity: 0.7,
+                  }} />
+                  {/* Main face */}
+                  <div className="absolute inset-0" style={{
+                    clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)',
+                    background: `linear-gradient(145deg, ${pal.bg} 0%, ${pal.dark} 100%)`,
+                  }} />
+                  {/* Top shine */}
+                  <div className="absolute" style={{
+                    left: 4, top: 2, right: 4,
+                    height: '45%',
+                    clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)',
+                  }} />
+                  {/* Connector line to content */}
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-0.5" style={{ background: pal.edge }} />
+                  <span className="relative z-10 text-white text-[9px] font-bold uppercase tracking-widest text-center w-full px-6 leading-tight" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                    {ns}
+                  </span>
+                </div>
+
+                {/* Content bar */}
+                <div className="flex-1 min-w-0 rounded-r-xl overflow-hidden border border-l-0" style={{ borderColor: pal.edge, borderLeftWidth: 3, borderLeftColor: pal.bg, background: 'white' }}>
+                  <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto">
+                    {/* Applications */}
+                    {apps.length === 0 ? (
+                      <span className="text-xs text-[#ADB5BD] italic">No components yet</span>
+                    ) : (
+                      <>
+                        {apps.map(app => {
+                          const isSelected = selectedAppId === app.id;
+                          const depCount = config.dependencyGraph.edges.filter(e => e.from === app.id).length;
+                          const sourceKind = app.properties?.sourceKind as string | undefined;
+                          return (
+                            <button
+                              key={app.id}
+                              onClick={() => setSelectedAppId(isSelected ? null : app.id)}
+                              className={cn(
+                                'shrink-0 flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-xl border transition-all text-xs font-bold min-w-[90px]',
+                                isSelected
+                                  ? 'text-white shadow-lg scale-105'
+                                  : 'border-[#DEE2E6] text-[#495057] hover:scale-102'
+                              )}
+                              style={isSelected ? { background: pal.bg, borderColor: pal.bg, boxShadow: `0 8px 24px ${pal.bg}44` } : {}}
+                            >
+                              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', isSelected ? 'bg-white/20' : '')} style={!isSelected ? { background: pal.bg + '18', border: `1px solid ${pal.bg}44` } : {}}>
+                                <Server size={16} style={{ color: isSelected ? 'white' : pal.bg }} />
+                              </div>
+                              <span className="truncate max-w-[80px]">{app.id}</span>
+                              {sourceKind && (
+                                <span className={cn('px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wide', isSelected ? 'bg-white/20 text-white/80' : 'text-[#6C757D] bg-[#F8F9FA] border border-[#E9ECEF]')}>
+                                  {sourceKind}
+                                </span>
+                              )}
+                              {depCount > 0 && (
+                                <span className={cn('px-1.5 py-0.5 rounded-full text-[9px] font-bold', isSelected ? 'bg-white/20 text-white' : 'text-white')} style={!isSelected ? { background: pal.bg } : {}}>
+                                  {depCount} link{depCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                        
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Connection arrows to other layers — visual indicator */}
+              {isActiveNS && connectedIds.length > 0 && (
+                <div className="ml-36 mt-1 flex gap-2 flex-wrap">
+                  {connectedIds.map(tid => {
+                    const target = config.components.find(c => c.id === tid);
+                    if (!target) return null;
+                    const targetNSIdx = sortedNS.indexOf(target.namespace || '');
+                    const targetPal = NS_PALETTE[targetNSIdx % NS_PALETTE.length] || NS_PALETTE[0];
+                    return (
+                      <div key={tid} className="flex items-center gap-1 text-[10px] font-bold text-[#6C757D]">
+                        <div className="w-4 h-px bg-[#ADB5BD]" />
+                        <span className="px-1.5 py-0.5 rounded text-white text-[9px]" style={{ background: targetPal.bg }}>{tid}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {namespaces.length === 0 && (
+          <div className="flex items-center justify-center h-48 border-2 border-dashed border-[#DEE2E6] rounded-2xl">
+            <div className="text-center space-y-2">
+              <Layers size={32} className="text-[#DEE2E6] mx-auto" />
+              <p className="text-sm font-bold text-[#ADB5BD]">No namespaces defined yet</p>
+              <p className="text-xs text-[#DEE2E6]">Go back to Step 4 to add namespaces and components</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Right: Selected App Detail Panel */}
+      {selectedApp && (
+        <motion.div
+          key={selectedApp.id}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="w-80 flex flex-col bg-white border border-[#E9ECEF] rounded-2xl overflow-hidden shadow-xl"
+        >
+          {/* Header */}
+          <div className="px-5 py-4 flex items-center justify-between border-b border-[#E9ECEF]" style={{ background: `linear-gradient(135deg, ${NS_PALETTE[sortedNS.indexOf(selectedApp.namespace||'')] ? NS_PALETTE[sortedNS.indexOf(selectedApp.namespace||'')]?.bg : '#0D6EFD'}18, transparent)` }}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: NS_PALETTE[sortedNS.indexOf(selectedApp.namespace||'')]?.bg || '#0D6EFD' }}>
+                <Server size={17} className="text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-[#212529] text-sm">{selectedApp.id}</p>
+                <p className="text-[11px] text-[#6C757D]">{selectedApp.namespace}</p>
+              </div>
+            </div>
+            <button onClick={() => setSelectedAppId(null)} className="p-1.5 rounded-lg hover:bg-[#F8F9FA] transition-colors">
+              <XCircle size={16} className="text-[#ADB5BD]" />
+            </button>
+          </div>
+
+          {/* Available targets */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider">
+              Link to Services / Ingresses / Endpoints
+            </h5>
+            {allTargets.length === 0 ? (
+              <p className="text-xs text-[#ADB5BD] italic">No services defined. Add them in Step 4.</p>
+            ) : (
+              allTargets.map(target => {
+                const isLinked = connectedIds.includes(target.id);
+                const parentApp = config.components.find(c => c.id === target.properties?.targetApp);
+                const targetNSIdx = sortedNS.indexOf(target.namespace || '');
+                const pal = NS_PALETTE[targetNSIdx % NS_PALETTE.length] || NS_PALETTE[0];
+                return (
+                  <button
+                    key={target.id}
+                    onClick={() => toggleTarget(target.id)}
+                    className={cn(
+                      'w-full text-left p-3 rounded-xl border transition-all',
+                      isLinked
+                        ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+                        : 'border-[#E9ECEF] hover:border-[#0D6EFD]/40 hover:bg-blue-50/20 bg-white'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: pal.bg + '22', border: `1px solid ${pal.bg}44` }}>
+                          {target.category === 'ingress' ? <Network size={13} style={{ color: pal.bg }} /> : <Box size={13} style={{ color: pal.bg }} />}
+                        </div>
+                        <div>
+                          <p className="font-bold text-[#212529] text-xs">{target.id}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-[9px] uppercase tracking-wider text-[#ADB5BD]">{target.category}</span>
+                            <div className="w-1 h-1 rounded-full bg-[#E9ECEF]" />
+                            <span className="text-[9px] font-bold" style={{ color: pal.bg }}>{target.namespace}</span>
+                          </div>
+                          {parentApp && <p className="text-[9px] text-[#6C757D] mt-0.5">via <span className="font-bold">{parentApp.id}</span></p>}
+                          {target.properties?.port && <p className="text-[9px] text-[#ADB5BD]">:{target.properties.port}</p>}
+                        </div>
+                      </div>
+                      <div className={cn('w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all', isLinked ? 'bg-emerald-500 border-emerald-500' : 'border-[#DEE2E6]')}>
+                        {isLinked && <CheckCircle2 size={11} className="text-white" />}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Generated ENV */}
+          {connectedIds.length > 0 && (
+            <div className="p-4 border-t border-[#E9ECEF] space-y-2">
+              <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider flex items-center gap-1.5">
+                <Terminal size={11} /> Generated ENV Variables
+              </h5>
+              <textarea
+                value={selectedApp.properties?.envVars || ''}
+                onChange={(e) => {
+                  const newComps = [...config.components];
+                  const idx = newComps.findIndex(c => c.id === selectedAppId);
+                  if (idx > -1) {
+                    newComps[idx] = { ...newComps[idx], properties: { ...(newComps[idx].properties || {}), envVars: e.target.value } };
+                    setConfig(prev => ({ ...prev, components: newComps }));
+                  }
+                }}
+                rows={6}
+                className="w-full p-3 rounded-xl border border-[#2D2D2D] bg-[#1A1A2E] text-[#20C997] font-mono text-[10px] outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none leading-relaxed"
+                placeholder="ENV variables will appear here when you link services..."
+              />
+            </div>
+          )}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
 const INITIAL_YAML_CONTENT = ``;
 
 function generateYamlFromConfig(config: KubeSDKLocalRun): string {
   const ignoredNamespaces = config.wizard.ignoredNamespaces || [];
   const docs: any[] = [];
   
-  // 1. Namespaces
-  const namespaces = new Set(config.components.filter(c => c.category === 'namespace' || c.kind === 'infra').map(c => c.namespace || c.id));
+  // 1. Namespaces & Project Config Sets
+  const namespaces = Array.from(new Set(config.components.filter(c => c.category === 'namespace' || c.kind === 'infra').map(c => c.namespace || c.id)));
   namespaces.forEach(ns => {
     if (ns && ns !== 'cluster' && !ignoredNamespaces.includes(ns)) {
+      const nsDeps = config.dependencyGraph.edges.filter(e => e.from === ns).map(e => e.to);
+      const nsAnnotations: Record<string, string> = { 'infra.example.com/profile': 'sdk' };
+      if (nsDeps.length > 0) nsAnnotations['infra.example.com/depends-on'] = nsDeps.join(',');
+
       docs.push({
         apiVersion: 'v1',
         kind: 'Namespace',
         metadata: {
           name: ns,
-          labels: { 'infra.example.com/profile': 'sdk' }
+          labels: { 'infra.example.com/profile': 'sdk' },
+          annotations: nsAnnotations
         }
       });
+
+      // Find if this namespace has a Config Set (SDK specific)
+      const nsComp = config.components.find(c => c.id === ns && c.category === 'namespace');
+      if (nsComp && nsComp.properties?.configSet) {
+        const data: Record<string, string> = {};
+        nsComp.properties.configSet.split('\n').filter(l => l.includes('=') && !l.trim().startsWith('#')).forEach(line => {
+          const [key, ...vals] = line.split('=');
+          if (key.trim()) data[key.trim()] = vals.join('=').trim();
+        });
+
+        if (Object.keys(data).length > 0) {
+          docs.push({
+            apiVersion: 'v1',
+            kind: 'ConfigMap',
+            metadata: { 
+              name: 'sdk-config', 
+              namespace: ns,
+              labels: { 'infra.example.com/configset': 'true' }
+            },
+            data
+          });
+        }
+      }
     }
   });
 
@@ -170,7 +569,7 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
           namespace: comp.namespace,
           annotations: { 'kubernetes.io/ingress.class': 'traefik' } // Rancher Desktop default
         },
-        spec: { rules: [{ host: comp.properties?.hostname || 'domain.local', http: { paths: [{ path: comp.properties?.path || '/', pathType: 'Prefix', backend: { service: { name: comp.properties?.targetService || 'app', port: { number: 80 } } } }] } }] }
+        spec: { rules: [{ host: comp.properties?.hostname || 'domain.local', http: { paths: [{ path: comp.properties?.path || '/', pathType: 'Prefix', backend: { service: { name: comp.properties?.targetApp || comp.properties?.targetService || 'app', port: { number: Number(comp.properties?.port || 80) } } } }] } }] }
       });
     } else if (comp.category === 'service' || comp.kind === 'infra') {
        if (comp.id.includes('simulator') || comp.id.includes('db')) {
@@ -187,20 +586,41 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
              }
            });
        } else {
+           const serviceSpec: any = {
+             type: comp.properties?.serviceType || 'ClusterIP',
+             ports: [{
+               port: Number(comp.properties?.port || 80),
+               targetPort: Number(comp.properties?.targetPort || comp.properties?.port || 80)
+             }]
+           };
+           if (comp.properties?.targetApp) {
+             serviceSpec.selector = { app: comp.properties.targetApp };
+           }
            docs.push({
              apiVersion: 'v1',
              kind: 'Service',
              metadata: { name: comp.id, namespace: comp.namespace },
-             spec: {
-               type: comp.properties?.serviceType || 'ClusterIP',
-               ports: [{ port: Number(comp.properties?.port || 80) }]
-             }
+             spec: serviceSpec
            });
        }
     }
     
     // Application
     if (comp.category === 'application') {
+      const deps = config.dependencyGraph.edges.filter(e => e.from === comp.id).map(e => e.to);
+      const annotations: Record<string, string> = { 'infra.example.com/mock': 'true' };
+      if (deps.length > 0) {
+        annotations['infra.example.com/depends-on'] = deps.join(',');
+      }
+
+      const envArray: any[] = [];
+      if (comp.properties?.envVars) {
+        comp.properties.envVars.split('\\n').filter(l => l.includes('=') && !l.trim().startsWith('#')).forEach(line => {
+          const [key, ...vals] = line.split('=');
+          if (key.trim()) envArray.push({ name: key.trim(), value: vals.join('=').trim() });
+        });
+      }
+
       docs.push({
         apiVersion: 'apps/v1',
         kind: 'Deployment',
@@ -208,7 +628,7 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
           name: comp.id,
           namespace: comp.namespace,
           labels: { app: comp.id, 'infra.example.com/profile': 'sdk' },
-          annotations: { 'infra.example.com/mock': 'true' }
+          annotations
         },
         spec: {
           replicas: comp.resources?.sdk?.replicas || 1,
@@ -225,8 +645,9 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
                     memory: comp.resources?.sdk?.memory || '512Mi'
                   }
                 },
-                env: [
-                  { name: 'DB_HOST', valueFrom: { configMapKeyRef: { name: 'global-db-config', key: 'host' } } }
+                env: envArray,
+                envFrom: [
+                  { configMapRef: { name: 'sdk-config' } }
                 ]
               }]
             }
@@ -241,10 +662,20 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
   return docs.map(d => yaml.dump(d)).join('\\n---\\n');
 }
 
+const STORAGE_KEY = 'kubesdksim_config_v1';
+
 export default function App() {
   const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'history' | 'settings'>('define');
-  const [currentStep, setCurrentStep] = useState(0);
-  const [config, setConfig] = useState<KubeSDKLocalRun>(INITIAL_CONFIG);
+  const [currentStep, setCurrentStep] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('kubesdksim_step') || '0') || 0; } catch { return 0; }
+  });
+  const [config, setConfig] = useState<KubeSDKLocalRun>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved) as KubeSDKLocalRun;
+    } catch (e) { console.warn('Could not restore config from localStorage', e); }
+    return INITIAL_CONFIG;
+  });
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentStatus, setDeploymentStatus] = useState<string[]>([]);
   const [isReady, setIsReady] = useState(false);
@@ -253,10 +684,30 @@ export default function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [isFitting, setIsFitting] = useState(false);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState(0);
-  const [selectedNamespace, setSelectedNamespace] = useState<string>('tenant-a');
+  const [selectedNamespace, setSelectedNamespace] = useState<string>(() => {
+    try { return localStorage.getItem('kubesdksim_ns') || 'tenant-a'; } catch { return 'tenant-a'; }
+  });
+  const [selectedDagId, setSelectedDagId] = useState<string>('');
+  const [selectedDagType, setSelectedDagType] = useState<'app' | 'namespace'>('app');
+  const [mappingView, setMappingView] = useState<'list' | 'graph'>('list');
   const [validationStatus, setValidationStatus] = useState<Record<string, { status: 'checking' | 'valid' | 'invalid', message?: string }>>({});
   const [isModelYamlMode, setIsModelYamlMode] = useState(false);
   const [modelYamlContent, setModelYamlContent] = useState(INITIAL_YAML_CONTENT);
+
+  // Persist config to localStorage on every change
+  React.useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); } catch (e) { console.warn('Could not save config', e); }
+  }, [config]);
+
+  // Persist step
+  React.useEffect(() => {
+    try { localStorage.setItem('kubesdksim_step', String(currentStep)); } catch {}
+  }, [currentStep]);
+
+  // Persist selected namespace
+  React.useEffect(() => {
+    try { localStorage.setItem('kubesdksim_ns', selectedNamespace); } catch {}
+  }, [selectedNamespace]);
 
   React.useEffect(() => {
     if (!isModelYamlMode) {
@@ -551,11 +1002,25 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-[#E9ECEF]">
+        <div className="mt-auto p-6 border-t border-[#E9ECEF] space-y-3">
           <div className="flex items-center gap-3 text-[#6C757D] text-xs">
             <Terminal size={14} />
             <span>v2.0.0-alpha</span>
+            <span className="ml-auto text-[10px] text-emerald-600 font-bold">● Auto-saved</span>
           </div>
+          <button
+            onClick={() => {
+              if (confirm('Reset all session data and start fresh?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem('kubesdksim_step');
+                localStorage.removeItem('kubesdksim_ns');
+                window.location.reload();
+              }
+            }}
+            className="w-full text-xs text-[#ADB5BD] hover:text-red-500 transition-colors py-1.5 px-3 rounded-lg border border-transparent hover:border-red-100 hover:bg-red-50 flex items-center gap-2"
+          >
+            <XCircle size={12} /> Reset Session
+          </button>
         </div>
       </aside>
 
@@ -981,11 +1446,13 @@ echo "Export completed! File created: export.zip"`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (confirm(`Are you sure you want to delete namespace '${ns}' and ALL its components?`)) {
-                                        const newComps = config.components.filter(c => !(c.id === ns && c.category === 'namespace') && c.namespace !== ns);
+                                        // Filter out the namespace component itself (could be category 'namespace' or kind 'infra')
+                                        // And filter out all components belonging to this namespace
+                                        const newComps = config.components.filter(c => !((c.id === ns && (c.category === 'namespace' || c.kind === 'infra')) || c.namespace === ns));
                                         setConfig(prev => ({ ...prev, components: newComps }));
                                         if (selectedNamespace === ns) {
-                                        const remaining = Array.from(new Set(newComps.filter(c => c.category === 'namespace').map(c => c.id)));
-                                        setSelectedNamespace(remaining[0] || '');
+                                          const remaining = Array.from(new Set(newComps.filter(c => c.category === 'namespace' || c.kind === 'infra').map(c => c.id || c.namespace)));
+                                          setSelectedNamespace(remaining[0] || '');
                                         }
                                       }
                                     }}
@@ -1182,12 +1649,24 @@ echo "Export completed! File created: export.zip"`}
                                             }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
                                           </div>
                                           <div>
-                                            <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Target Service</label>
-                                            <input type="text" placeholder="svc-name" value={config.components[selectedComponentIndex].properties?.targetService || ''} onChange={(e) => {
-                                              const newComps = [...config.components];
-                                              newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), targetService: e.target.value };
-                                              setConfig({ ...config, components: newComps });
-                                            }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
+                                            <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Target Workload / Application</label>
+                                            <select 
+                                              value={config.components[selectedComponentIndex].properties?.targetApp || ''} 
+                                              onChange={(e) => {
+                                                const newComps = [...config.components];
+                                                newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), targetApp: e.target.value };
+                                                setConfig({ ...config, components: newComps });
+                                              }} 
+                                              className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all bg-white text-sm"
+                                            >
+                                              <option value="">Select an application...</option>
+                                              {config.components
+                                                .filter(c => c.category === 'application' && c.namespace === config.components[selectedComponentIndex].namespace)
+                                                .map(app => (
+                                                  <option key={app.id} value={app.id}>{app.id}</option>
+                                                ))
+                                              }
+                                            </select>
                                           </div>
                                         </div>
                                       </div>
@@ -1224,6 +1703,26 @@ echo "Export completed! File created: export.zip"`}
                                                 setConfig({ ...config, components: newComps });
                                               }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-sm" />
                                             </div>
+                                          </div>
+                                          <div>
+                                            <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Target Workload / Application</label>
+                                            <select 
+                                              value={config.components[selectedComponentIndex].properties?.targetApp || ''} 
+                                              onChange={(e) => {
+                                                const newComps = [...config.components];
+                                                newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), targetApp: e.target.value };
+                                                setConfig({ ...config, components: newComps });
+                                              }} 
+                                              className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all bg-white text-sm"
+                                            >
+                                              <option value="">Select an application...</option>
+                                              {config.components
+                                                .filter(c => c.category === 'application' && c.namespace === config.components[selectedComponentIndex].namespace)
+                                                .map(app => (
+                                                  <option key={app.id} value={app.id}>{app.id}</option>
+                                                ))
+                                              }
+                                            </select>
                                           </div>
                                        </div>
                                     )}
@@ -1401,33 +1900,24 @@ echo "Export completed! File created: export.zip"`}
                   )}
 
                   {visibleSteps[currentStep].id === 'mapping' && (
-                    <div className="space-y-6">
+                    <div className="space-y-5">
                       <div className="flex items-center justify-between">
-                        <p className="text-[#495057]">Define runtime dependency DAG.</p>
-                        <div className="flex gap-2">
-                          <button className="px-3 py-1.5 bg-[#F8F9FA] border border-[#DEE2E6] rounded-lg text-xs font-bold hover:bg-white transition-all">
-                            Auto-Layout
-                          </button>
+                        <div>
+                          <h3 className="text-xl font-bold text-[#212529]">Dependency Architecture</h3>
+                          <p className="text-sm text-[#495057] mt-1">
+                            Each row is a namespace layer. <span className="font-bold text-[#212529]">Click an application</span> to select it, then click <span className="text-emerald-600 font-bold">green service chips</span> to wire dependencies. ENV variables are synthesized automatically.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-[#6C757D] shrink-0">
+                          <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-[#0D6EFD]" /> App</div>
+                          <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-emerald-500" /> Service/Ingress</div>
+                          <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-emerald-200 border border-emerald-300" /> Available Target</div>
                         </div>
                       </div>
-                      
-                      <div className="h-[300px] border-2 border-dashed border-[#DEE2E6] rounded-2xl flex items-center justify-center bg-[#F8F9FA]">
-                        <div className="text-center space-y-3">
-                          <div className="w-12 h-12 bg-white rounded-full border border-[#DEE2E6] flex items-center justify-center mx-auto text-[#6C757D]">
-                            <Layers size={24} />
-                          </div>
-                          <p className="text-sm text-[#6C757D]">Visual dependency mapper would render here.<br/>Draw arrows between components to define boot order.</p>
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3">
-                        <AlertCircle size={18} className="text-blue-600 shrink-0" />
-                        <p className="text-xs text-blue-700 leading-relaxed">
-                          <strong>Rules enforced:</strong> No circular dependencies. Infra components must start before app workloads.
-                        </p>
-                      </div>
+                      <LayeredDependencyMap config={config} setConfig={setConfig} />
                     </div>
                   )}
+
 
                   {visibleSteps[currentStep].id === 'laptop' && (
                     <div className="space-y-8">
