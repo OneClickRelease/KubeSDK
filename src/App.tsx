@@ -27,7 +27,9 @@ import {
   AlertTriangle,
   XCircle,
   Loader2,
-  List
+  List,
+  FileCode,
+  Copy
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { 
@@ -67,6 +69,7 @@ const INITIAL_CONFIG: KubeSDKLocalRun = {
       versionConstraint: '>=5.6',
     },
     ignoredNamespaces: ['default', 'kube-system'],
+    kindWhitelist: ['pod', 'service', 'ingress', 'configmap', 'secret', 'namespace'],
     steps: {
       completed: [],
     },
@@ -124,33 +127,24 @@ const NS_PALETTE = [
   { bg: '#3DA8B5', dark: '#2A7A88', edge: '#70CEE0', text: '#EEF9FA' },
 ];
 
-const LayeredDependencyMap = ({ config, setConfig }: {
+// Only hide namespace definitions and configmap/secret entries from the card view.
+// Everything else (Deployments, Services, Ingresses, Jobs, Simulators, etc.)
+// should all appear as cards so the user can see what runs in each namespace.
+const INFRA_CATEGORIES = ['namespace', 'config', 'service', 'ingress', 'simulator'];
+
+const LayeredDependencyMap = ({ config, setConfig, namespaces }: {
   config: KubeSDKLocalRun;
   setConfig: React.Dispatch<React.SetStateAction<KubeSDKLocalRun>>;
+  namespaces: string[];
 }) => {
   const [selectedAppId, setSelectedAppId] = React.useState<string | null>(null);
+  const [viewMode, setViewMode] = React.useState<'map' | 'yaml'>('map');
+  const [newEnvName, setNewEnvName] = React.useState('');
+  const [newEnvValue, setNewEnvValue] = React.useState('');
   const ignoredNS = config.wizard.ignoredNamespaces || [];
 
-  // Derive namespaces from BOTH:
-  // 1. Explicit namespace components (category === 'namespace')
-  // 2. The namespace field on any workload/service component
-  // This ensures apps always show even if namespace component ID doesn't exactly match
-  const nsFromComponents = Array.from(new Set(
-    config.components
-      .filter(c => c.category === 'namespace' && !ignoredNS.includes(c.id))
-      .map(c => c.id)
-  ));
-  const nsFromWorkloads = Array.from(new Set(
-    config.components
-      .filter(c => c.category !== 'namespace' && c.namespace && c.namespace !== 'cluster' && !ignoredNS.includes(c.namespace))
-      .map(c => c.namespace!)
-  ));
-  const namespaces = Array.from(new Set([...nsFromComponents, ...nsFromWorkloads]));
 
-  // Only hide namespace definitions and configmap/secret entries from the card view.
-  // Everything else (Deployments, Services, Ingresses, Jobs, Simulators, etc.)
-  // should all appear as cards so the user can see what runs in each namespace.
-  const INFRA_CATEGORIES = ['namespace', 'config'];
+
   const getApps = (ns: string) => config.components.filter(c =>
     c.namespace === ns && !INFRA_CATEGORIES.includes(c.category)
   );
@@ -174,12 +168,38 @@ const LayeredDependencyMap = ({ config, setConfig }: {
       if (target) {
         const prefix = targetId.toUpperCase().replace(/[^A-Z0-9]/g, '_');
         let env = newComponents[appIdx].properties?.envVars || '';
+        
         if (!env.includes(`${prefix}_`)) {
-          let snippet = `\n# ${targetId}\n`;
-          if (target.category === 'service') snippet += `${prefix}_HOST=${targetId}.${target.namespace||'default'}.svc.cluster.local\n${prefix}_PORT=${target.properties?.port||80}\n`;
-          else if (target.category === 'ingress') snippet += `${prefix}_URL=http://${target.properties?.hostname||targetId+'.local'}\n`;
-          else snippet += `${prefix}_ENDPOINT=${targetId}\n`;
-          newComponents[appIdx] = { ...newComponents[appIdx], properties: { ...(newComponents[appIdx].properties||{}), envVars: env + snippet } };
+          let snippet = `\n# ${targetId} synthesized endpoint\n`;
+          
+          const ns = target.namespace || 'default';
+          const fqdn = `${targetId}.${ns}.svc.cluster.local`;
+          const port = target.properties?.port || target.properties?.targetPort || (target.category === 'service' ? 80 : '');
+          
+          // Smart protocol detection
+          let protocol = '';
+          const tidLower = targetId.toLowerCase();
+          if (tidLower.includes('mongo')) protocol = 'mongodb://';
+          else if (tidLower.includes('postgres')) protocol = 'postgresql://';
+          else if (tidLower.includes('redis')) protocol = 'redis://';
+          else if (tidLower.includes('kafka')) protocol = 'plaintext://';
+          else if (target.category === 'service' || target.category === 'ingress') protocol = 'http://';
+
+          if (target.category === 'service') {
+            snippet += `${prefix}_HOST=${fqdn}\n`;
+            snippet += `${prefix}_PORT=${port}\n`;
+            snippet += `${prefix}_URL=${protocol}${fqdn}${port ? ':' + port : ''}\n`;
+          } else if (target.category === 'ingress') {
+            const host = target.properties?.hostname || `${targetId}.local`;
+            snippet += `${prefix}_URL=http://${host}\n`;
+          } else {
+            snippet += `${prefix}_ENDPOINT=${fqdn}${port ? ':' + port : ''}\n`;
+          }
+          
+          newComponents[appIdx] = { 
+            ...newComponents[appIdx], 
+            properties: { ...(newComponents[appIdx].properties || {}), envVars: env + snippet } 
+          };
         }
       }
     }
@@ -209,9 +229,45 @@ const LayeredDependencyMap = ({ config, setConfig }: {
   const layersAreEmpty = sortedNS.length > 0 && sortedNS.every(ns => getApps(ns).length === 0);
 
   return (
-    <div className="flex gap-6">
-      {/* Left: Layered diagram */}
-      <div className="flex-1 space-y-2 min-w-0">
+    <div className="space-y-6">
+      {/* Header with Switcher */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-[#E9ECEF] shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
+            {viewMode === 'map' ? <Layers size={18} /> : <FileCode size={18} />}
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-[#1A1A1A]">Dependency Mapping</h4>
+            <p className="text-[10px] text-[#6C757D]">Map links and review resulting YAML</p>
+          </div>
+        </div>
+
+        <div className="flex bg-[#F8F9FA] p-1 rounded-lg border border-[#E9ECEF]">
+          <button
+            onClick={() => setViewMode('map')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+              viewMode === 'map' ? "bg-white shadow-sm text-[#0D6EFD]" : "text-[#6C757D] hover:text-[#212529]"
+            )}
+          >
+            <Box size={14} /> Architecture Map
+          </button>
+          <button
+            onClick={() => setViewMode('yaml')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+              viewMode === 'yaml' ? "bg-white shadow-sm text-[#0D6EFD]" : "text-[#6C757D] hover:text-[#212529]"
+            )}
+          >
+            <FileCode size={14} /> Live YAML View
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'map' ? (
+        <div className="flex gap-6">
+          {/* Left: Layered diagram */}
+          <div className="flex-1 space-y-2 min-w-0">
 
         {/* Raw data dump — shown when layers are empty so user/dev can see exact state */}
         {layersAreEmpty && (
@@ -411,10 +467,14 @@ const LayeredDependencyMap = ({ config, setConfig }: {
             <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider">
               Link to Services / Ingresses / Endpoints
             </h5>
-            {allTargets.length === 0 ? (
+            {allTargets
+              .filter(target => target.properties?.targetApp !== selectedAppId)
+              .length === 0 ? (
               <p className="text-xs text-[#ADB5BD] italic">No services defined. Add them in Step 4.</p>
             ) : (
-              allTargets.map(target => {
+              allTargets
+                .filter(target => target.properties?.targetApp !== selectedAppId)
+                .map(target => {
                 const isLinked = connectedIds.includes(target.id);
                 const parentApp = config.components.find(c => c.id === target.properties?.targetApp);
                 const targetNSIdx = sortedNS.indexOf(target.namespace || '');
@@ -456,28 +516,144 @@ const LayeredDependencyMap = ({ config, setConfig }: {
             )}
           </div>
 
+          {/* Custom User ENV */}
+          <div className="p-4 border-t border-[#E9ECEF] space-y-3 bg-[#F8F9FA]/50">
+            <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-500" /> Custom App Config</span>
+              <span className="text-[9px] lowercase font-normal italic">Overrides & Additions</span>
+            </h5>
+            
+            {/* Simple Add Table */}
+            <div className="flex gap-1">
+              <input 
+                value={newEnvName}
+                onChange={e => setNewEnvName(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                placeholder="NAME"
+                className="flex-1 px-2 py-1.5 bg-white border border-[#DEE2E6] rounded-lg text-[10px] font-mono outline-none focus:ring-1 focus:ring-[#0D6EFD]"
+              />
+              <input 
+                value={newEnvValue}
+                onChange={e => setNewEnvValue(e.target.value)}
+                placeholder="VALUE"
+                className="flex-[1.5] px-2 py-1.5 bg-white border border-[#DEE2E6] rounded-lg text-[10px] font-mono outline-none focus:ring-1 focus:ring-[#0D6EFD]"
+              />
+              <button 
+                onClick={() => {
+                  if (!newEnvName || !selectedAppId) return;
+                  const newComps = [...config.components];
+                  const idx = newComps.findIndex(c => c.id === selectedAppId);
+                  if (idx > -1) {
+                    const currentCustom = newComps[idx].properties?.customEnv || {};
+                    newComps[idx] = { 
+                      ...newComps[idx], 
+                      properties: { 
+                        ...(newComps[idx].properties || {}), 
+                        customEnv: { ...currentCustom, [newEnvName]: newEnvValue } 
+                      } 
+                    };
+                    setConfig(prev => ({ ...prev, components: newComps }));
+                    setNewEnvName('');
+                    setNewEnvValue('');
+                  }
+                }}
+                className="px-2 bg-[#0D6EFD] text-white rounded-lg hover:bg-[#0A58CA] transition-colors"
+                title="Add Custom ENV"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+
+            {/* List and Delete */}
+            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+              {Object.entries((selectedApp.properties?.customEnv as Record<string, string>) || {}).map(([key, val]) => (
+                <div key={key} className="flex items-center justify-between bg-white p-2 rounded-lg border border-[#E9ECEF] group">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-[#495057] font-mono">{key}</span>
+                    <span className="text-[9px] text-[#20C997] truncate max-w-[140px] font-mono" title={val}>{val}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const newComps = [...config.components];
+                      const idx = newComps.findIndex(c => c.id === selectedAppId);
+                      if (idx > -1) {
+                        const nextCustom = { ...newComps[idx].properties?.customEnv };
+                        delete nextCustom[key];
+                        newComps[idx] = { ...newComps[idx], properties: { ...newComps[idx].properties, customEnv: nextCustom } };
+                        setConfig(prev => ({ ...prev, components: newComps }));
+                      }
+                    }}
+                    className="p-1 text-[#ADB5BD] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+              {Object.keys(selectedApp.properties?.customEnv || {}).length === 0 && (
+                <p className="text-[9px] text-[#ADB5BD] italic text-center py-2">No custom variables defined</p>
+              )}
+            </div>
+          </div>
+
           {/* Generated ENV */}
           {connectedIds.length > 0 && (
             <div className="p-4 border-t border-[#E9ECEF] space-y-2">
               <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider flex items-center gap-1.5">
-                <Terminal size={11} /> Generated ENV Variables
+                <Terminal size={11} /> Auto Grouped (Review)
               </h5>
               <textarea
                 value={selectedApp.properties?.envVars || ''}
-                onChange={(e) => {
-                  const newComps = [...config.components];
-                  const idx = newComps.findIndex(c => c.id === selectedAppId);
-                  if (idx > -1) {
-                    newComps[idx] = { ...newComps[idx], properties: { ...(newComps[idx].properties || {}), envVars: e.target.value } };
-                    setConfig(prev => ({ ...prev, components: newComps }));
-                  }
-                }}
-                rows={6}
-                className="w-full p-3 rounded-xl border border-[#2D2D2D] bg-[#1A1A2E] text-[#20C997] font-mono text-[10px] outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none leading-relaxed"
-                placeholder="ENV variables will appear here when you link services..."
+                readOnly
+                rows={4}
+                className="w-full p-3 rounded-xl border border-[#2D2D2D]/10 bg-[#1A1A2E]/5 text-[#6C757D] font-mono text-[9px] outline-none resize-none leading-relaxed"
               />
             </div>
           )}
+        </motion.div>
+      )}
+      </div>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#1A1A2E] rounded-2xl border border-[#2D2D4E] shadow-2xl overflow-hidden flex flex-col h-[700px]"
+        >
+          <div className="p-4 bg-[#21213E] border-b border-[#2D2D4E] flex items-center justify-between">
+            <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Consolidated Infrastructure Blueprint (YAML)
+            </div>
+            <button 
+              onClick={() => {
+                const yaml = generateYamlFromConfig(config);
+                navigator.clipboard.writeText(yaml);
+                alert('YAML copied to clipboard!');
+              }}
+              className="px-3 py-1.5 bg-[#2D2D4E] hover:bg-[#3D3D5E] text-white rounded-lg text-[10px] font-bold flex items-center gap-2 transition-all"
+            >
+              <Copy size={12} /> Copy to Clipboard
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-6 font-mono text-[11px] leading-relaxed relative">
+            {/* Syntax background decoration */}
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+                <FileCode size={400} />
+            </div>
+            
+            <pre className="text-[#A9B7C6] relative z-10">
+              {generateYamlFromConfig(config).split('\n').map((line, idx) => (
+                <div key={idx} className="flex gap-4 hover:bg-white/5 transition-colors group">
+                  <span className="w-8 text-right text-[#4E4E6E] select-none group-hover:text-emerald-500/50">{idx + 1}</span>
+                  <span className={cn(
+                    line.startsWith('apiVersion:') || line.startsWith('kind:') || line.startsWith('metadata:') ? "text-emerald-400 font-bold" :
+                    line.startsWith('---') ? "text-amber-500 py-2 block border-y border-amber-900/30" :
+                    line.includes(':') ? "text-[#E8BD6D]" : "text-[#A9B7C6]"
+                  )}>
+                    {line}
+                  </span>
+                </div>
+              ))}
+            </pre>
+          </div>
         </motion.div>
       )}
     </div>
@@ -490,8 +666,71 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
   const ignoredNamespaces = config.wizard.ignoredNamespaces || [];
   const docs: any[] = [];
   
-  // 1. Namespaces & Project Config Sets
-  const namespaces = Array.from(new Set(config.components.filter(c => c.category === 'namespace' || c.kind === 'infra').map(c => c.namespace || c.id)));
+  // 0. Project Metadata & Dependency Graph
+  docs.push({
+    apiVersion: config.apiVersion || 'kubesdk.dev/v1alpha1',
+    kind: 'LocalRunDefinition',
+    metadata: {
+      ...config.metadata,
+      annotations: {
+        'kubesdk.dev/sync-at': new Date().toISOString(),
+      }
+    },
+    spec: {
+      dependencyGraph: config.dependencyGraph,
+      wizard: {
+        source: config.wizard.source,
+        runtime: config.wizard.runtime
+      }
+    }
+  });
+
+  // 1. Aggregation Phase: Collect all dependencies and group ENVs by (TargetNS, AppNS)
+  // aggregatedEnv[appNamespace][targetNamespace] = { KEY: VALUE }
+  const aggregatedEnv: Record<string, Record<string, Record<string, string>>> = {};
+  
+  config.components.filter(c => c.category === 'application').forEach(app => {
+    const appNS = app.namespace || 'default';
+    if (!aggregatedEnv[appNS]) aggregatedEnv[appNS] = {};
+    
+    // Custom User ENVs for this app (we'll generate a dedicated ConfigMap for these to avoid NS-level clutter)
+    const customData = (app.properties?.customEnv as Record<string, string>) || {};
+    if (Object.keys(customData).length > 0) {
+      const customCMName = `${app.id}-custom-config`;
+      docs.push({
+        apiVersion: 'v1',
+        kind: 'ConfigMap',
+        metadata: { name: customCMName, namespace: appNS, labels: { 'infra.example.com/custom-config': 'true' } },
+        data: customData
+      });
+    }
+
+    if (app.properties?.envVars) {
+      // Find which targets these ENVs belong to
+      // We process the dependencyGraph to find the source namespace for each link
+      const edges = config.dependencyGraph.edges.filter(e => e.from === app.id);
+      edges.forEach(edge => {
+        const target = config.components.find(c => c.id === edge.to);
+        if (!target) return;
+        const targetNS = target.namespace || 'cluster';
+        if (!aggregatedEnv[appNS][targetNS]) aggregatedEnv[appNS][targetNS] = {};
+        
+        // Extract variables for THIS target from the app's envVars
+        // The synthesis logic uses targetId as a marker
+        const prefix = edge.to.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+        app.properties!.envVars!.split('\n').filter(l => l.includes('=') && l.includes(prefix)).forEach(line => {
+          const [key, ...vals] = line.split('=');
+          if (key.trim()) aggregatedEnv[appNS][targetNS][key.trim()] = vals.join('=').trim();
+        });
+      });
+    }
+  });
+
+  // 2. Namespaces & Grouped Config Sets
+  const nsFromComponents = config.components.filter(c => c.category === 'namespace').map(c => c.id);
+  const nsFromWorkloads = config.components.filter(c => c.namespace).map(c => c.namespace!);
+  const namespaces = Array.from(new Set([...nsFromComponents, ...nsFromWorkloads]));
+  
   namespaces.forEach(ns => {
     if (ns && ns !== 'cluster' && !ignoredNamespaces.includes(ns)) {
       const nsDeps = config.dependencyGraph.edges.filter(e => e.from === ns).map(e => e.to);
@@ -508,27 +747,41 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
         }
       });
 
-      // Find if this namespace has a Config Set (SDK specific)
+      // Find if this namespace has generic Config Set
       const nsComp = config.components.find(c => c.id === ns && c.category === 'namespace');
+      const baseData: Record<string, string> = {};
       if (nsComp && nsComp.properties?.configSet) {
-        const data: Record<string, string> = {};
         nsComp.properties.configSet.split('\n').filter(l => l.includes('=') && !l.trim().startsWith('#')).forEach(line => {
           const [key, ...vals] = line.split('=');
-          if (key.trim()) data[key.trim()] = vals.join('=').trim();
+          if (key.trim()) baseData[key.trim()] = vals.join('=').trim();
         });
+      }
+      
+      if (Object.keys(baseData).length > 0) {
+        docs.push({
+          apiVersion: 'v1',
+          kind: 'ConfigMap',
+          metadata: { name: 'sdk-config', namespace: ns },
+          data: baseData
+        });
+      }
 
-        if (Object.keys(data).length > 0) {
-          docs.push({
-            apiVersion: 'v1',
-            kind: 'ConfigMap',
-            metadata: { 
-              name: 'sdk-config', 
-              namespace: ns,
-              labels: { 'infra.example.com/configset': 'true' }
-            },
-            data
-          });
-        }
+      // 3. Create Namespace-named ConfigMaps for aggregated dependencies
+      if (aggregatedEnv[ns]) {
+        Object.entries(aggregatedEnv[ns]).forEach(([targetNS, data]) => {
+          if (Object.keys(data).length > 0) {
+            docs.push({
+              apiVersion: 'v1',
+              kind: 'ConfigMap',
+              metadata: { 
+                name: targetNS, // Resource name is the target namespace
+                namespace: ns,
+                labels: { 'infra.example.com/configset': 'true', 'infra.example.com/source-ns': targetNS }
+              },
+              data
+            });
+          }
+        });
       }
     }
   });
@@ -537,6 +790,22 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
   for (const comp of config.components) {
     if (comp.category === 'namespace') continue;
     if (comp.namespace && ignoredNamespaces.includes(comp.namespace)) continue;
+
+    // Common metadata for all resource docs
+    const deps = config.dependencyGraph.edges.filter(e => e.from === comp.id).map(e => e.to);
+    const annotations: Record<string, string> = { 
+      'infra.example.com/id': comp.id,
+      'infra.example.com/category': comp.category,
+      'infra.example.com/kind': comp.kind
+    };
+    
+    if (deps.length > 0) {
+      annotations['infra.example.com/depends-on'] = deps.join(',');
+    }
+    
+    if (comp.properties?.sourceKind) {
+      annotations['infra.example.com/source-kind'] = comp.properties.sourceKind;
+    }
     
     // Config/Secret
     if (comp.category === 'config') {
@@ -545,7 +814,7 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
         docs.push({
           apiVersion: 'v1',
           kind: 'Secret',
-          metadata: { name: comp.id, namespace: comp.namespace, labels: { 'infra.example.com/configset': 'true' } },
+          metadata: { name: comp.id, namespace: comp.namespace, labels: { 'infra.example.com/configset': 'true' }, annotations },
           type: 'Opaque',
           stringData: comp.properties?.data || { key: 'value' }
         });
@@ -553,21 +822,90 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
         docs.push({
           apiVersion: 'v1',
           kind: 'ConfigMap',
-          metadata: { name: comp.id, namespace: comp.namespace, labels: { 'infra.example.com/configset': 'true', 'infra.example.com/scope': 'global' } },
+          metadata: { name: comp.id, namespace: comp.namespace, labels: { 'infra.example.com/configset': 'true', 'infra.example.com/scope': 'global' }, annotations },
           data: comp.properties?.data || { key: 'value' }
         });
       }
     }
-    
+    // Application (Check this BEFORE service/infra to ensure workloads are Deployments)
+    else if (comp.category === 'application' || comp.category === 'workload') {
+      const appNS = comp.namespace || 'default';
+      const envFrom: any[] = [
+        { configMapRef: { name: 'sdk-config' } }
+      ];
+
+      // Reference custom config if it exists
+      if (Object.keys(comp.properties?.customEnv || {}).length > 0) {
+        envFrom.push({ configMapRef: { name: `${comp.id}-custom-config` } });
+      }
+
+      // Find all namespaces this app depends on via the dependency graph
+      const targetNSs = Array.from(new Set(
+        config.dependencyGraph.edges
+          .filter(e => e.from === comp.id)
+          .map(e => {
+             const target = config.components.find(c => c.id === e.to);
+             return target?.namespace || 'cluster';
+          })
+      ));
+
+      targetNSs.forEach(tns => {
+        if (tns) {
+          envFrom.push({ configMapRef: { name: tns } });
+        }
+      });
+
+      // Get resource limits from the calculated resource plan or from the app itself
+      const resources = config.resourcePlan?.components[comp.id] || comp.resources?.sdk || comp.resources?.original;
+
+      // Resource manifest for Pod simulation
+      docs.push({
+        apiVersion: 'v1',
+        kind: 'Pod',
+        metadata: {
+          name: comp.id,
+          namespace: comp.namespace,
+          labels: { 
+            app: comp.id, 
+            'infra.example.com/profile': 'sdk',
+            ...(comp.properties?.labels || {})
+          },
+          annotations
+        },
+        spec: {
+          containers: [{
+            name: comp.id,
+            image: comp.properties?.image || 'example/app:1.0.0',
+            imagePullPolicy: comp.properties?.imagePullPolicy || 'Always',
+            env: comp.properties?.env || [],
+            volumeMounts: comp.properties?.volumeMounts || [],
+            ports: comp.properties?.ports || [],
+            resources: {
+              requests: {
+                cpu: resources.cpu || '100m',
+                memory: resources.memory || '512Mi'
+              },
+              limits: {
+                cpu: resources.cpu || '200m',
+                memory: resources.memory || '1Gi'
+              }
+            }
+          }]
+        }
+      });
+    }
     // Service / Ingress / Simulator
-    if (comp.category === 'ingress') {
+    else if (comp.category === 'ingress') {
       docs.push({
         apiVersion: 'networking.k8s.io/v1',
         kind: 'Ingress',
         metadata: { 
           name: comp.id, 
           namespace: comp.namespace,
-          annotations: { 'kubernetes.io/ingress.class': 'traefik' } // Rancher Desktop default
+          annotations: { 
+            'kubernetes.io/ingress.class': 'traefik',
+            ...annotations
+          }
         },
         spec: { rules: [{ host: comp.properties?.hostname || 'domain.local', http: { paths: [{ path: comp.properties?.path || '/', pathType: 'Prefix', backend: { service: { name: comp.properties?.targetApp || comp.properties?.targetService || 'app', port: { number: Number(comp.properties?.port || 80) } } } }] } }] }
       });
@@ -576,7 +914,7 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
            docs.push({
              apiVersion: 'infra.example.com/v1alpha1',
              kind: 'Simulator',
-             metadata: { name: comp.id, namespace: comp.namespace },
+             metadata: { name: comp.id, namespace: comp.namespace, annotations },
              spec: {
                type: 'postgres',
                image: comp.properties?.image || 'infra/sim-postgres:latest',
@@ -597,63 +935,23 @@ function generateYamlFromConfig(config: KubeSDKLocalRun): string {
              serviceSpec.selector = { app: comp.properties.targetApp };
            }
            docs.push({
-             apiVersion: 'v1',
-             kind: 'Service',
-             metadata: { name: comp.id, namespace: comp.namespace },
-             spec: serviceSpec
-           });
+              apiVersion: 'v1',
+              kind: 'Service',
+              metadata: { 
+                name: comp.id, 
+                namespace: comp.namespace,
+                labels: { app: comp.properties?.targetApp || comp.id },
+                annotations 
+              },
+              spec: {
+                ...serviceSpec,
+                clusterIP: comp.properties?.clusterIP,
+                selector: comp.properties?.selector || { app: comp.properties?.targetApp || comp.id },
+                ipFamilies: comp.properties?.ipFamilies,
+                internalTrafficPolicy: comp.properties?.internalTrafficPolicy
+              }
+            });
        }
-    }
-    
-    // Application
-    if (comp.category === 'application') {
-      const deps = config.dependencyGraph.edges.filter(e => e.from === comp.id).map(e => e.to);
-      const annotations: Record<string, string> = { 'infra.example.com/mock': 'true' };
-      if (deps.length > 0) {
-        annotations['infra.example.com/depends-on'] = deps.join(',');
-      }
-
-      const envArray: any[] = [];
-      if (comp.properties?.envVars) {
-        comp.properties.envVars.split('\\n').filter(l => l.includes('=') && !l.trim().startsWith('#')).forEach(line => {
-          const [key, ...vals] = line.split('=');
-          if (key.trim()) envArray.push({ name: key.trim(), value: vals.join('=').trim() });
-        });
-      }
-
-      docs.push({
-        apiVersion: 'apps/v1',
-        kind: 'Deployment',
-        metadata: {
-          name: comp.id,
-          namespace: comp.namespace,
-          labels: { app: comp.id, 'infra.example.com/profile': 'sdk' },
-          annotations
-        },
-        spec: {
-          replicas: comp.resources?.sdk?.replicas || 1,
-          selector: { matchLabels: { app: comp.id } },
-          template: {
-            metadata: { labels: { app: comp.id } },
-            spec: {
-              containers: [{
-                name: comp.id,
-                image: comp.properties?.image || 'example/app:1.0.0',
-                resources: {
-                  requests: {
-                    cpu: comp.resources?.sdk?.cpu || '100m',
-                    memory: comp.resources?.sdk?.memory || '512Mi'
-                  }
-                },
-                env: envArray,
-                envFrom: [
-                  { configMapRef: { name: 'sdk-config' } }
-                ]
-              }]
-            }
-          }
-        }
-      });
     }
   }
 
@@ -693,6 +991,24 @@ export default function App() {
   const [validationStatus, setValidationStatus] = useState<Record<string, { status: 'checking' | 'valid' | 'invalid', message?: string }>>({});
   const [isModelYamlMode, setIsModelYamlMode] = useState(false);
   const [modelYamlContent, setModelYamlContent] = useState(INITIAL_YAML_CONTENT);
+
+  const ignoredNS = config.wizard.ignoredNamespaces || [];
+  
+  // Derive namespaces from BOTH:
+  // 1. Explicit namespace components (category === 'namespace')
+  // 2. The namespace field on any workload/service component
+  // This ensures apps always show even if namespace component ID doesn't exactly match
+  const nsFromComponents = Array.from(new Set(
+    config.components
+      .filter(c => c.category === 'namespace' && !ignoredNS.includes(c.id))
+      .map(c => c.id)
+  ));
+  const nsFromWorkloads = Array.from(new Set(
+    config.components
+      .filter(c => c.category !== 'namespace' && c.namespace && c.namespace !== 'cluster' && !ignoredNS.includes(c.namespace))
+      .map(c => c.namespace!)
+  ));
+  const namespaces = Array.from(new Set([...nsFromComponents, ...nsFromWorkloads]));
 
   // Persist config to localStorage on every change
   React.useEffect(() => {
@@ -816,6 +1132,7 @@ export default function App() {
     setIsUploading(true);
     const formData = new FormData();
     formData.append('export', file);
+    formData.append('kindWhitelist', JSON.stringify(config.wizard.kindWhitelist || []));
 
     try {
       const response = await fetch('/api/upload-export', {
@@ -1419,8 +1736,7 @@ echo "Export completed! File created: export.zip"`}
                             </button>
                           </div>
                           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                            {Array.from(new Set(config.components.filter(c => c.category === 'namespace').map(c => c.id)))
-                              .filter(ns => !(config.wizard.ignoredNamespaces || []).includes(ns))
+                            {namespaces
                               .map(ns => {
                               const hasError = config.components.some(c => c.namespace === ns && c.category === 'application' && !c.properties?.image);
                               return (
@@ -1480,7 +1796,7 @@ echo "Export completed! File created: export.zip"`}
                             {[
                               { id: 'ingress', name: 'Ingress / Endpoints', color: 'bg-blue-50 border-blue-200 text-blue-700', icon: Network, kind: 'infra', category: 'ingress' },
                               { id: 'services', name: 'Services', color: 'bg-purple-50 border-purple-200 text-purple-700', icon: Box, kind: 'workload', category: 'service' },
-                              { id: 'workloads', name: 'Workloads', color: 'bg-green-50 border-green-200 text-green-700', icon: Server, kind: 'workload', category: 'application' },
+                              { id: 'workloads', name: 'Pods', color: 'bg-green-50 border-green-200 text-green-700', icon: Server, kind: 'workload', category: 'application' },
                               { id: 'config', name: 'Config / Secrets', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', icon: ShieldCheck, kind: 'infra', category: 'config' },
                             ].map((layer) => (
                               <div key={layer.id} className="bg-white rounded-xl border border-[#DEE2E6] overflow-hidden shadow-sm">
@@ -1728,35 +2044,81 @@ echo "Export completed! File created: export.zip"`}
                                     )}
 
                                     {config.components[selectedComponentIndex].category === 'application' && (
-                                       <div className="space-y-4">
-                                         <div>
-                                           <label className="flex items-center justify-between text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">
-                                             <span>Container Image <span className="text-red-500">*</span></span>
-                                             {validationStatus[config.components[selectedComponentIndex].id]?.status === 'checking' && (
-                                                <span className="flex items-center gap-1 text-blue-500"><Loader2 size={12} className="animate-spin" /> Checking...</span>
-                                             )}
-                                             {validationStatus[config.components[selectedComponentIndex].id]?.status === 'valid' && (
-                                                <span className="flex items-center gap-1 text-green-500" title={validationStatus[config.components[selectedComponentIndex].id]?.message}><CheckCircle2 size={12} /> Valid</span>
-                                             )}
-                                             {validationStatus[config.components[selectedComponentIndex].id]?.status === 'invalid' && (
-                                                <span className="flex items-center gap-1 text-red-500" title={validationStatus[config.components[selectedComponentIndex].id]?.message}><XCircle size={12} /> Invalid</span>
-                                             )}
-                                           </label>
-                                           <input type="text" placeholder="nginx:latest" value={config.components[selectedComponentIndex].properties?.image || ''} onChange={(e) => {
-                                             const newComps = [...config.components];
-                                             newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), image: e.target.value };
-                                             setConfig({ ...config, components: newComps });
-                                           }} className={cn("w-full px-4 py-2.5 rounded-xl border outline-none focus:ring-2 transition-all font-mono text-sm", validationStatus[config.components[selectedComponentIndex].id]?.status === 'invalid' ? "border-red-300 focus:ring-red-500/20" : "border-[#DEE2E6] focus:ring-[#0D6EFD]/20")} />
-                                         </div>
-                                         <div>
-                                           <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Environment Variables</label>
-                                           <textarea placeholder="KEY=value&#10;ANOTHER_KEY=value" rows={3} value={config.components[selectedComponentIndex].properties?.envVars || ''} onChange={(e) => {
-                                             const newComps = [...config.components];
-                                             newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), envVars: e.target.value };
-                                             setConfig({ ...config, components: newComps });
-                                           }} className="w-full px-4 py-2.5 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-mono text-xs" />
-                                         </div>
-                                       </div>
+                                        <div className="space-y-6">
+                                          {/* Container Basics */}
+                                          <div className="space-y-3">
+                                            <div className="grid grid-cols-5 gap-2">
+                                              <div className="col-span-3">
+                                                <input type="text" placeholder="Image (e.g. nginx:latest)" value={config.components[selectedComponentIndex].properties?.image || ''} onChange={(e) => {
+                                                  const newComps = [...config.components];
+                                                  newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), image: e.target.value };
+                                                  setConfig({ ...config, components: newComps });
+                                                }} className={cn("w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 transition-all font-mono text-xs", validationStatus[config.components[selectedComponentIndex].id]?.status === 'invalid' ? "border-red-300 focus:ring-red-500/20" : "border-[#DEE2E6] focus:ring-[#0D6EFD]/20")} />
+                                              </div>
+                                              <div className="col-span-2">
+                                                <select value={config.components[selectedComponentIndex].properties?.imagePullPolicy || 'Always'} onChange={(e) => {
+                                                  const newComps = [...config.components];
+                                                  newComps[selectedComponentIndex].properties = { ...(newComps[selectedComponentIndex].properties || {}), imagePullPolicy: e.target.value };
+                                                  setConfig({ ...config, components: newComps });
+                                                }} className="w-full px-3 py-2 rounded-lg border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all bg-white text-xs">
+                                                  <option value="Always">Always</option>
+                                                  <option value="IfNotPresent">IfNotPresent</option>
+                                                  <option value="Never">Never</option>
+                                                </select>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {/* Environment Variables */}
+                                          <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                              <label className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider">Environment Variables</label>
+                                              <button 
+                                                onClick={() => {
+                                                  const newComps = [...config.components];
+                                                  const env = [...(newComps[selectedComponentIndex].properties?.env || [])];
+                                                  env.push({ name: 'VAR_NAME', value: 'value' });
+                                                  newComps[selectedComponentIndex].properties = { ...newComps[selectedComponentIndex].properties, env };
+                                                  setConfig({ ...config, components: newComps });
+                                                }}
+                                                className="text-[10px] font-bold text-[#0D6EFD] hover:underline flex items-center gap-1"
+                                              >
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Add Variable
+                                              </button>
+                                            </div>
+                                            <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
+                                              {(config.components[selectedComponentIndex].properties?.env || []).map((env: any, idx: number) => (
+                                                <div key={idx} className="flex items-center gap-2">
+                                                  <input type="text" value={env.name} onChange={(e) => {
+                                                    const newComps = [...config.components];
+                                                    const envs = [...(newComps[selectedComponentIndex].properties?.env || [])];
+                                                    envs[idx] = { ...envs[idx], name: e.target.value };
+                                                    newComps[selectedComponentIndex].properties = { ...newComps[selectedComponentIndex].properties, env: envs };
+                                                    setConfig({ ...config, components: newComps });
+                                                  }} className="flex-1 px-3 py-1.5 rounded-lg border border-[#DEE2E6] font-mono text-[10px] outline-none text-[#212529] bg-white" />
+                                                  <span className="text-[#ADB5BD]">=</span>
+                                                  <input type="text" value={env.value} onChange={(e) => {
+                                                    const newComps = [...config.components];
+                                                    const envs = [...(newComps[selectedComponentIndex].properties?.env || [])];
+                                                    envs[idx] = { ...envs[idx], value: e.target.value };
+                                                    newComps[selectedComponentIndex].properties = { ...newComps[selectedComponentIndex].properties, env: envs };
+                                                    setConfig({ ...config, components: newComps });
+                                                  }} className="flex-1 px-3 py-1.5 rounded-lg border border-[#DEE2E6] font-mono text-[10px] outline-none text-[#212529] bg-white" />
+                                                  <button onClick={() => {
+                                                    const newComps = [...config.components];
+                                                    const envs = [...(newComps[selectedComponentIndex].properties?.env || [])];
+                                                    envs.splice(idx, 1);
+                                                    newComps[selectedComponentIndex].properties = { ...newComps[selectedComponentIndex].properties, env: envs };
+                                                    setConfig({ ...config, components: newComps });
+                                                  }} className="p-1.5 text-red-500 hover:bg-red-50 rounded">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                  </button>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+
                                     )}
 
                                     {config.components[selectedComponentIndex].category === 'config' && (
@@ -1914,7 +2276,7 @@ echo "Export completed! File created: export.zip"`}
                           <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-emerald-200 border border-emerald-300" /> Available Target</div>
                         </div>
                       </div>
-                      <LayeredDependencyMap config={config} setConfig={setConfig} />
+                      <LayeredDependencyMap config={config} setConfig={setConfig} namespaces={namespaces} />
                     </div>
                   )}
 
@@ -2320,6 +2682,25 @@ echo "Export completed! File created: export.zip"`}
                         setConfig(prev => ({ ...prev, wizard: { ...prev.wizard, ignoredNamespaces: val } }));
                       }}
                       placeholder="e.g. default, kube-system"
+                      className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20" 
+                    />
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t">
+                    <label className="block text-sm font-medium text-[#495057]">
+                      Import Kind Whitelist (Comma separated)
+                    </label>
+                    <p className="text-xs text-[#6C757D]">
+                      Only resources of these kinds will be parsed from cluster exports or live imports. Defaults to Pods and Services.
+                    </p>
+                    <input 
+                      type="text" 
+                      value={(config.wizard.kindWhitelist || []).join(', ')}
+                      onChange={(e) => {
+                        const val = e.target.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                        setConfig(prev => ({ ...prev, wizard: { ...prev.wizard, kindWhitelist: val } }));
+                      }}
+                      placeholder="e.g. Pod, Service, ConfigMap"
                       className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20" 
                     />
                   </div>

@@ -28,6 +28,7 @@ export interface WizardSession {
     versionConstraint: string;
   };
   ignoredNamespaces?: string[];
+  kindWhitelist?: string[];
   connectivity?: {
     apiServerUrl: string;
     token: string;

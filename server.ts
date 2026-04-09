@@ -171,6 +171,16 @@ async function startServer() {
       
       const components: Component[] = [];
       const namespaces = new Set<string>();
+      
+      // Parse kind whitelist from body
+      let whitelist: string[] = ['pod', 'service', 'ingress', 'configmap', 'secret', 'namespace', 'deployment', 'statefulset', 'daemonset'];
+      if (req.body.kindWhitelist) {
+        try {
+          whitelist = JSON.parse(req.body.kindWhitelist);
+        } catch (e) {
+          console.error("Failed to parse kindWhitelist from request body", e);
+        }
+      }
 
       zipEntries.forEach(entry => {
         if (!entry.isDirectory && entry.entryName.endsWith('.yaml')) {
@@ -180,19 +190,23 @@ async function startServer() {
               const processResource = (res: any) => {
                 if (res && res.kind && res.metadata && res.metadata.name) {
                   const kindStr = res.kind.toLowerCase();
+                  
+                  // Enforcement of Kind Whitelist
+                  if (!whitelist.includes(kindStr)) {
+                    return;
+                  }
+
                   const ns = res.metadata.namespace || 'default';
                   
                   let kind: 'workload' | 'infra' | 'capability' = 'infra';
                   let category = 'unknown';
 
-                  if (['pod', 'replicaset'].includes(kindStr)) {
-                    // Skip: transient runtime instances auto-created by Deployments.
-                    // The Deployment is the canonical definition — Pods and ReplicaSets
-                    // are just running copies and would create duplicate cards in the UI.
+                  if (['replicaset', 'deployment', 'statefulset', 'daemonset', 'job', 'cronjob'].includes(kindStr)) {
+                    // Strictly ignore higher-level controllers. Pod is the sole canonical workload source.
                     return;
                   }
 
-                  if (['deployment', 'statefulset', 'daemonset', 'job', 'cronjob'].includes(kindStr)) {
+                  if (kindStr === 'pod') {
                     kind = 'workload';
                     category = 'application';
                   } else if (kindStr === 'service') {
@@ -207,11 +221,10 @@ async function startServer() {
                   } else if (kindStr === 'namespace') {
                     kind = 'infra';
                     category = 'namespace';
-                    namespaces.add(res.metadata.name); // Correctly add the namespace being defined
+                    namespaces.add(res.metadata.name);
                   }
 
                   if (category !== 'unknown') {
-                    // Only add namespace to set if it's not a namespace object
                     if (kindStr !== 'namespace') {
                       namespaces.add(ns);
                     }
@@ -223,21 +236,31 @@ async function startServer() {
                     if (category === 'application') {
                       const spec = res.spec?.template?.spec || res.spec;
                       if (spec?.containers && spec.containers.length > 0) {
-                        properties.image = spec.containers[0].image;
-                        const reqs = spec.containers[0].resources?.requests;
+                        const container = spec.containers[0];
+                        properties.image = container.image;
+                        properties.imagePullPolicy = container.imagePullPolicy || 'Always';
+                        properties.env = container.env || [];
+                        properties.volumeMounts = container.volumeMounts || [];
+                        properties.ports = container.ports || [];
+                        
+                        const reqs = container.resources?.requests;
                         if (reqs) {
                           cpu = reqs.cpu || cpu;
                           memory = reqs.memory || memory;
                         }
                       }
-                      // Store the canonical Kubernetes kind so the UI can label it correctly
-                      properties.sourceKind = res.kind; // e.g. "Deployment", "StatefulSet"
+                      properties.sourceKind = res.kind;
+                      properties.labels = res.metadata.labels || {};
                     } else if (category === 'service') {
                       if (res.spec?.ports && res.spec.ports.length > 0) {
                         properties.port = res.spec.ports[0].port;
                         properties.targetPort = res.spec.ports[0].targetPort || res.spec.ports[0].port;
                       }
                       properties.serviceType = res.spec?.type || 'ClusterIP';
+                      properties.clusterIP = res.spec?.clusterIP;
+                      properties.selector = res.spec?.selector || {};
+                      properties.ipFamilies = res.spec?.ipFamilies || [];
+                      properties.internalTrafficPolicy = res.spec?.internalTrafficPolicy || 'Cluster';
                     } else if (category === 'ingress') {
                       if (res.spec?.rules && res.spec.rules.length > 0) {
                         properties.hostname = res.spec.rules[0].host;
@@ -251,8 +274,13 @@ async function startServer() {
                       properties.data = res.data || res.stringData || {};
                     }
 
+                    // Determine ID: favor 'app' label for readability as requested.
+                    const readableId = (category === 'application' && res.metadata.labels?.app) 
+                      ? res.metadata.labels.app 
+                      : res.metadata.name;
+
                     components.push({
-                      id: res.metadata.name,
+                      id: readableId,
                       kind,
                       namespace: kindStr === 'namespace' ? 'cluster' : ns,
                       category,
@@ -309,19 +337,41 @@ async function startServer() {
       // Deduplicate: guard against any remaining duplicates by id+namespace.
       // Keep the first occurrence (Deployment entries are processed before Pods/RS
       // due to how kubectl outputs resources, but this is a safety net).
-      const seenKeys = new Set<string>();
-      const dedupedComponents: Component[] = [];
-      for (const comp of components) {
-        const key = `${comp.namespace}/${comp.id}`;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          dedupedComponents.push(comp);
+      const uniqueComps = new Map<string, Component>();
+      components.forEach(c => {
+        const key = `${c.namespace}/${c.category}/${c.id}`;
+        if (!uniqueComps.has(key)) {
+          uniqueComps.set(key, c);
         }
-      }
+      });
+
+      const finalComponents = Array.from(uniqueComps.values());
+
+      // 4. Intelligent Resolution Pass: Link Services to Pods based on Selectors
+      finalComponents.forEach(comp => {
+        if (comp.category === 'service' && comp.properties?.selector && Object.keys(comp.properties.selector).length > 0) {
+          const selector = comp.properties.selector;
+          
+          // Find matching pod in the same namespace
+          const targetPod = finalComponents.find(c => {
+            if (c.category !== 'application' || c.namespace !== comp.namespace) return false;
+            
+            // Match all selector labels against pod labels
+            const podLabels = c.properties?.labels || {};
+            return Object.entries(selector).every(([key, value]) => podLabels[key] === value);
+          });
+
+          if (targetPod) {
+            comp.properties.targetApp = targetPod.id;
+            console.log(`Auto-linked Service ${comp.id} to Pod ${targetPod.id} in namespace ${comp.namespace}`);
+          }
+        }
+      });
 
       res.json({
         status: 'success',
-        components: dedupedComponents
+        components: finalComponents,
+        namespaces: Array.from(namespaces)
       });
     } catch (e: any) {
       console.error(e);

@@ -1,0 +1,1173 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generateName: kafka-7d8c5c4648-
+    generation: 1
+    labels:
+      app: kafka
+      pod-template-hash: 7d8c5c4648
+    name: kafka-7d8c5c4648-lnxg6
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: kafka-7d8c5c4648
+      uid: 70e8cd87-06d5-4d06-af17-ac4e1897c74c
+    resourceVersion: "1549"
+    uid: e4c0afaf-0a22-4981-ae10-6ffacc5fa1a7
+  spec:
+    containers:
+    - env:
+      - name: ALLOW_PLAINTEXT_LISTENER
+        value: "yes"
+      - name: KAFKA_CFG_LISTENERS
+        value: PLAINTEXT://:9092
+      - name: KAFKA_CFG_ADVERTISED_LISTENERS
+        value: PLAINTEXT://kafka.platform.svc.cluster.local:9092
+      image: bitnami/kafka:latest
+      imagePullPolicy: Always
+      name: kafka
+      ports:
+      - containerPort: 9092
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9z8cq
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-9z8cq
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:55Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      message: 'containers with unready status: [kafka]'
+      observedGeneration: 1
+      reason: ContainersNotReady
+      status: "False"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      message: 'containers with unready status: [kafka]'
+      observedGeneration: 1
+      reason: ContainersNotReady
+      status: "False"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - image: bitnami/kafka:latest
+      imageID: ""
+      lastState: {}
+      name: kafka
+      ready: false
+      restartCount: 0
+      started: false
+      state:
+        waiting:
+          message: 'Back-off pulling image "bitnami/kafka:latest": ErrImagePull: Error
+            response from daemon: failed to resolve reference "docker.io/bitnami/kafka:latest":
+            docker.io/bitnami/kafka:latest: not found'
+          reason: ImagePullBackOff
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9z8cq
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Pending
+    podIP: 10.42.0.11
+    podIPs:
+    - ip: 10.42.0.11
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:53Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generateName: minio-5d9bbd7b59-
+    generation: 1
+    labels:
+      app: minio
+      pod-template-hash: 5d9bbd7b59
+    name: minio-5d9bbd7b59-2fwm7
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: minio-5d9bbd7b59
+      uid: bb58bdce-9b12-4cb9-852b-93b140af8473
+    resourceVersion: "1222"
+    uid: ba2864bf-0c6a-459c-ac80-a5013dc36bb2
+  spec:
+    containers:
+    - args:
+      - server
+      - /data
+      env:
+      - name: MINIO_ROOT_USER
+        value: admin
+      - name: MINIO_ROOT_PASSWORD
+        value: password123
+      image: minio/minio
+      imagePullPolicy: Always
+      name: minio
+      ports:
+      - containerPort: 9000
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-d5b5w
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-d5b5w
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:33Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:33Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://c21c43f4ea21f295bb6df76c1b4c981797cc938739f5a203e7dd9e3fa2cd979e
+      image: minio/minio:latest
+      imageID: docker-pullable://minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+      lastState: {}
+      name: minio
+      ready: true
+      resources: {}
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-04-08T19:10:32Z"
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-d5b5w
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.42.0.12
+    podIPs:
+    - ip: 10.42.0.12
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:53Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generateName: mongo-7c94fcd666-
+    generation: 1
+    labels:
+      app: mongo
+      pod-template-hash: 7c94fcd666
+    name: mongo-7c94fcd666-d489d
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: mongo-7c94fcd666
+      uid: dca53500-3d01-44fa-ae1c-9e938c4f01b9
+    resourceVersion: "1299"
+    uid: f25acfc7-0c52-4841-a8c8-a25204b90dfb
+  spec:
+    containers:
+    - image: mongo:6
+      imagePullPolicy: IfNotPresent
+      name: mongo
+      ports:
+      - containerPort: 27017
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-gwb8w
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-gwb8w
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:11:10Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:11:10Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://588f19989d3e4dcc037836fe1adfd1accee33c7a971ace5fdf8d28e6f8fd7bf8
+      image: mongo:6
+      imageID: docker-pullable://mongo@sha256:03cda579c8caad6573cb98c2b3d5ff5ead452a6450561129b89595b4b9c18de2
+      lastState: {}
+      name: mongo
+      ready: true
+      resources: {}
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-04-08T19:11:09Z"
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-gwb8w
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.42.0.9
+    podIPs:
+    - ip: 10.42.0.9
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:53Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generateName: postgres-644977c467-
+    generation: 1
+    labels:
+      app: postgres
+      pod-template-hash: 644977c467
+    name: postgres-644977c467-5qgtw
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: postgres-644977c467
+      uid: 9fe15ae2-726b-41d2-8dca-ed4b2c416a45
+    resourceVersion: "1273"
+    uid: b05f54f1-0c91-44d7-acc9-0ac764cce901
+  spec:
+    containers:
+    - env:
+      - name: POSTGRES_PASSWORD
+        value: test
+      image: postgres:15
+      imagePullPolicy: IfNotPresent
+      name: postgres
+      ports:
+      - containerPort: 5432
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-phfjv
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-phfjv
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:50Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:50Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://2ae61215368fccc303a4011bbe30aef479207513d1fa3ad6a86a30421c1631d7
+      image: postgres:15
+      imageID: docker-pullable://postgres@sha256:31224c60946ea75ee9522e0f4d02eb202e74754adea4294fdefe9f93c875b657
+      lastState: {}
+      name: postgres
+      ready: true
+      resources: {}
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-04-08T19:10:50Z"
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-phfjv
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.42.0.10
+    podIPs:
+    - ip: 10.42.0.10
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:53Z"
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"kafka","namespace":"platform"},"spec":{"ports":[{"port":9092,"targetPort":9092}],"selector":{"app":"kafka"}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    name: kafka
+    namespace: platform
+    resourceVersion: "819"
+    uid: d30692de-a6c8-4602-b062-e78cdd9a924f
+  spec:
+    clusterIP: 10.43.18.190
+    clusterIPs:
+    - 10.43.18.190
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 9092
+      protocol: TCP
+      targetPort: 9092
+    selector:
+      app: kafka
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"minio","namespace":"platform"},"spec":{"ports":[{"port":9000,"targetPort":9000}],"selector":{"app":"minio"}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    name: minio
+    namespace: platform
+    resourceVersion: "839"
+    uid: 2551c813-3a53-4d92-b29a-acd13fe5618d
+  spec:
+    clusterIP: 10.43.43.142
+    clusterIPs:
+    - 10.43.43.142
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 9000
+      protocol: TCP
+      targetPort: 9000
+    selector:
+      app: minio
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"mongo","namespace":"platform"},"spec":{"ports":[{"port":27017,"targetPort":27017}],"selector":{"app":"mongo"}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    name: mongo
+    namespace: platform
+    resourceVersion: "783"
+    uid: ff3cae43-d07a-4ed4-9298-19652febad2e
+  spec:
+    clusterIP: 10.43.81.34
+    clusterIPs:
+    - 10.43.81.34
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 27017
+      protocol: TCP
+      targetPort: 27017
+    selector:
+      app: mongo
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"postgres","namespace":"platform"},"spec":{"ports":[{"port":5432,"targetPort":5432}],"selector":{"app":"postgres"}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    name: postgres
+    namespace: platform
+    resourceVersion: "806"
+    uid: dd47aed6-296c-4d7c-b5dd-ee7c4c5c688c
+  spec:
+    clusterIP: 10.43.45.167
+    clusterIPs:
+    - 10.43.45.167
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      app: postgres
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"kafka","namespace":"platform"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"kafka"}},"template":{"metadata":{"labels":{"app":"kafka"}},"spec":{"containers":[{"env":[{"name":"ALLOW_PLAINTEXT_LISTENER","value":"yes"},{"name":"KAFKA_CFG_LISTENERS","value":"PLAINTEXT://:9092"},{"name":"KAFKA_CFG_ADVERTISED_LISTENERS","value":"PLAINTEXT://kafka.platform.svc.cluster.local:9092"}],"image":"bitnami/kafka:latest","name":"kafka","ports":[{"containerPort":9092}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    name: kafka
+    namespace: platform
+    resourceVersion: "1517"
+    uid: 11216e77-088f-48ad-ba17-1ca1e131fd24
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: kafka
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: kafka
+      spec:
+        containers:
+        - env:
+          - name: ALLOW_PLAINTEXT_LISTENER
+            value: "yes"
+          - name: KAFKA_CFG_LISTENERS
+            value: PLAINTEXT://:9092
+          - name: KAFKA_CFG_ADVERTISED_LISTENERS
+            value: PLAINTEXT://kafka.platform.svc.cluster.local:9092
+          image: bitnami/kafka:latest
+          imagePullPolicy: Always
+          name: kafka
+          ports:
+          - containerPort: 9092
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:08:53Z"
+      lastUpdateTime: "2026-04-08T19:08:53Z"
+      message: Deployment does not have minimum availability.
+      reason: MinimumReplicasUnavailable
+      status: "False"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:18:54Z"
+      lastUpdateTime: "2026-04-08T19:18:54Z"
+      message: ReplicaSet "kafka-7d8c5c4648" has timed out progressing.
+      reason: ProgressDeadlineExceeded
+      status: "False"
+      type: Progressing
+    observedGeneration: 1
+    replicas: 1
+    unavailableReplicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"minio","namespace":"platform"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"minio"}},"template":{"metadata":{"labels":{"app":"minio"}},"spec":{"containers":[{"args":["server","/data"],"env":[{"name":"MINIO_ROOT_USER","value":"admin"},{"name":"MINIO_ROOT_PASSWORD","value":"password123"}],"image":"minio/minio","name":"minio","ports":[{"containerPort":9000}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    name: minio
+    namespace: platform
+    resourceVersion: "1226"
+    uid: c310820f-6133-461b-bd40-8e5f0a00628f
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: minio
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: minio
+      spec:
+        containers:
+        - args:
+          - server
+          - /data
+          env:
+          - name: MINIO_ROOT_USER
+            value: admin
+          - name: MINIO_ROOT_PASSWORD
+            value: password123
+          image: minio/minio
+          imagePullPolicy: Always
+          name: minio
+          ports:
+          - containerPort: 9000
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:10:33Z"
+      lastUpdateTime: "2026-04-08T19:10:33Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:08:53Z"
+      lastUpdateTime: "2026-04-08T19:10:33Z"
+      message: ReplicaSet "minio-5d9bbd7b59" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"mongo","namespace":"platform"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"mongo"}},"template":{"metadata":{"labels":{"app":"mongo"}},"spec":{"containers":[{"image":"mongo:6","name":"mongo","ports":[{"containerPort":27017}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    name: mongo
+    namespace: platform
+    resourceVersion: "1303"
+    uid: fbf6ada0-10cb-40c0-a070-882ddabdbeb7
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: mongo
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: mongo
+      spec:
+        containers:
+        - image: mongo:6
+          imagePullPolicy: IfNotPresent
+          name: mongo
+          ports:
+          - containerPort: 27017
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:11:10Z"
+      lastUpdateTime: "2026-04-08T19:11:10Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:08:53Z"
+      lastUpdateTime: "2026-04-08T19:11:10Z"
+      message: ReplicaSet "mongo-7c94fcd666" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"postgres","namespace":"platform"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"postgres"}},"template":{"metadata":{"labels":{"app":"postgres"}},"spec":{"containers":[{"env":[{"name":"POSTGRES_PASSWORD","value":"test"}],"image":"postgres:15","name":"postgres","ports":[{"containerPort":5432}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    name: postgres
+    namespace: platform
+    resourceVersion: "1277"
+    uid: bb85eef3-79dd-4347-9634-b89e591d647d
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: postgres
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: postgres
+      spec:
+        containers:
+        - env:
+          - name: POSTGRES_PASSWORD
+            value: test
+          image: postgres:15
+          imagePullPolicy: IfNotPresent
+          name: postgres
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:10:50Z"
+      lastUpdateTime: "2026-04-08T19:10:50Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:08:53Z"
+      lastUpdateTime: "2026-04-08T19:10:50Z"
+      message: ReplicaSet "postgres-644977c467" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    labels:
+      app: kafka
+      pod-template-hash: 7d8c5c4648
+    name: kafka-7d8c5c4648
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: kafka
+      uid: 11216e77-088f-48ad-ba17-1ca1e131fd24
+    resourceVersion: "824"
+    uid: 70e8cd87-06d5-4d06-af17-ac4e1897c74c
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: kafka
+        pod-template-hash: 7d8c5c4648
+    template:
+      metadata:
+        labels:
+          app: kafka
+          pod-template-hash: 7d8c5c4648
+      spec:
+        containers:
+        - env:
+          - name: ALLOW_PLAINTEXT_LISTENER
+            value: "yes"
+          - name: KAFKA_CFG_LISTENERS
+            value: PLAINTEXT://:9092
+          - name: KAFKA_CFG_ADVERTISED_LISTENERS
+            value: PLAINTEXT://kafka.platform.svc.cluster.local:9092
+          image: bitnami/kafka:latest
+          imagePullPolicy: Always
+          name: kafka
+          ports:
+          - containerPort: 9092
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    replicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    labels:
+      app: minio
+      pod-template-hash: 5d9bbd7b59
+    name: minio-5d9bbd7b59
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: minio
+      uid: c310820f-6133-461b-bd40-8e5f0a00628f
+    resourceVersion: "1223"
+    uid: bb58bdce-9b12-4cb9-852b-93b140af8473
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: minio
+        pod-template-hash: 5d9bbd7b59
+    template:
+      metadata:
+        labels:
+          app: minio
+          pod-template-hash: 5d9bbd7b59
+      spec:
+        containers:
+        - args:
+          - server
+          - /data
+          env:
+          - name: MINIO_ROOT_USER
+            value: admin
+          - name: MINIO_ROOT_PASSWORD
+            value: password123
+          image: minio/minio
+          imagePullPolicy: Always
+          name: minio
+          ports:
+          - containerPort: 9000
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    labels:
+      app: mongo
+      pod-template-hash: 7c94fcd666
+    name: mongo-7c94fcd666
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: mongo
+      uid: fbf6ada0-10cb-40c0-a070-882ddabdbeb7
+    resourceVersion: "1300"
+    uid: dca53500-3d01-44fa-ae1c-9e938c4f01b9
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: mongo
+        pod-template-hash: 7c94fcd666
+    template:
+      metadata:
+        labels:
+          app: mongo
+          pod-template-hash: 7c94fcd666
+      spec:
+        containers:
+        - image: mongo:6
+          imagePullPolicy: IfNotPresent
+          name: mongo
+          ports:
+          - containerPort: 27017
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    labels:
+      app: postgres
+      pod-template-hash: 644977c467
+    name: postgres-644977c467
+    namespace: platform
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: postgres
+      uid: bb85eef3-79dd-4347-9634-b89e591d647d
+    resourceVersion: "1275"
+    uid: 9fe15ae2-726b-41d2-8dca-ed4b2c416a45
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: postgres
+        pod-template-hash: 644977c467
+    template:
+      metadata:
+        labels:
+          app: postgres
+          pod-template-hash: 644977c467
+      spec:
+        containers:
+        - env:
+          - name: POSTGRES_PASSWORD
+            value: test
+          image: postgres:15
+          imagePullPolicy: IfNotPresent
+          name: postgres
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+kind: List
+metadata:
+  resourceVersion: ""
