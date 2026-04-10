@@ -88,6 +88,23 @@ export function useWizard() {
     }));
   }, []);
 
+  const handleSnapshotImport = useCallback((data: Partial<KubeSDKLocalRun>) => {
+    setConfig(prev => ({
+      ...prev,
+      ...data,
+      wizard: { 
+        ...prev.wizard, 
+        source: 'snapshot_yaml' 
+      },
+      steps: { 
+        ...prev.steps, 
+        completed: ['source', 'mode', 'import', 'upload'] 
+      }
+    }));
+    // Jump to Step 4 (ModelStep)
+    setCurrentStep(4);
+  }, []);
+
   const nextStep = useCallback((visibleStepsLength: number) => {
     setCurrentStep(prev => Math.min(prev + 1, visibleStepsLength - 1));
   }, []);
@@ -114,6 +131,7 @@ export function useWizard() {
     modelYamlContent, setModelYamlContent,
     namespaces,
     handleSourceChange,
+    handleSnapshotImport,
     nextStep,
     prevStep
   };

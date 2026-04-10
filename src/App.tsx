@@ -40,6 +40,7 @@ export default function App() {
     modelYamlContent, setModelYamlContent,
     namespaces,
     handleSourceChange,
+    handleSnapshotImport,
     nextStep: baseNextStep,
     prevStep
   } = useWizard();
@@ -389,7 +390,11 @@ export default function App() {
                 {/* Step Content Card */}
                 <div className="bg-white rounded-2xl border border-[#E9ECEF] p-8 shadow-sm min-h-[400px]">
                   {visibleSteps[currentStep].id === 'source' && (
-                    <SourceStep source={config.wizard.source} onSourceChange={handleSourceChange} />
+                    <SourceStep 
+                      source={config.wizard.source} 
+                      onSourceChange={handleSourceChange} 
+                      onSnapshotImport={handleSnapshotImport}
+                    />
                   )}
                   {visibleSteps[currentStep].id === 'mode' && <ModeStep />}
                   {visibleSteps[currentStep].id === 'import' && (

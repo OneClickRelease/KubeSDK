@@ -51,6 +51,7 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
       }
     },
     spec: {
+      components: config.components,
       dependencyGraph: config.dependencyGraph,
       wizard: {
         source: config.wizard.source,
