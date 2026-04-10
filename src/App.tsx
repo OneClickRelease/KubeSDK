@@ -47,6 +47,8 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = React.useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
   const [clusterCapacity, setClusterCapacity] = React.useState<{ cpu: number, memory: number } | null>(null);
   const [healthStatus, setHealthStatus] = React.useState<Record<string, 'healthy' | 'warning'>>({});
+  const [wizardError, setWizardError] = React.useState<string | null>(null);
+  const [deploymentItems, setDeploymentItems] = React.useState<any[]>([]);
 
   // 1. Global Validation Effect
   React.useEffect(() => {
@@ -214,42 +216,108 @@ export default function App() {
     setIsTestingConnection(true);
     setConnectionStatus('testing');
     setClusterCapacity(null);
+    setWizardError(null);
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('/api/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+          token: config.wizard.connectivity?.token
+        }),
+      });
+      
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Invalid server response (Non-JSON): ${text.slice(0, 100)}...`);
+      }
+
+      if (!response.ok) throw new Error(data.error || 'Failed to connect');
+      
       setConnectionStatus('success');
-      // Simulate fetching node capacity (e.g., 8 vCPU, 16GB RAM)
-      setClusterCapacity({ cpu: 8.0, memory: 16384 }); 
-    } catch (e) {
+      setClusterCapacity(data.capacity); 
+    } catch (e: any) {
+      console.error("Connection failed:", e.message);
       setConnectionStatus('failed');
+      setWizardError(e.message);
     } finally {
       setIsTestingConnection(false);
     }
   };
 
-  const handleDeploy = async () => {
+  const handleDeploy = async (itemsToDeploy: any[]) => {
     setIsDeploying(true);
-    setDeploymentStatus(['Initializing connection...', 'Syncing manifests...', 'Creating namespaces...']);
-    const steps = ['Applying resource quotas...', 'Deploying workloads...', 'Configuring networking...', 'Finalizing sanity checks...'];
-    for (const step of steps) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setDeploymentStatus(prev => [...prev, step]);
+    setWizardError(null);
+    setDeploymentItems(itemsToDeploy.map(item => ({ ...item, status: 'pending' })));
+    
+    const updatedItems = itemsToDeploy.map(item => ({ ...item, status: 'pending' }));
+
+    for (let i = 0; i < updatedItems.length; i++) {
+      const item = updatedItems[i];
+      
+      // Update status to 'applying'
+      updatedItems[i].status = 'applying';
+      setDeploymentItems([...updatedItems]);
+      setDeploymentStatus(prev => [...prev, `Applying ${item.kind}/${item.name}...`]);
+
+      try {
+        const response = await fetch('/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+            token: config.wizard.connectivity?.token,
+            yamlContent: item.content
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Deployment failed');
+
+        updatedItems[i].status = 'success';
+        setDeploymentItems([...updatedItems]);
+        setDeploymentStatus(prev => [...prev, `Successfully applied ${item.kind}/${item.name}`]);
+      } catch (e: any) {
+        updatedItems[i].status = 'failed';
+        updatedItems[i].error = e.message;
+        setDeploymentItems([...updatedItems]);
+        setWizardError(`Failed to apply ${item.kind}/${item.name}: ${e.message}`);
+        setDeploymentStatus(prev => [...prev, `Error applying ${item.kind}/${item.name}: ${e.message}`]);
+        setIsDeploying(false);
+        return; // Halt deployment on error
+      }
     }
 
-    // Perform sanity health check
-    const results: Record<string, 'healthy' | 'warning'> = {};
-    config.components.forEach(comp => {
-      // Simulate 95% health rate
-      results[comp.id] = Math.random() > 0.05 ? 'healthy' : 'warning';
-    });
-    // Ensure namespaces are also health checked
-    const namespaces = Array.from(new Set(config.components.map(c => c.namespace).filter(Boolean)));
-    namespaces.forEach(ns => {
-      results[ns!] = 'healthy';
-    });
-
-    setHealthStatus(results);
-    setIsDeploying(false);
+    setDeploymentStatus(prev => [...prev, 'All resources applied. Verifying health...']);
+    await handleHealthCheck();
     setIsReady(true);
+    setIsDeploying(false);
+  };
+
+  const handleHealthCheck = async () => {
+    try {
+      const namespaces = Array.from(new Set(config.components.map(c => c.namespace).filter(Boolean)));
+      const response = await fetch('/api/health-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+          token: config.wizard.connectivity?.token,
+          namespaces
+        }),
+      });
+
+      const results = await response.json();
+      if (response.ok) {
+        setHealthStatus(results);
+      }
+    } catch (e) {
+      console.error("Health check failed", e);
+    }
   };
   const handleResetSession = () => {
     if (confirm('Reset all session data and start fresh?')) {
@@ -355,6 +423,8 @@ export default function App() {
                     connectionStatus={connectionStatus}
                     modelYamlContent={modelYamlContent}
                     clusterCapacity={clusterCapacity}
+                    error={wizardError}
+                    clearError={() => setWizardError(null)}
                   />
                 )}
                 
@@ -368,6 +438,8 @@ export default function App() {
                       onDirectDeploy={() => alert('SDK link successful')}
                       config={config}
                       healthStatus={healthStatus}
+                      error={wizardError}
+                      deploymentItems={deploymentItems}
                     />
                   )}
                 </div>

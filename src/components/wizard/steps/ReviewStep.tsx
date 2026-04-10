@@ -27,9 +27,11 @@ interface ReviewStepProps {
   connectionStatus: 'idle' | 'testing' | 'success' | 'failed';
   modelYamlContent: string;
   clusterCapacity: { cpu: number, memory: number } | null;
+  error: string | null;
+  clearError: () => void;
 }
 
-export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, connectionStatus, modelYamlContent, clusterCapacity }: ReviewStepProps) => {
+export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, connectionStatus, modelYamlContent, clusterCapacity, error, clearError }: ReviewStepProps) => {
   const [isHelpExpanded, setIsHelpExpanded] = React.useState(false);
 
   // --- Helper: Resource Parsing ---
@@ -240,6 +242,26 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
 
         {/* Right Column: Runtime & Connection */}
         <div className="space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6 space-y-3 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle size={20} />
+                  <h5 className="font-bold">Connection Diagnostics</h5>
+                </div>
+                <button onClick={clearError} className="text-red-400 hover:text-red-700 transition-colors">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="bg-white/50 rounded-xl p-4 border border-red-100 text-xs font-mono text-red-800 break-words leading-relaxed">
+                {error}
+              </div>
+              <p className="text-[10px] text-red-600 font-medium">
+                💡 Check your Cluster API URL and ensure the Authentication Token has not expired.
+              </p>
+            </div>
+          )}
+
           <section className="bg-white rounded-2xl border border-[#E9ECEF] shadow-sm p-6 space-y-6">
             <h4 className="font-bold flex items-center gap-2 text-[#212529]">
               <Zap size={18} className="text-amber-500" /> SDK Runtime Connection
@@ -419,6 +441,12 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
                 <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
                   <p className="text-[10px] text-amber-800 leading-relaxed font-medium">
                     ⚠️ Ensure your kubeconfig is pointing to the correct context before running these commands.
+                  </p>
+                </div>
+                <div className="p-3 bg-[#0D6EFD]/5 border border-[#0D6EFD]/10 rounded-lg flex items-start gap-2">
+                  <Globe size={14} className="text-[#0D6EFD] mt-0.5" />
+                  <p className="text-[10px] text-[#495057] leading-relaxed">
+                    <strong>Docker Network Tip:</strong> If the SDK is in a container, use <strong>https://host.docker.internal:6443</strong> to reach your host's API.
                   </p>
                 </div>
               </div>
