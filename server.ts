@@ -5,6 +5,7 @@ import cors from "cors";
 import validationRouter from "./server/routes/validation";
 import clusterRouter from "./server/routes/cluster";
 import exportRouter from "./server/routes/export";
+import historyRouter from "./server/routes/history";
 
 async function startServer() {
   const app = express();
@@ -17,6 +18,7 @@ async function startServer() {
   app.use("/api", validationRouter);
   app.use("/api", clusterRouter);
   app.use("/api", exportRouter);
+  app.use("/api/history", historyRouter);
 
   // --- Vite Middleware ---
   if (process.env.NODE_ENV !== "production") {

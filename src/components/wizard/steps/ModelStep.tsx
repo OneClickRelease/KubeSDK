@@ -10,7 +10,12 @@ import {
   ShieldCheck, 
   Cpu,
   XCircle,
-  FileCode
+  FileCode,
+  RefreshCw,
+  Cloud,
+  Activity,
+  Key,
+  Globe
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { KubeSDKLocalRun, Component } from '../../../types';
@@ -28,6 +33,10 @@ interface ModelStepProps {
   setSelectedComponentIndex: (index: number) => void;
   namespaces: string[];
   validationStatus: Record<string, { status: 'checking' | 'valid' | 'invalid', message?: string }>;
+  onFetchCluster: () => Promise<void>;
+  onTestConnection: () => Promise<void>;
+  connectionStatus: 'idle' | 'testing' | 'success' | 'failed';
+  isFetching: boolean;
 }
 
 export const ModelStep = ({
@@ -42,7 +51,11 @@ export const ModelStep = ({
   selectedComponentIndex,
   setSelectedComponentIndex,
   namespaces,
-  validationStatus
+  validationStatus,
+  onFetchCluster,
+  onTestConnection,
+  connectionStatus,
+  isFetching
 }: ModelStepProps) => {
   const [showDiscovery, setShowDiscovery] = React.useState(false);
   const [importStatus, setImportStatus] = React.useState<Record<string, 'pending' | 'imported'>>({});
@@ -194,30 +207,111 @@ export const ModelStep = ({
               </div>
               
               {showDiscovery && (
-                <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-amber-50/20">
-                  {config.clusterSnapshot.components
-                    .filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace))
-                    .map(comp => (
-                      <div key={`${comp.namespace}/${comp.id}`} className="p-3 bg-white rounded-xl border border-amber-100 shadow-sm flex flex-col gap-2 group hover:border-amber-300 transition-all">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-md uppercase">{comp.category}</span>
-                          <span className="text-[9px] text-[#ADB5BD] font-mono">{comp.namespace}</span>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-amber-50/20">
+                  {/* Connection Form (if no snapshot or if user wants to re-scan) */}
+                  {(!config.clusterSnapshot || config.clusterSnapshot.components.length === 0) && (
+                    <div className="space-y-4 border-b border-amber-100 pb-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-amber-900 uppercase tracking-tight">API Server URL</label>
+                        <div className="relative">
+                          <Globe className="absolute left-3 top-2.5 text-amber-400" size={14} />
+                          <input 
+                            type="text"
+                            placeholder="https://api.cluster.com"
+                            value={config.wizard.connectivity?.apiServerUrl || ''}
+                            onChange={(e) => setConfig(prev => ({ 
+                              ...prev, 
+                              wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, apiServerUrl: e.target.value } } 
+                            }))}
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-amber-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20"
+                          />
                         </div>
-                        <p className="text-xs font-bold text-[#212529] truncate">{comp.id}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-amber-900 uppercase tracking-tight">Auth Token</label>
+                        <div className="relative">
+                          <Key className="absolute left-3 top-2.5 text-amber-400" size={14} />
+                          <input 
+                            type="password"
+                            placeholder="Bearer token..."
+                            value={config.wizard.connectivity?.token || ''}
+                            onChange={(e) => setConfig(prev => ({ 
+                              ...prev, 
+                              wizard: { ...prev.wizard, connectivity: { ...prev.wizard.connectivity!, token: e.target.value } } 
+                            }))}
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-amber-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-2">
                         <button 
-                          onClick={() => handleImportComponent(comp)}
-                          className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded-lg transition-all opacity-90 hover:opacity-100 uppercase tracking-tight"
+                          onClick={onTestConnection}
+                          disabled={connectionStatus === 'testing'}
+                          className={cn(
+                            "flex-1 py-2 text-[10px] font-bold rounded-xl transition-all border",
+                            connectionStatus === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : 
+                            connectionStatus === 'failed' ? "bg-rose-50 border-rose-200 text-rose-700" :
+                            "bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+                          )}
                         >
-                          Import to Simulation
+                          {connectionStatus === 'testing' ? 'Testing...' : 
+                           connectionStatus === 'success' ? 'Connected' : 
+                           connectionStatus === 'failed' ? 'Retry Test' : 'Test Connection'}
+                        </button>
+                        <button 
+                          onClick={onFetchCluster}
+                          disabled={connectionStatus !== 'success' || isFetching}
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-100 disabled:text-amber-400 text-white py-2 text-[10px] font-black rounded-xl transition-all shadow-md shadow-amber-500/10 uppercase"
+                        >
+                          {isFetching ? 'Scanning...' : 'Live Scan'}
                         </button>
                       </div>
-                    ))}
-                  {config.clusterSnapshot.components.filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace)).length === 0 && (
+                    </div>
+                  )}
+
+                  {config.clusterSnapshot && config.clusterSnapshot.components.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold text-amber-900 uppercase">Discovered in Cluster</span>
+                        <button 
+                          onClick={() => setConfig(prev => ({ ...prev, clusterSnapshot: undefined }))}
+                          className="text-[9px] text-amber-600 hover:underline"
+                        >
+                          New Scan
+                        </button>
+                      </div>
+                      {config.clusterSnapshot.components
+                        .filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace))
+                        .map(comp => (
+                          <div key={`${comp.namespace}/${comp.id}`} className="p-3 bg-white rounded-xl border border-amber-100 shadow-sm flex flex-col gap-2 group hover:border-amber-300 transition-all">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-md uppercase">{comp.category}</span>
+                              <span className="text-[9px] text-[#ADB5BD] font-mono">{comp.namespace}</span>
+                            </div>
+                            <p className="text-xs font-bold text-[#212529] truncate">{comp.id}</p>
+                            <button 
+                              onClick={() => handleImportComponent(comp)}
+                              className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded-lg transition-all opacity-90 hover:opacity-100 uppercase tracking-tight"
+                            >
+                              Import to Simulation
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                  
+                  {config.clusterSnapshot && config.clusterSnapshot.components.filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace)).length === 0 && config.clusterSnapshot.components.length > 0 && (
                     <div className="py-8 text-center px-4">
                       <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-600">
                         <ShieldCheck size={16} />
                       </div>
                       <p className="text-[10px] text-emerald-800 font-medium italic">All discovered resources have been imported.</p>
+                      <button 
+                        onClick={() => setConfig(prev => ({ ...prev, clusterSnapshot: undefined }))}
+                        className="mt-4 px-4 py-2 border border-emerald-200 text-[10px] font-bold text-emerald-700 rounded-xl bg-white hover:bg-emerald-50 transition-all"
+                      >
+                        Rescan Cluster
+                      </button>
                     </div>
                   )}
                 </div>

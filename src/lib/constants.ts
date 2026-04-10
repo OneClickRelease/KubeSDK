@@ -3,7 +3,6 @@ import { KubeSDKLocalRun } from '../types';
 export const WIZARD_STEPS = [
   { id: 'source', title: 'Local Run Source' },
   { id: 'mode', title: 'Cluster Definition Mode' },
-  { id: 'import', title: 'Live Cluster Import' },
   { id: 'upload', title: 'Offline Cluster Upload' },
   { id: 'model', title: 'Cluster Model & Components' },
   { id: 'mapping', title: 'Dependency Mapping' },

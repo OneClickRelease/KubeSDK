@@ -1,0 +1,1688 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: localrundefinitions.kubesdk.dev
+spec:
+  group: kubesdk.dev
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+  scope: Namespaced
+  names:
+    plural: localrundefinitions
+    singular: localrundefinition
+    kind: LocalRunDefinition
+    shortNames:
+      - lrd
+
+---
+apiVersion: kubesdk.dev/v1alpha1
+kind: LocalRunDefinition
+metadata:
+  name: kubesdk-simulation
+  createdBy: sdk-user
+  createdAt: '2026-04-10T18:45:32.577Z'
+  toolVersion: 1.0.0
+  annotations:
+    kubesdk.dev/sync-at: '2026-04-10T18:45:55.931Z'
+spec:
+  components:
+    - id: kafka
+      kind: workload
+      namespace: platform
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: bitnami/kafka:latest
+        imagePullPolicy: Always
+        env:
+          - name: ALLOW_PLAINTEXT_LISTENER
+            value: 'yes'
+          - name: KAFKA_CFG_LISTENERS
+            value: PLAINTEXT://:9092
+          - name: KAFKA_CFG_ADVERTISED_LISTENERS
+            value: PLAINTEXT://kafka.platform.svc.cluster.local:9092
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 9092
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: kafka
+          pod-template-hash: 7d8c5c4648
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: minio
+      kind: workload
+      namespace: platform
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: minio/minio
+        imagePullPolicy: Always
+        env:
+          - name: MINIO_ROOT_USER
+            value: admin
+          - name: MINIO_ROOT_PASSWORD
+            value: password123
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 9000
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: minio
+          pod-template-hash: 5d9bbd7b59
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: mongo
+      kind: workload
+      namespace: platform
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: mongo:6
+        imagePullPolicy: IfNotPresent
+        env: []
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 27017
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: mongo
+          pod-template-hash: 7c94fcd666
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: postgres
+      kind: workload
+      namespace: platform
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: postgres:15
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: POSTGRES_PASSWORD
+            value: test
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 5432
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: postgres
+          pod-template-hash: 644977c467
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: kafka
+      kind: workload
+      namespace: platform
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 9092
+        targetPort: 9092
+        serviceType: ClusterIP
+        clusterIP: 10.43.18.190
+        selector:
+          app: kafka
+        targetApp: kafka
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: minio
+      kind: workload
+      namespace: platform
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 9000
+        targetPort: 9000
+        serviceType: ClusterIP
+        clusterIP: 10.43.43.142
+        selector:
+          app: minio
+        targetApp: minio
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: mongo
+      kind: workload
+      namespace: platform
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 27017
+        targetPort: 27017
+        serviceType: ClusterIP
+        clusterIP: 10.43.81.34
+        selector:
+          app: mongo
+        targetApp: mongo
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: postgres
+      kind: workload
+      namespace: platform
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 5432
+        targetPort: 5432
+        serviceType: ClusterIP
+        clusterIP: 10.43.45.167
+        selector:
+          app: postgres
+        targetApp: postgres
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: kubernetes
+      kind: workload
+      namespace: default
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 443
+        targetPort: 6443
+        serviceType: ClusterIP
+        clusterIP: 10.43.0.1
+        selector: {}
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: nginx1
+      kind: workload
+      namespace: tenant1
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: nginx
+        imagePullPolicy: Always
+        env: []
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 80
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: nginx1
+          pod-template-hash: 6c5b4ff5cc
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: nginx1
+      kind: workload
+      namespace: tenant1
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 80
+        targetPort: 80
+        serviceType: ClusterIP
+        clusterIP: 10.43.75.10
+        selector:
+          app: nginx1
+        targetApp: nginx1
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: coredns-695cbbfcb9-p9m7g
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/mirrored-coredns-coredns:1.14.1
+        imagePullPolicy: IfNotPresent
+        env: []
+        volumeMounts:
+          - mountPath: /etc/coredns
+            name: config-volume
+            readOnly: true
+          - mountPath: /etc/coredns/custom
+            name: custom-config-volume
+            readOnly: true
+        volumes:
+          - configMap:
+              defaultMode: 420
+              items:
+                - key: Corefile
+                  path: Corefile
+                - key: NodeHosts
+                  path: NodeHosts
+              name: coredns
+            name: config-volume
+          - configMap:
+              defaultMode: 420
+              name: coredns-custom
+              optional: true
+            name: custom-config-volume
+        ports:
+          - containerPort: 53
+            name: dns
+            protocol: UDP
+          - containerPort: 53
+            name: dns-tcp
+            protocol: TCP
+          - containerPort: 9153
+            name: metrics
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          k8s-app: kube-dns
+          pod-template-hash: 695cbbfcb9
+      resources:
+        original:
+          cpu: 100m
+          memory: 70Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: helm-install-traefik-6pzwg
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/klipper-helm:v0.9.14-build20260210
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: NAME
+            value: traefik
+          - name: VERSION
+          - name: REPO
+          - name: HELM_DRIVER
+            value: secret
+          - name: CHART_NAMESPACE
+            value: kube-system
+          - name: CHART
+            value: >-
+              https://%{KUBERNETES_API}%/static/charts/traefik-39.0.201+up39.0.2.tgz
+          - name: HELM_VERSION
+          - name: TARGET_NAMESPACE
+            value: kube-system
+          - name: AUTH_PASS_CREDENTIALS
+            value: 'false'
+          - name: INSECURE_SKIP_TLS_VERIFY
+            value: 'false'
+          - name: PLAIN_HTTP
+            value: 'false'
+          - name: NO_PROXY
+            value: .svc,.cluster.local,10.42.0.0/16,10.43.0.0/16
+          - name: FAILURE_POLICY
+            value: reinstall
+        volumeMounts:
+          - mountPath: /home/klipper-helm/.helm
+            name: klipper-helm
+          - mountPath: /home/klipper-helm/.cache
+            name: klipper-cache
+          - mountPath: /home/klipper-helm/.config
+            name: klipper-config
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /config
+            name: values
+          - mountPath: /chart
+            name: content
+        volumes:
+          - emptyDir:
+              medium: Memory
+            name: klipper-helm
+          - emptyDir:
+              medium: Memory
+            name: klipper-cache
+          - emptyDir:
+              medium: Memory
+            name: klipper-config
+          - emptyDir:
+              medium: Memory
+            name: tmp
+          - name: values
+            projected:
+              defaultMode: 420
+              sources:
+                - secret:
+                    items:
+                      - key: HelmChartValuesContent
+                        path: values-0-000-HelmChart-ValuesContent.yaml
+                    name: chart-values-traefik
+          - configMap:
+              defaultMode: 420
+              name: chart-content-traefik
+            name: content
+        ports: []
+        sourceKind: Pod
+        labels:
+          batch.kubernetes.io/controller-uid: 595bb505-2766-41c7-9e32-5c0370e1b2a3
+          batch.kubernetes.io/job-name: helm-install-traefik
+          controller-uid: 595bb505-2766-41c7-9e32-5c0370e1b2a3
+          helmcharts.helm.cattle.io/chart: traefik
+          job-name: helm-install-traefik
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: helm-install-traefik-crd-c6nvp
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/klipper-helm:v0.9.14-build20260210
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: NAME
+            value: traefik-crd
+          - name: VERSION
+          - name: REPO
+          - name: HELM_DRIVER
+            value: secret
+          - name: CHART_NAMESPACE
+            value: kube-system
+          - name: CHART
+            value: >-
+              https://%{KUBERNETES_API}%/static/charts/traefik-crd-39.0.201+up39.0.2.tgz
+          - name: HELM_VERSION
+          - name: TARGET_NAMESPACE
+            value: kube-system
+          - name: AUTH_PASS_CREDENTIALS
+            value: 'false'
+          - name: INSECURE_SKIP_TLS_VERIFY
+            value: 'false'
+          - name: PLAIN_HTTP
+            value: 'false'
+          - name: NO_PROXY
+            value: .svc,.cluster.local,10.42.0.0/16,10.43.0.0/16
+          - name: FAILURE_POLICY
+            value: reinstall
+        volumeMounts:
+          - mountPath: /home/klipper-helm/.helm
+            name: klipper-helm
+          - mountPath: /home/klipper-helm/.cache
+            name: klipper-cache
+          - mountPath: /home/klipper-helm/.config
+            name: klipper-config
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /config
+            name: values
+          - mountPath: /chart
+            name: content
+        volumes:
+          - emptyDir:
+              medium: Memory
+            name: klipper-helm
+          - emptyDir:
+              medium: Memory
+            name: klipper-cache
+          - emptyDir:
+              medium: Memory
+            name: klipper-config
+          - emptyDir:
+              medium: Memory
+            name: tmp
+          - name: values
+            projected:
+              defaultMode: 420
+              sources:
+                - secret:
+                    name: chart-values-traefik-crd
+          - configMap:
+              defaultMode: 420
+              name: chart-content-traefik-crd
+            name: content
+        ports: []
+        sourceKind: Pod
+        labels:
+          batch.kubernetes.io/controller-uid: 5a96291e-3956-42ad-845f-a6c52aaff54f
+          batch.kubernetes.io/job-name: helm-install-traefik-crd
+          controller-uid: 5a96291e-3956-42ad-845f-a6c52aaff54f
+          helmcharts.helm.cattle.io/chart: traefik-crd
+          job-name: helm-install-traefik-crd
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: local-path-provisioner
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/local-path-provisioner:v0.0.34
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+        volumeMounts:
+          - mountPath: /etc/config/
+            name: config-volume
+        volumes:
+          - configMap:
+              defaultMode: 420
+              name: local-path-config
+            name: config-volume
+        ports: []
+        sourceKind: Pod
+        labels:
+          app: local-path-provisioner
+          pod-template-hash: 546dfc6456
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: metrics-server-c8774f4f4-q67pp
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/mirrored-metrics-server:v0.8.1
+        imagePullPolicy: IfNotPresent
+        env: []
+        volumeMounts:
+          - mountPath: /tmp
+            name: tmp-dir
+        volumes:
+          - emptyDir: {}
+            name: tmp-dir
+        ports:
+          - containerPort: 10250
+            name: https
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          k8s-app: metrics-server
+          pod-template-hash: c8774f4f4
+      resources:
+        original:
+          cpu: 100m
+          memory: 70Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: svclb-traefik-5f989f58
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/klipper-lb:v0.4.14
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: SRC_PORT
+            value: '80'
+          - name: SRC_RANGES
+            value: 0.0.0.0/0
+          - name: DEST_PROTO
+            value: TCP
+          - name: DEST_PORT
+            value: '80'
+          - name: DEST_IPS
+            value: 10.43.248.63
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 80
+            hostPort: 80
+            name: lb-tcp-80
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: svclb-traefik-5f989f58
+          controller-revision-hash: 56d7c646df
+          pod-template-generation: '1'
+          svccontroller.k3s.cattle.io/svcname: traefik
+          svccontroller.k3s.cattle.io/svcnamespace: kube-system
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: traefik-788bc4688c-2zhr6
+      kind: workload
+      namespace: kube-system
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: rancher/mirrored-library-traefik:3.6.9
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: USER
+            value: traefik
+        volumeMounts:
+          - mountPath: /data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+        volumes:
+          - emptyDir: {}
+            name: data
+          - emptyDir: {}
+            name: tmp
+        ports:
+          - containerPort: 9100
+            name: metrics
+            protocol: TCP
+          - containerPort: 8080
+            name: traefik
+            protocol: TCP
+          - containerPort: 8000
+            name: web
+            protocol: TCP
+          - containerPort: 8443
+            name: websecure
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app.kubernetes.io/instance: traefik-kube-system
+          app.kubernetes.io/managed-by: Helm
+          app.kubernetes.io/name: traefik
+          helm.sh/chart: traefik-39.0.201_up39.0.2
+          pod-template-hash: 788bc4688c
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: kube-dns
+      kind: workload
+      namespace: kube-system
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 53
+        targetPort: 53
+        serviceType: ClusterIP
+        clusterIP: 10.43.0.10
+        selector:
+          k8s-app: kube-dns
+        targetApp: coredns-695cbbfcb9-p9m7g
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: metrics-server
+      kind: workload
+      namespace: kube-system
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 443
+        targetPort: https
+        serviceType: ClusterIP
+        clusterIP: 10.43.142.212
+        selector:
+          k8s-app: metrics-server
+        targetApp: metrics-server-c8774f4f4-q67pp
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: traefik
+      kind: workload
+      namespace: kube-system
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 80
+        targetPort: web
+        serviceType: LoadBalancer
+        clusterIP: 10.43.248.63
+        selector:
+          app.kubernetes.io/instance: traefik-kube-system
+          app.kubernetes.io/name: traefik
+        targetApp: traefik-788bc4688c-2zhr6
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: service1
+      kind: workload
+      namespace: services
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: nginx
+        imagePullPolicy: Always
+        env: []
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 80
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: service1
+          pod-template-hash: 6f647dc5bc
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: service2
+      kind: workload
+      namespace: services
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: fullstorydev/grpcurl
+        imagePullPolicy: Always
+        env: []
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 50051
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: service2
+          pod-template-hash: 7c4bfccd96
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: service1
+      kind: workload
+      namespace: services
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 80
+        targetPort: 80
+        serviceType: ClusterIP
+        clusterIP: 10.43.223.12
+        selector:
+          app: service1
+        targetApp: service1
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: service2
+      kind: workload
+      namespace: services
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 50051
+        targetPort: 50051
+        serviceType: ClusterIP
+        clusterIP: 10.43.226.152
+        selector:
+          app: service2
+        targetApp: service2
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: app1
+      kind: workload
+      namespace: tenant2
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: nginx
+        imagePullPolicy: Always
+        env: []
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 80
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: app1
+          pod-template-hash: 5c8c5777bc
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: app2
+      kind: workload
+      namespace: tenant2
+      category: application
+      mandatory: true
+      runtimeClass: application
+      properties:
+        image: nginx
+        imagePullPolicy: Always
+        env: []
+        volumeMounts: []
+        volumes: []
+        ports:
+          - containerPort: 80
+            protocol: TCP
+        sourceKind: Pod
+        labels:
+          app: app2
+          pod-template-hash: 69858d97b5
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: app1
+      kind: workload
+      namespace: tenant2
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 80
+        targetPort: 80
+        serviceType: ClusterIP
+        clusterIP: 10.43.173.59
+        selector:
+          app: app1
+        targetApp: app1
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: app2
+      kind: workload
+      namespace: tenant2
+      category: service
+      mandatory: true
+      runtimeClass: application
+      properties:
+        port: 80
+        targetPort: 80
+        serviceType: ClusterIP
+        clusterIP: 10.43.199.9
+        selector:
+          app: app2
+        targetApp: app2
+      resources:
+        original:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+        sdk:
+          cpu: 100m
+          memory: 128Mi
+          replicas: 1
+    - id: platform
+      kind: infra
+      namespace: cluster
+      category: namespace
+      mandatory: true
+      runtimeClass: infra
+      resources:
+        original:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+        sdk:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+    - id: default
+      kind: infra
+      namespace: cluster
+      category: namespace
+      mandatory: true
+      runtimeClass: infra
+      resources:
+        original:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+        sdk:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+    - id: tenant1
+      kind: infra
+      namespace: cluster
+      category: namespace
+      mandatory: true
+      runtimeClass: infra
+      resources:
+        original:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+        sdk:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+    - id: kube-system
+      kind: infra
+      namespace: cluster
+      category: namespace
+      mandatory: true
+      runtimeClass: infra
+      resources:
+        original:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+        sdk:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+    - id: services
+      kind: infra
+      namespace: cluster
+      category: namespace
+      mandatory: true
+      runtimeClass: infra
+      resources:
+        original:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+        sdk:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+    - id: tenant2
+      kind: infra
+      namespace: cluster
+      category: namespace
+      mandatory: true
+      runtimeClass: infra
+      resources:
+        original:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+        sdk:
+          cpu: '0'
+          memory: '0'
+          replicas: 1
+  dependencyGraph:
+    edges: []
+  wizard:
+    source: manual
+    runtime:
+      type: rancher-desktop
+      versionConstraint: '>=5.6'
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant1
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: services
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant2
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka
+  namespace: platform
+  labels:
+    app: kafka
+    infra.example.com/profile: sdk
+    pod-template-hash: 7d8c5c4648
+  annotations:
+    infra.example.com/id: kafka
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: kafka
+      image: bitnami/kafka:latest
+      imagePullPolicy: Always
+      env:
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: 'yes'
+        - name: KAFKA_CFG_LISTENERS
+          value: PLAINTEXT://:9092
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: PLAINTEXT://kafka.platform.svc.cluster.local:9092
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 9092
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: minio
+  namespace: platform
+  labels:
+    app: minio
+    infra.example.com/profile: sdk
+    pod-template-hash: 5d9bbd7b59
+  annotations:
+    infra.example.com/id: minio
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: minio
+      image: minio/minio
+      imagePullPolicy: Always
+      env:
+        - name: MINIO_ROOT_USER
+          value: admin
+        - name: MINIO_ROOT_PASSWORD
+          value: password123
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 9000
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mongo
+  namespace: platform
+  labels:
+    app: mongo
+    infra.example.com/profile: sdk
+    pod-template-hash: 7c94fcd666
+  annotations:
+    infra.example.com/id: mongo
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: mongo
+      image: mongo:6
+      imagePullPolicy: IfNotPresent
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 27017
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres
+  namespace: platform
+  labels:
+    app: postgres
+    infra.example.com/profile: sdk
+    pod-template-hash: 644977c467
+  annotations:
+    infra.example.com/id: postgres
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: postgres
+      image: postgres:15
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: POSTGRES_PASSWORD
+          value: test
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 5432
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: platform
+  labels:
+    app: kafka
+  annotations:
+    infra.example.com/id: kafka
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9092
+      targetPort: 9092
+  selector:
+    app: kafka
+  clusterIP: 10.43.18.190
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: platform
+  labels:
+    app: minio
+  annotations:
+    infra.example.com/id: minio
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+  selector:
+    app: minio
+  clusterIP: 10.43.43.142
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: platform
+  labels:
+    app: mongo
+  annotations:
+    infra.example.com/id: mongo
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: mongo
+  clusterIP: 10.43.81.34
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: platform
+  labels:
+    app: postgres
+  annotations:
+    infra.example.com/id: postgres
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+  clusterIP: 10.43.45.167
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes
+  namespace: default
+  labels:
+    app: kubernetes
+  annotations:
+    infra.example.com/id: kubernetes
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 443
+      targetPort: 6443
+  clusterIP: 10.43.0.1
+  selector: {}
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx1
+  namespace: tenant1
+  labels:
+    app: nginx1
+    infra.example.com/profile: sdk
+    pod-template-hash: 6c5b4ff5cc
+  annotations:
+    infra.example.com/id: nginx1
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: nginx1
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx1
+  namespace: tenant1
+  labels:
+    app: nginx1
+  annotations:
+    infra.example.com/id: nginx1
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: nginx1
+  clusterIP: 10.43.75.10
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service1
+  namespace: services
+  labels:
+    app: service1
+    infra.example.com/profile: sdk
+    pod-template-hash: 6f647dc5bc
+  annotations:
+    infra.example.com/id: service1
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: service1
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service2
+  namespace: services
+  labels:
+    app: service2
+    infra.example.com/profile: sdk
+    pod-template-hash: 7c4bfccd96
+  annotations:
+    infra.example.com/id: service2
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: service2
+      image: fullstorydev/grpcurl
+      imagePullPolicy: Always
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 50051
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service1
+  namespace: services
+  labels:
+    app: service1
+  annotations:
+    infra.example.com/id: service1
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: service1
+  clusterIP: 10.43.223.12
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service2
+  namespace: services
+  labels:
+    app: service2
+  annotations:
+    infra.example.com/id: service2
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    app: service2
+  clusterIP: 10.43.226.152
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app1
+  namespace: tenant2
+  labels:
+    app: app1
+    infra.example.com/profile: sdk
+    pod-template-hash: 5c8c5777bc
+  annotations:
+    infra.example.com/id: app1
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: app1
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app2
+  namespace: tenant2
+  labels:
+    app: app2
+    infra.example.com/profile: sdk
+    pod-template-hash: 69858d97b5
+  annotations:
+    infra.example.com/id: app2
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: app2
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app1
+  namespace: tenant2
+  labels:
+    app: app1
+  annotations:
+    infra.example.com/id: app1
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: app1
+  clusterIP: 10.43.173.59
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app2
+  namespace: tenant2
+  labels:
+    app: app2
+  annotations:
+    infra.example.com/id: app2
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: app2
+  clusterIP: 10.43.199.9
