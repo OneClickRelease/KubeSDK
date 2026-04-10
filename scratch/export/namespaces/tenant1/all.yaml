@@ -1,0 +1,283 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    generateName: nginx1-6c5b4ff5cc-
+    generation: 1
+    labels:
+      app: nginx1
+      pod-template-hash: 6c5b4ff5cc
+    name: nginx1-6c5b4ff5cc-nblb7
+    namespace: tenant1
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: nginx1-6c5b4ff5cc
+      uid: 152bcfb2-78ec-46c3-b9bf-f017956fb454
+    resourceVersion: "1251"
+    uid: 909f46a5-8049-404d-8c3b-30c6d9fdc397
+  spec:
+    containers:
+    - image: nginx
+      imagePullPolicy: Always
+      name: nginx1
+      ports:
+      - containerPort: 80
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9wdvv
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-9wdvv
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:54Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:45Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:45Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:54Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://49525b8ccc55fd8876400a24d9faaadef5990ddf1f19bec2aacd2deca803f2ed
+      image: nginx:latest
+      imageID: docker-pullable://nginx@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d0d8b85ba0
+      lastState: {}
+      name: nginx1
+      ready: true
+      resources: {}
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-04-08T19:10:45Z"
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9wdvv
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.42.0.15
+    podIPs:
+    - ip: 10.42.0.15
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:54Z"
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"nginx1","namespace":"tenant1"},"spec":{"ports":[{"port":80,"targetPort":80}],"selector":{"app":"nginx1"}}}
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    name: nginx1
+    namespace: tenant1
+    resourceVersion: "888"
+    uid: befa3e40-e064-4602-9b92-2d72160703ec
+  spec:
+    clusterIP: 10.43.75.10
+    clusterIPs:
+    - 10.43.75.10
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: nginx1
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"nginx1","namespace":"tenant1"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"nginx1"}},"template":{"metadata":{"labels":{"app":"nginx1"}},"spec":{"containers":[{"image":"nginx","name":"nginx1","ports":[{"containerPort":80}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    generation: 1
+    name: nginx1
+    namespace: tenant1
+    resourceVersion: "1255"
+    uid: ac94ed8b-960d-445e-8b95-a21af0ca8510
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: nginx1
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: nginx1
+      spec:
+        containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx1
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:10:46Z"
+      lastUpdateTime: "2026-04-08T19:10:46Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:08:54Z"
+      lastUpdateTime: "2026-04-08T19:10:46Z"
+      message: ReplicaSet "nginx1-6c5b4ff5cc" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    generation: 1
+    labels:
+      app: nginx1
+      pod-template-hash: 6c5b4ff5cc
+    name: nginx1-6c5b4ff5cc
+    namespace: tenant1
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: nginx1
+      uid: ac94ed8b-960d-445e-8b95-a21af0ca8510
+    resourceVersion: "1252"
+    uid: 152bcfb2-78ec-46c3-b9bf-f017956fb454
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx1
+        pod-template-hash: 6c5b4ff5cc
+    template:
+      metadata:
+        labels:
+          app: nginx1
+          pod-template-hash: 6c5b4ff5cc
+      spec:
+        containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx1
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+kind: List
+metadata:
+  resourceVersion: ""

@@ -1,0 +1,582 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generateName: service1-6f647dc5bc-
+    generation: 1
+    labels:
+      app: service1
+      pod-template-hash: 6f647dc5bc
+    name: service1-6f647dc5bc-wpst8
+    namespace: services
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: service1-6f647dc5bc
+      uid: 39593c32-5413-4c9d-819a-5c7535f7b286
+    resourceVersion: "1261"
+    uid: 68fd87b7-9ad8-4404-b2f5-115f8821b769
+  spec:
+    containers:
+    - image: nginx
+      imagePullPolicy: Always
+      name: service1
+      ports:
+      - containerPort: 80
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-2bn56
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-2bn56
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:46Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:10:46Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://caa9a643049853edbb374941375f5ecd484fd6dc28427a6fc26147d7c28b1fba
+      image: nginx:latest
+      imageID: docker-pullable://nginx@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d0d8b85ba0
+      lastState: {}
+      name: service1
+      ready: true
+      resources: {}
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-04-08T19:10:45Z"
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-2bn56
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.42.0.13
+    podIPs:
+    - ip: 10.42.0.13
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:53Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    generateName: service2-7c4bfccd96-
+    generation: 1
+    labels:
+      app: service2
+      pod-template-hash: 7c4bfccd96
+    name: service2-7c4bfccd96-w5bd9
+    namespace: services
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: service2-7c4bfccd96
+      uid: 086c2b81-c837-475d-b772-d81f8fb72d96
+    resourceVersion: "1533"
+    uid: f9d09bd8-c73c-4a24-aa2c-9fd357378489
+  spec:
+    containers:
+    - command:
+      - sleep
+      - "3600"
+      image: fullstorydev/grpcurl
+      imagePullPolicy: Always
+      name: service2
+      ports:
+      - containerPort: 50051
+        protocol: TCP
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-rsrqp
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: lima-rancher-desktop
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-rsrqp
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:54Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:54Z"
+      message: 'containers with unready status: [service2]'
+      observedGeneration: 1
+      reason: ContainersNotReady
+      status: "False"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:54Z"
+      message: 'containers with unready status: [service2]'
+      observedGeneration: 1
+      reason: ContainersNotReady
+      status: "False"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-04-08T19:08:54Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://f4d67c2808b24827a37e444e0dc861d808420996c547afccd612fa23d7ee762d
+      image: fullstorydev/grpcurl:latest
+      imageID: docker-pullable://fullstorydev/grpcurl@sha256:085e183ca334eb4e81ca81ee12cbb2b2737505d1d77f5e33dabc5d066593d998
+      lastState:
+        terminated:
+          containerID: docker://f4d67c2808b24827a37e444e0dc861d808420996c547afccd612fa23d7ee762d
+          exitCode: 127
+          finishedAt: "2026-04-08T19:18:54Z"
+          message: 'failed to create task for container: failed to create shim task:
+            OCI runtime create failed: runc create failed: unable to start container
+            process: error during container init: exec: "sleep": executable file not
+            found in $PATH'
+          reason: ContainerCannotRun
+          startedAt: "2026-04-08T19:18:54Z"
+      name: service2
+      ready: false
+      resources: {}
+      restartCount: 4
+      started: false
+      state:
+        waiting:
+          message: back-off 5m0s restarting failed container=service2 pod=service2-7c4bfccd96-w5bd9_services(f9d09bd8-c73c-4a24-aa2c-9fd357378489)
+          reason: CrashLoopBackOff
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-rsrqp
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 192.168.5.15
+    hostIPs:
+    - ip: 192.168.5.15
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.42.0.14
+    podIPs:
+    - ip: 10.42.0.14
+    qosClass: BestEffort
+    startTime: "2026-04-08T19:08:54Z"
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"service1","namespace":"services"},"spec":{"ports":[{"port":80,"targetPort":80}],"selector":{"app":"service1"}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    name: service1
+    namespace: services
+    resourceVersion: "850"
+    uid: 4cb49555-d454-4f64-9b6f-728039be1e15
+  spec:
+    clusterIP: 10.43.223.12
+    clusterIPs:
+    - 10.43.223.12
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: service1
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"service2","namespace":"services"},"spec":{"ports":[{"port":50051,"targetPort":50051}],"selector":{"app":"service2"}}}
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    name: service2
+    namespace: services
+    resourceVersion: "876"
+    uid: 416379f4-2a59-4c7b-8efc-708f1ce99654
+  spec:
+    clusterIP: 10.43.226.152
+    clusterIPs:
+    - 10.43.226.152
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 50051
+      protocol: TCP
+      targetPort: 50051
+    selector:
+      app: service2
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"service1","namespace":"services"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"service1"}},"template":{"metadata":{"labels":{"app":"service1"}},"spec":{"containers":[{"image":"nginx","name":"service1","ports":[{"containerPort":80}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    name: service1
+    namespace: services
+    resourceVersion: "1264"
+    uid: 94fcd1e5-4e78-4d7c-8bb3-17f96a5ae625
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: service1
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: service1
+      spec:
+        containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: service1
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:10:46Z"
+      lastUpdateTime: "2026-04-08T19:10:46Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:08:53Z"
+      lastUpdateTime: "2026-04-08T19:10:46Z"
+      message: ReplicaSet "service1-6f647dc5bc" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"service2","namespace":"services"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"service2"}},"template":{"metadata":{"labels":{"app":"service2"}},"spec":{"containers":[{"command":["sleep","3600"],"image":"fullstorydev/grpcurl","name":"service2","ports":[{"containerPort":50051}]}]}}}}
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    generation: 1
+    name: service2
+    namespace: services
+    resourceVersion: "1520"
+    uid: e04b9b67-9e2c-42e1-a5c3-a6f1d7834500
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: service2
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: service2
+      spec:
+        containers:
+        - command:
+          - sleep
+          - "3600"
+          image: fullstorydev/grpcurl
+          imagePullPolicy: Always
+          name: service2
+          ports:
+          - containerPort: 50051
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    conditions:
+    - lastTransitionTime: "2026-04-08T19:08:54Z"
+      lastUpdateTime: "2026-04-08T19:08:54Z"
+      message: Deployment does not have minimum availability.
+      reason: MinimumReplicasUnavailable
+      status: "False"
+      type: Available
+    - lastTransitionTime: "2026-04-08T19:18:55Z"
+      lastUpdateTime: "2026-04-08T19:18:55Z"
+      message: ReplicaSet "service2-7c4bfccd96" has timed out progressing.
+      reason: ProgressDeadlineExceeded
+      status: "False"
+      type: Progressing
+    observedGeneration: 1
+    replicas: 1
+    unavailableReplicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:53Z"
+    generation: 1
+    labels:
+      app: service1
+      pod-template-hash: 6f647dc5bc
+    name: service1-6f647dc5bc
+    namespace: services
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: service1
+      uid: 94fcd1e5-4e78-4d7c-8bb3-17f96a5ae625
+    resourceVersion: "1263"
+    uid: 39593c32-5413-4c9d-819a-5c7535f7b286
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: service1
+        pod-template-hash: 6f647dc5bc
+    template:
+      metadata:
+        labels:
+          app: service1
+          pod-template-hash: 6f647dc5bc
+      spec:
+        containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: service1
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-04-08T19:08:54Z"
+    generation: 1
+    labels:
+      app: service2
+      pod-template-hash: 7c4bfccd96
+    name: service2-7c4bfccd96
+    namespace: services
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: service2
+      uid: e04b9b67-9e2c-42e1-a5c3-a6f1d7834500
+    resourceVersion: "874"
+    uid: 086c2b81-c837-475d-b772-d81f8fb72d96
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: service2
+        pod-template-hash: 7c4bfccd96
+    template:
+      metadata:
+        labels:
+          app: service2
+          pod-template-hash: 7c4bfccd96
+      spec:
+        containers:
+        - command:
+          - sleep
+          - "3600"
+          image: fullstorydev/grpcurl
+          imagePullPolicy: Always
+          name: service2
+          ports:
+          - containerPort: 50051
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    replicas: 1
+kind: List
+metadata:
+  resourceVersion: ""
