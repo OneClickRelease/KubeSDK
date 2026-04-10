@@ -9,7 +9,8 @@ import {
   Server, 
   ShieldCheck, 
   Cpu,
-  XCircle
+  XCircle,
+  FileCode
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { KubeSDKLocalRun, Component } from '../../../types';
@@ -416,7 +417,9 @@ export const ModelStep = ({
 
                     {selectedComponent.category === 'application' && (
                         <div className="space-y-6">
+                          {/* Container Basics */}
                           <div className="space-y-3">
+                            <label className="block text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider mb-1.5">Image Configuration</label>
                             <div className="grid grid-cols-5 gap-2">
                               <div className="col-span-3">
                                 <input type="text" placeholder="Image (e.g. nginx)" value={selectedComponent.properties?.image || ''} onChange={(e) => {
@@ -439,9 +442,143 @@ export const ModelStep = ({
                             </div>
                           </div>
 
-                          <div className="space-y-3">
+                          {/* Helm Configuration */}
+                          <div className="space-y-3 pt-4 border-t border-[#F1F3F5]">
+                            <h6 className="text-[10px] font-bold text-[#495057] uppercase tracking-wider flex items-center gap-2">
+                              <FileCode size={12} className="text-[#6F42C1]" /> Helm Chart Deployment
+                            </h6>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[9px] font-bold text-[#ADB5BD] uppercase mb-1">Source</label>
+                                <select 
+                                  value={selectedComponent.helm?.chart.source || 'helm-repo'} 
+                                  onChange={(e) => {
+                                    const newComps = [...config.components];
+                                    newComps[selectedComponentIndex].helm = { 
+                                      chart: { ...(newComps[selectedComponentIndex].helm?.chart || { repo: '', version: '', source: 'helm-repo' }), source: e.target.value as any } 
+                                    };
+                                    setConfig({ ...config, components: newComps });
+                                  }}
+                                  className="w-full px-3 py-1.5 rounded-lg border border-[#DEE2E6] text-xs bg-white"
+                                >
+                                  <option value="helm-repo">Helm Repo</option>
+                                  <option value="git">Git Repository</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-bold text-[#ADB5BD] uppercase mb-1">Version</label>
+                                <input type="text" placeholder="1.2.3" value={selectedComponent.helm?.chart.version || ''} onChange={(e) => {
+                                  const newComps = [...config.components];
+                                  newComps[selectedComponentIndex].helm = { 
+                                    chart: { ...(newComps[selectedComponentIndex].helm?.chart || { repo: '', version: '', source: 'helm-repo' }), version: e.target.value } 
+                                  };
+                                  setConfig({ ...config, components: newComps });
+                                }} className="w-full px-3 py-1.5 rounded-lg border border-[#DEE2E6] text-xs font-mono" />
+                              </div>
+                            </div>
+                            <div>
+                                <label className="block text-[9px] font-bold text-[#ADB5BD] uppercase mb-1">Repository / URL</label>
+                                <input type="text" placeholder="https://charts.bitnami.com/bitnami" value={selectedComponent.helm?.chart.repo || ''} onChange={(e) => {
+                                  const newComps = [...config.components];
+                                  newComps[selectedComponentIndex].helm = { 
+                                    chart: { ...(newComps[selectedComponentIndex].helm?.chart || { repo: '', version: '', source: 'helm-repo' }), repo: e.target.value } 
+                                  };
+                                  setConfig({ ...config, components: newComps });
+                                }} className="w-full px-3 py-1.5 rounded-lg border border-[#DEE2E6] text-xs font-mono" />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] font-bold text-[#ADB5BD] uppercase mb-1">Values File Override (Path)</label>
+                                <input type="text" placeholder="values-staging.yaml" value={selectedComponent.helm?.valuesFile || ''} onChange={(e) => {
+                                  const newComps = [...config.components];
+                                  newComps[selectedComponentIndex].helm = { 
+                                    ...(newComps[selectedComponentIndex].helm || { chart: { repo: '', version: '', source: 'helm-repo' } }),
+                                    valuesFile: e.target.value 
+                                  };
+                                  setConfig({ ...config, components: newComps });
+                                }} className="w-full px-3 py-1.5 rounded-lg border border-[#DEE2E6] text-xs font-mono" />
+                            </div>
+                          </div>
+
+                          {/* Config / Secret References */}
+                          <div className="space-y-3 pt-4 border-t border-[#F1F3F5]">
+                             <h6 className="text-[10px] font-bold text-[#495057] uppercase tracking-wider flex items-center gap-2">
+                               <ShieldCheck size={12} className="text-amber-500" /> Resource References
+                             </h6>
+                             <div className="grid grid-cols-1 gap-2">
+                                <div>
+                                  <label className="block text-[9px] font-bold text-[#ADB5BD] uppercase mb-1">ConfigMaps (Comma separated)</label>
+                                  <input type="text" placeholder="api-config, shared-settings" value={(selectedComponent.config?.configMaps || []).join(', ')} onChange={(e) => {
+                                    const newComps = [...config.components];
+                                    newComps[selectedComponentIndex].config = { 
+                                      ...(newComps[selectedComponentIndex].config || { configMaps: [], secrets: [] }),
+                                      configMaps: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                                    };
+                                    setConfig({ ...config, components: newComps });
+                                  }} className="w-full px-3 py-1.5 rounded-lg border border-[#DEE2E6] text-xs font-mono" />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] font-bold text-[#ADB5BD] uppercase mb-1">Secrets (Comma separated)</label>
+                                  <input type="text" placeholder="db-creds, api-keys" value={(selectedComponent.config?.secrets || []).join(', ')} onChange={(e) => {
+                                    const newComps = [...config.components];
+                                    newComps[selectedComponentIndex].config = { 
+                                      ...(newComps[selectedComponentIndex].config || { configMaps: [], secrets: [] }),
+                                      secrets: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                                    };
+                                    setConfig({ ...config, components: newComps });
+                                  }} className="w-full px-3 py-1.5 rounded-lg border border-[#DEE2E6] text-xs font-mono" />
+                                </div>
+                             </div>
+                          </div>
+
+                          {/* Environment Variables */}
+                          <div className="space-y-4 pt-4 border-t border-[#F1F3F5]">
                             <div className="flex items-center justify-between">
-                              <label className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider">Environment Variables</label>
+                              <label className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider">Custom Variables (Key-Value)</label>
+                              <button 
+                                onClick={() => {
+                                  const name = prompt('Variable Name:');
+                                  const value = prompt('Variable Value:');
+                                  if (name && value) {
+                                    const newComps = [...config.components];
+                                    const currentCustom = newComps[selectedComponentIndex].properties?.customEnv || {};
+                                    newComps[selectedComponentIndex].properties = { 
+                                      ...(newComps[selectedComponentIndex].properties || {}), 
+                                      customEnv: { ...currentCustom, [name.toUpperCase()]: value } 
+                                    };
+                                    setConfig({ ...config, components: newComps });
+                                  }
+                                }}
+                                className="text-[10px] font-bold text-[#0D6EFD] hover:underline flex items-center gap-1"
+                              >
+                                <Plus size={12} /> Add Override
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                              {Object.entries((selectedComponent.properties?.customEnv as Record<string, string>) || {}).map(([key, val]) => (
+                                <div key={key} className="flex items-center justify-between bg-[#F8F9FA] px-3 py-2 rounded-lg border border-[#E9ECEF] group">
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[9px] font-bold text-[#495057] font-mono truncate">{key}</span>
+                                    <span className="text-[9px] text-[#0D6EFD] truncate font-mono">{val}</span>
+                                  </div>
+                                  <button onClick={() => {
+                                    const newComps = [...config.components];
+                                    const nextCustom = { ...newComps[selectedComponentIndex].properties?.customEnv };
+                                    delete nextCustom[key];
+                                    newComps[selectedComponentIndex].properties = { ...newComps[selectedComponentIndex].properties, customEnv: nextCustom };
+                                    setConfig({ ...config, components: newComps });
+                                  }} className="p-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                              {Object.keys(selectedComponent.properties?.customEnv || {}).length === 0 && (
+                                <p className="text-[9px] text-[#ADB5BD] italic text-center py-2">No custom overrides defined.</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-dashed border-[#DEE2E6]">
+                              <label className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider">Dynamic Environment List</label>
                               <button 
                                 onClick={() => {
                                   const newComps = [...config.components];
@@ -452,10 +589,10 @@ export const ModelStep = ({
                                 }}
                                 className="text-[10px] font-bold text-[#0D6EFD] hover:underline flex items-center gap-1"
                               >
-                                <Plus size={12} /> Add Variable
+                                <Plus size={12} /> Add Pair
                               </button>
                             </div>
-                            <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
+                            <div className="max-h-[150px] overflow-y-auto space-y-2 pr-1">
                               {(selectedComponent.properties?.env || []).map((env: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
                                   <input type="text" value={env.name} onChange={(e) => {

@@ -39,9 +39,9 @@ interface LayeredDependencyMapProps {
 
 export const LayeredDependencyMap = ({ config, setConfig, namespaces, generateYamlFromConfig }: LayeredDependencyMapProps) => {
   const [selectedAppId, setSelectedAppId] = React.useState<string | null>(null);
-  const [viewMode, setViewMode] = React.useState<'map' | 'yaml'>('map');
   const [newEnvName, setNewEnvName] = React.useState('');
   const [newEnvValue, setNewEnvValue] = React.useState('');
+  const [viewMode, setViewMode] = React.useState<'map' | 'yaml'>('map');
 
   const getApps = (ns: string) => config.components.filter(c =>
     c.namespace === ns && !INFRA_CATEGORIES.includes(c.category)
@@ -280,21 +280,174 @@ export const LayeredDependencyMap = ({ config, setConfig, namespaces, generateYa
             })}
           </div>
 
+          {/* Right: Selected App Detail Panel */}
           {selectedApp && (
-            <div className="w-80 flex flex-col bg-white border border-[#E9ECEF] rounded-2xl overflow-hidden shadow-xl self-start">
-               {/* Selected App Panel code logic... */}
-               <div className="px-5 py-4 flex items-center justify-between border-b border-[#E9ECEF]">
-                  <p className="font-bold text-sm">{selectedApp.id}</p>
-                  <button onClick={() => setSelectedAppId(null)}><XCircle size={16} /></button>
-               </div>
-               <div className="p-4 space-y-4">
-                  {allTargets.map(t => (
-                    <button key={t.id} onClick={() => toggleTarget(t.id)} className={cn("w-full p-2 text-xs border rounded", connectedIds.includes(t.id) ? "bg-emerald-50 border-emerald-500" : "")}>
-                      {t.id} ({t.namespace})
-                    </button>
+            <motion.div
+              key={selectedApp.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="w-96 flex flex-col bg-white border border-[#E9ECEF] rounded-2xl overflow-hidden shadow-xl self-start sticky top-0"
+            >
+              {/* Header */}
+              <div className="px-5 py-4 flex items-center justify-between border-b border-[#E9ECEF]" style={{ background: `linear-gradient(135deg, ${NS_PALETTE[sortedNS.indexOf(selectedApp.namespace||'')]?.bg || '#0D6EFD'}18, transparent)` }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style={{ background: NS_PALETTE[sortedNS.indexOf(selectedApp.namespace||'')]?.bg || '#0D6EFD' }}>
+                    <Server size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#212529] text-sm uppercase tracking-tight">{selectedApp.id}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Layers size={10} className="text-[#ADB5BD]" />
+                      <p className="text-[10px] font-bold" style={{ color: NS_PALETTE[sortedNS.indexOf(selectedApp.namespace||'')]?.bg }}>{selectedApp.namespace}</p>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedAppId(null)} 
+                  className="p-1.5 rounded-lg hover:bg-[#F8F9FA] transition-colors text-[#ADB5BD] hover:text-[#212529]"
+                >
+                  <XCircle size={18} />
+                </button>
+              </div>
+
+              {/* Available targets */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 max-h-[calc(100vh-450px)]">
+                <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider flex items-center gap-2">
+                  <Network size={12} />
+                  Wire Service Dependencies
+                </h5>
+                <div className="space-y-2">
+                  {allTargets
+                    .filter(target => target.id !== selectedAppId)
+                    .map(target => {
+                      const isLinked = connectedIds.includes(target.id);
+                      const targetNSIdx = sortedNS.indexOf(target.namespace || '');
+                      const pal = NS_PALETTE[targetNSIdx % NS_PALETTE.length] || NS_PALETTE[0];
+                      return (
+                        <button
+                          key={target.id}
+                          onClick={() => toggleTarget(target.id)}
+                          className={cn(
+                            'w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group',
+                            isLinked
+                              ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                              : 'border-[#E9ECEF] hover:border-[#0D6EFD]/40 hover:bg-blue-50/20 bg-white'
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" 
+                              style={{ 
+                                background: isLinked ? '#10B9811A' : pal.bg + '12', 
+                                borderColor: isLinked ? '#10B98144' : pal.bg + '33' 
+                              }}
+                            >
+                              {target.category === 'ingress' ? <Network size={14} style={{ color: isLinked ? '#059669' : pal.bg }} /> : <Box size={14} style={{ color: isLinked ? '#059669' : pal.bg }} />}
+                            </div>
+                            <div>
+                              <p className="font-bold text-[#212529] text-xs leading-none">{target.id}</p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-[9px] uppercase font-medium text-[#ADB5BD]">{target.category}</span>
+                                <div className="w-1 h-1 rounded-full bg-[#DEE2E6]" />
+                                <span className="text-[9px] font-bold" style={{ color: pal.bg }}>{target.namespace}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className={cn(
+                            'w-5 h-5 rounded-full border flex items-center justify-center transition-all',
+                            isLinked ? 'bg-emerald-500 border-emerald-500 scale-110 shadow-sm' : 'border-[#DEE2E6] group-hover:border-[#0D6EFD]/40'
+                          )}>
+                            {isLinked && <CheckCircle2 size={12} className="text-white" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  {allTargets.filter(t => t.id !== selectedAppId).length === 0 && (
+                    <p className="text-xs text-[#ADB5BD] italic text-center py-4 border-2 border-dashed rounded-xl border-[#F1F3F5]">No target services found in this model.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Custom User ENV Overrides */}
+              <div className="p-5 border-t border-[#E9ECEF] space-y-4 bg-[#F8F9FA]/50 mt-auto">
+                <h5 className="text-[10px] font-bold text-[#ADB5BD] uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><Zap size={11} className="text-amber-500" /> Custom App Config</span>
+                  <span className="text-[9px] lowercase font-normal italic">Overrides & Additions</span>
+                </h5>
+                
+                {/* Simple Add Table */}
+                <div className="flex gap-1.5">
+                  <input 
+                    value={newEnvName}
+                    onChange={e => setNewEnvName(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                    placeholder="NAME"
+                    className="flex-1 px-3 py-2 bg-white border border-[#DEE2E6] rounded-lg text-[10px] font-mono shadow-sm outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all"
+                  />
+                  <input 
+                    value={newEnvValue}
+                    onChange={e => setNewEnvValue(e.target.value)}
+                    placeholder="VALUE"
+                    className="flex-[1.5] px-3 py-2 bg-white border border-[#DEE2E6] rounded-lg text-[10px] font-mono shadow-sm outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (!newEnvName || !selectedAppId) return;
+                      const newComps = [...config.components];
+                      const idx = newComps.findIndex(c => c.id === selectedAppId);
+                      if (idx > -1) {
+                        const currentCustom = newComps[idx].properties?.customEnv || {};
+                        newComps[idx] = { 
+                          ...newComps[idx], 
+                          properties: { 
+                            ...(newComps[idx].properties || {}), 
+                            customEnv: { ...currentCustom, [newEnvName]: newEnvValue } 
+                          } 
+                        };
+                        setConfig(prev => ({ ...prev, components: newComps }));
+                        setNewEnvName('');
+                        setNewEnvValue('');
+                      }
+                    }}
+                    className="p-2 bg-[#0D6EFD] text-white rounded-lg hover:bg-[#0B5ED7] transition-all shadow-sm"
+                    title="Add Custom Variable"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+
+                {/* List of Custom ENVs */}
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                  {Object.entries((selectedApp.properties?.customEnv as Record<string, string>) || {}).map(([key, val]) => (
+                    <div key={key} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-[#E9ECEF] group hover:border-[#0D6EFD]/30 transition-all shadow-sm">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-bold text-[#495057] font-mono truncate">{key}</span>
+                        <span className="text-[9px] text-emerald-600 truncate font-mono" title={val}>{val}</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newComps = [...config.components];
+                          const idx = newComps.findIndex(c => c.id === selectedAppId);
+                          if (idx > -1) {
+                            const nextCustom = { ...newComps[idx].properties?.customEnv };
+                            delete nextCustom[key];
+                            newComps[idx] = { ...newComps[idx], properties: { ...newComps[idx].properties, customEnv: nextCustom } };
+                            setConfig(prev => ({ ...prev, components: newComps }));
+                          }
+                        }}
+                        className="p-1 text-[#ADB5BD] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   ))}
-               </div>
-            </div>
+                  {Object.keys(selectedApp.properties?.customEnv || {}).length === 0 && (
+                    <p className="text-[9px] text-[#ADB5BD] italic text-center py-4 bg-white/30 rounded-lg border border-dashed border-[#DEE2E6]">No custom variables defined</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           )}
         </div>
       ) : (
