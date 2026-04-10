@@ -17,9 +17,7 @@ import { ImportStep } from './components/wizard/steps/ImportStep';
 import { UploadStep } from './components/wizard/steps/UploadStep';
 import { ModelStep } from './components/wizard/steps/ModelStep';
 import { MappingStep } from './components/wizard/steps/MappingStep';
-import { LaptopStep } from './components/wizard/steps/LaptopStep';
-import { FeasibilityStep } from './components/wizard/steps/FeasibilityStep';
-import { ValidationStep } from './components/wizard/steps/ValidationStep';
+import { ReviewStep } from './components/wizard/steps/ReviewStep';
 import { DeploymentStep } from './components/wizard/steps/DeploymentStep';
 
 export default function App() {
@@ -44,6 +42,11 @@ export default function App() {
     nextStep: baseNextStep,
     prevStep
   } = useWizard();
+
+  const [isTestingConnection, setIsTestingConnection] = React.useState(false);
+  const [connectionStatus, setConnectionStatus] = React.useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
+  const [clusterCapacity, setClusterCapacity] = React.useState<{ cpu: number, memory: number } | null>(null);
+  const [healthStatus, setHealthStatus] = React.useState<Record<string, 'healthy' | 'warning'>>({});
 
   // 1. Global Validation Effect
   React.useEffect(() => {
@@ -207,19 +210,47 @@ export default function App() {
       setIsFitting(false);
     }
   };
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('testing');
+    setClusterCapacity(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setConnectionStatus('success');
+      // Simulate fetching node capacity (e.g., 8 vCPU, 16GB RAM)
+      setClusterCapacity({ cpu: 8.0, memory: 16384 }); 
+    } catch (e) {
+      setConnectionStatus('failed');
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   const handleDeploy = async () => {
     setIsDeploying(true);
-    setDeploymentStatus(['Initializing k3d cluster...', 'Creating namespaces...', 'Applying base policies...']);
-    const steps = ['Deploying infra components...', 'Deploying app workloads...', 'Verifying readiness...', 'Cluster ready!'];
+    setDeploymentStatus(['Initializing connection...', 'Syncing manifests...', 'Creating namespaces...']);
+    const steps = ['Applying resource quotas...', 'Deploying workloads...', 'Configuring networking...', 'Finalizing sanity checks...'];
     for (const step of steps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       setDeploymentStatus(prev => [...prev, step]);
     }
+
+    // Perform sanity health check
+    const results: Record<string, 'healthy' | 'warning'> = {};
+    config.components.forEach(comp => {
+      // Simulate 95% health rate
+      results[comp.id] = Math.random() > 0.05 ? 'healthy' : 'warning';
+    });
+    // Ensure namespaces are also health checked
+    const namespaces = Array.from(new Set(config.components.map(c => c.namespace).filter(Boolean)));
+    namespaces.forEach(ns => {
+      results[ns!] = 'healthy';
+    });
+
+    setHealthStatus(results);
     setIsDeploying(false);
     setIsReady(true);
   };
-
   const handleResetSession = () => {
     if (confirm('Reset all session data and start fresh?')) {
       localStorage.removeItem(STORAGE_KEY);
@@ -241,7 +272,7 @@ export default function App() {
       <main className="flex-1 overflow-y-auto">
         <div className={cn(
           "mx-auto p-8 lg:p-12 transition-all duration-300 w-full", 
-          activeMenu === 'define' && ['model', 'mapping', 'feasibility', 'laptop'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl"
+          activeMenu === 'define' && ['model', 'mapping', 'review', 'deployment'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl"
         )}>
           <AnimatePresence mode="wait">
             {activeMenu === 'home' && <HomeView onStart={() => setActiveMenu('define')} />}
@@ -315,14 +346,19 @@ export default function App() {
                       generateYamlFromConfig={generateYamlFromConfig} 
                     />
                   )}
-                  {visibleSteps[currentStep].id === 'laptop' && (
-                    <LaptopStep config={config} setConfig={setConfig} />
-                  )}
-                  {visibleSteps[currentStep].id === 'feasibility' && (
-                    <FeasibilityStep config={config} isValidating={isValidating} />
-                  )}
-                  {visibleSteps[currentStep].id === 'validation' && <ValidationStep />}
-                  {visibleSteps[currentStep].id === 'deployment' && (
+                  {visibleSteps[currentStep].id === 'review' && (
+                  <ReviewStep 
+                    config={config} 
+                    setConfig={setConfig} 
+                    onTestConnection={handleTestConnection}
+                    isTesting={isTestingConnection}
+                    connectionStatus={connectionStatus}
+                    modelYamlContent={modelYamlContent}
+                    clusterCapacity={clusterCapacity}
+                  />
+                )}
+                
+                {visibleSteps[currentStep].id === 'deployment' && (
                     <DeploymentStep 
                       isReady={isReady}
                       isDeploying={isDeploying}
@@ -330,6 +366,8 @@ export default function App() {
                       modelYamlContent={modelYamlContent}
                       onDeploy={handleDeploy}
                       onDirectDeploy={() => alert('SDK link successful')}
+                      config={config}
+                      healthStatus={healthStatus}
                     />
                   )}
                 </div>

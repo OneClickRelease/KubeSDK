@@ -7,10 +7,8 @@ export const WIZARD_STEPS = [
   { id: 'upload', title: 'Offline Cluster Upload' },
   { id: 'model', title: 'Cluster Model & Components' },
   { id: 'mapping', title: 'Dependency Mapping' },
-  { id: 'laptop', title: 'Laptop Resource Profile' },
-  { id: 'feasibility', title: 'Feasibility & Suggestions' },
-  { id: 'validation', title: 'Final Validation' },
-  { id: 'deployment', title: 'Simulated Cluster Deployment' },
+  { id: 'review', title: 'Review & Runtime Connect' },
+  { id: 'deployment', title: 'Cluster Run & Verify' },
 ];
 
 export const INITIAL_CONFIG: KubeSDKLocalRun = {

@@ -185,7 +185,7 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
 
       const resources = config.resourcePlan?.components[comp.id] || comp.resources?.sdk || comp.resources?.original;
 
-      docs.push({
+      const pod: any = {
         apiVersion: 'v1',
         kind: 'Pod',
         metadata: {
@@ -204,6 +204,7 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
             image: comp.properties?.image || 'example/app:1.0.0',
             imagePullPolicy: comp.properties?.imagePullPolicy || 'Always',
             env: comp.properties?.env || [],
+            envFrom: envFrom,
             volumeMounts: comp.properties?.volumeMounts || [],
             ports: comp.properties?.ports || [],
             resources: {
@@ -218,7 +219,47 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
             }
           }]
         }
-      });
+      };
+
+      if (comp.config?.configMaps?.length || comp.config?.secrets?.length) {
+        comp.config.configMaps?.forEach(cm => {
+          envFrom.push({ configMapRef: { name: cm } });
+        });
+        comp.config.secrets?.forEach(sec => {
+          envFrom.push({ secretRef: { name: sec } });
+        });
+      }
+
+      docs.push(pod);
+
+      if (comp.helm) {
+        docs.push({
+          apiVersion: 'helm.toolkit.fluxcd.io/v2beta1',
+          kind: 'HelmRelease',
+          metadata: {
+            name: `${comp.id}-helm`,
+            namespace: comp.namespace,
+            annotations
+          },
+          spec: {
+            interval: '1m',
+            chart: {
+              spec: {
+                chart: comp.helm.chart.path || comp.id,
+                version: comp.helm.chart.version,
+                sourceRef: {
+                  kind: comp.helm.chart.source === 'git' ? 'GitRepository' : 'HelmRepository',
+                  name: comp.helm.chart.repo
+                }
+              }
+            },
+            values: {
+              // Extract basic overrides if any
+              ...(comp.properties?.customEnv || {})
+            }
+          }
+        });
+      }
     }
     else if (comp.category === 'ingress') {
       docs.push({
