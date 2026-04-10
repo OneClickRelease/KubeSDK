@@ -1,5 +1,5 @@
-export type LocalRunSource = 'live' | 'manual';
-export type LocalRuntimeType = 'k3d' | 'rancher-desktop';
+export type LocalRunSource = 'live' | 'manual' | 'snapshot_yaml';
+export type LocalRuntimeType = 'k3d' | 'rancher-desktop' | 'kind';
 
 export interface KubeSDKLocalRun {
   apiVersion: 'kubesdk.dev/v1alpha1';
@@ -27,6 +27,8 @@ export interface WizardSession {
     type: LocalRuntimeType;
     versionConstraint: string;
   };
+  ignoredNamespaces?: string[];
+  kindWhitelist?: string[];
   connectivity?: {
     apiServerUrl: string;
     token: string;
@@ -85,7 +87,14 @@ export interface Component {
       storage?: string;
       replicas: number;
     };
+    sdk: {
+      cpu: string;
+      memory: string;
+      storage?: string;
+      replicas: number;
+    };
   };
+  properties?: Record<string, any>;
 }
 
 export interface Capability {
