@@ -19,6 +19,7 @@ import { ModelStep } from './components/wizard/steps/ModelStep';
 import { MappingStep } from './components/wizard/steps/MappingStep';
 import { ReviewStep } from './components/wizard/steps/ReviewStep';
 import { DeploymentStep } from './components/wizard/steps/DeploymentStep';
+import { VerificationStep } from './components/wizard/steps/VerificationStep';
 
 export default function App() {
   const {
@@ -46,7 +47,7 @@ export default function App() {
   const [isTestingConnection, setIsTestingConnection] = React.useState(false);
   const [connectionStatus, setConnectionStatus] = React.useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
   const [clusterCapacity, setClusterCapacity] = React.useState<{ cpu: number, memory: number } | null>(null);
-  const [healthStatus, setHealthStatus] = React.useState<Record<string, 'healthy' | 'warning'>>({});
+  const [healthStatus, setHealthStatus] = React.useState<Record<string, any>>({});
   const [wizardError, setWizardError] = React.useState<string | null>(null);
   const [deploymentItems, setDeploymentItems] = React.useState<any[]>([]);
 
@@ -77,6 +78,18 @@ export default function App() {
     }, 500);
     return () => clearTimeout(timer);
   }, [config.components]);
+
+  // 1b. Real-time Status Polling (30s) - Active on Step 8
+  React.useEffect(() => {
+    if (currentStep !== 8) return;
+    
+    console.log("Starting 30s health-check polling...");
+    const interval = setInterval(() => {
+      handleHealthCheck();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [currentStep, config.wizard.connectivity]);
 
   // 2. Individual Component Resource Validation
   React.useEffect(() => {
@@ -340,7 +353,7 @@ export default function App() {
       <main className="flex-1 overflow-y-auto">
         <div className={cn(
           "mx-auto p-8 lg:p-12 transition-all duration-300 w-full", 
-          activeMenu === 'define' && ['model', 'mapping', 'review', 'deployment'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl"
+          activeMenu === 'define' && ['model', 'mapping', 'review', 'deployment', 'verification'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl"
         )}>
           <AnimatePresence mode="wait">
             {activeMenu === 'home' && <HomeView onStart={() => setActiveMenu('define')} />}
@@ -430,16 +443,21 @@ export default function App() {
                 
                 {visibleSteps[currentStep].id === 'deployment' && (
                     <DeploymentStep 
-                      isReady={isReady}
                       isDeploying={isDeploying}
                       deploymentStatus={deploymentStatus}
                       modelYamlContent={modelYamlContent}
                       onDeploy={handleDeploy}
-                      onDirectDeploy={() => alert('SDK link successful')}
+                      config={config}
+                      deploymentItems={deploymentItems}
+                    />
+                  )}
+                  {visibleSteps[currentStep].id === 'verification' && (
+                    <VerificationStep 
                       config={config}
                       healthStatus={healthStatus}
+                      onRerunHealthCheck={handleHealthCheck}
+                      onResetSession={handleResetSession}
                       error={wizardError}
-                      deploymentItems={deploymentItems}
                     />
                   )}
                 </div>

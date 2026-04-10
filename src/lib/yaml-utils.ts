@@ -5,7 +5,42 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
   const ignoredNamespaces = config.wizard.ignoredNamespaces || [];
   const docs: any[] = [];
   
-  // 0. Project Metadata & Dependency Graph
+  // 0. CRD Definition (Ensure it exists)
+  docs.push({
+    apiVersion: 'apiextensions.k8s.io/v1',
+    kind: 'CustomResourceDefinition',
+    metadata: {
+      name: 'localrundefinitions.kubesdk.dev',
+    },
+    spec: {
+      group: 'kubesdk.dev',
+      versions: [{
+        name: 'v1alpha1',
+        served: true,
+        storage: true,
+        schema: {
+          openAPIV3Schema: {
+            type: 'object',
+            properties: {
+              spec: {
+                type: 'object',
+                'x-kubernetes-preserve-unknown-fields': true,
+              },
+            },
+          },
+        },
+      }],
+      scope: 'Namespaced',
+      names: {
+        plural: 'localrundefinitions',
+        singular: 'localrundefinition',
+        kind: 'LocalRunDefinition',
+        shortNames: ['lrd'],
+      },
+    },
+  });
+
+  // 1. Project Metadata & Dependency Graph
   docs.push({
     apiVersion: config.apiVersion || 'kubesdk.dev/v1alpha1',
     kind: 'LocalRunDefinition',
@@ -92,12 +127,6 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
       }
       
       if (Object.keys(baseData).length > 0) {
-        docs.push({
-          apiVersion: 'v1',
-          kind: 'ConfigMap',
-          metadata: { name: 'sdk-config', namespace: ns },
-          data: baseData
-        });
       }
 
       if (aggregatedEnv[ns]) {
@@ -160,9 +189,7 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
     }
     else if (comp.category === 'application' || comp.category === 'workload') {
       const appNS = comp.namespace || 'default';
-      const envFrom: any[] = [
-        { configMapRef: { name: 'sdk-config' } }
-      ];
+      const envFrom: any[] = [];
 
       if (Object.keys(comp.properties?.customEnv || {}).length > 0) {
         envFrom.push({ configMapRef: { name: `${comp.id}-custom-config` } });
@@ -199,18 +226,21 @@ export function generateYamlFromConfig(config: KubeSDKLocalRun): string {
           annotations
         },
         spec: {
+          volumes: comp.properties?.volumes || [],
           containers: [{
             name: comp.id,
             image: comp.properties?.image || 'example/app:1.0.0',
             imagePullPolicy: comp.properties?.imagePullPolicy || 'Always',
             env: comp.properties?.env || [],
             envFrom: envFrom,
-            volumeMounts: comp.properties?.volumeMounts || [],
+            volumeMounts: (comp.properties?.volumeMounts || []).filter((m: any) => 
+               !/^kube-api-access-/.test(m.name) && !/^default-token-/.test(m.name)
+            ),
             ports: comp.properties?.ports || [],
             resources: {
               requests: {
                 cpu: resources.cpu || '100m',
-                memory: resources.memory || '512Mi'
+                memory: resources.memory || '128Mi'
               },
               limits: {
                 cpu: resources.cpu || '200m',

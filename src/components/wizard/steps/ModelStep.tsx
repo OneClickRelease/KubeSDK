@@ -186,7 +186,7 @@ export const ModelStep = ({
                         category: layer.category,
                         mandatory: true,
                         runtimeClass: 'application',
-                        resources: { original: { cpu: '100m', memory: '128Mi', replicas: 1 }, sdk: { cpu: '100m', memory: '512Mi', replicas: 1 } }
+                        resources: { original: { cpu: '100m', memory: '128Mi', replicas: 1 }, sdk: { cpu: '100m', memory: '128Mi', replicas: 1 } }
                       };
                       setConfig(prev => ({ ...prev, components: [...prev.components, newComp] }));
                       setSelectedComponentIndex(config.components.length);
@@ -700,7 +700,7 @@ export const ModelStep = ({
                           <label className="block text-[10px] font-bold text-[#0D6EFD] uppercase tracking-wider mb-1.5">SDK Memory Request</label>
                           <input 
                             type="text" 
-                            value={selectedComponent.resources.sdk?.memory || '512Mi'} 
+                            value={selectedComponent.resources.sdk?.memory || '128Mi'} 
                             onChange={(e) => {
                               const newComponents = [...config.components];
                               newComponents[selectedComponentIndex] = { 

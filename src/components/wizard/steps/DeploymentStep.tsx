@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, CheckCircle2, Server, ExternalLink, ShieldCheck, 
   Terminal, Layers, Globe, Activity, AlertCircle, 
-  Code2, Loader2, ChevronDown, ChevronUp, Play
+  Code2, Loader2, ChevronDown, ChevronUp, Play, X, FileText
 } from 'lucide-react';
 import yaml from 'js-yaml';
 import { cn } from '../../../lib/utils';
@@ -20,31 +20,23 @@ interface DeploymentItem {
 }
 
 interface DeploymentStepProps {
-  isReady: boolean;
   isDeploying: boolean;
   deploymentStatus: string[];
   modelYamlContent: string;
   onDeploy: (items: any[]) => void;
-  onDirectDeploy: () => void;
   config: KubeSDKLocalRun;
-  healthStatus: Record<string, 'healthy' | 'warning'>;
-  error: string | null;
   deploymentItems: DeploymentItem[];
 }
 
 export const DeploymentStep = ({
-  isReady,
   isDeploying,
   deploymentStatus,
   modelYamlContent,
   onDeploy,
-  onDirectDeploy,
   config,
-  healthStatus,
-  error,
   deploymentItems: globalDeploymentItems
 }: DeploymentStepProps) => {
-  const [subStep, setSubStep] = React.useState<'review' | 'deploying' | 'ready'>('review');
+  const [subStep, setSubStep] = React.useState<'review' | 'deploying'>('review');
   const [parsedItems, setParsedItems] = React.useState<DeploymentItem[]>([]);
   const [expandedItem, setExpandedItem] = React.useState<string | null>(null);
 
@@ -76,11 +68,7 @@ export const DeploymentStep = ({
 
   React.useEffect(() => {
     if (isDeploying) setSubStep('deploying');
-    if (isReady && !isDeploying) setSubStep('ready');
-  }, [isDeploying, isReady]);
-
-  const namespaces = Array.from(new Set(config.components.map(c => c.namespace).filter(Boolean)));
-  const workloads = config.components.filter(c => c.category === 'application');
+  }, [isDeploying]);
 
   const handleStartDeployment = () => {
     onDeploy(parsedItems);
@@ -177,7 +165,8 @@ export const DeploymentStep = ({
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#0D6EFD]/10 text-[#0D6EFD] rounded-full text-[10px] font-bold uppercase tracking-widest">
-              <Loader2 size={12} className="animate-spin" /> Provisioning in Progress
+              {isDeploying ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+              {isDeploying ? 'Provisioning in Progress' : 'Provisioning Complete'}
             </div>
             <h3 className="text-2xl font-bold">Synchronizing Workspace</h3>
             <p className="text-sm text-[#6C757D]">Linking KubeSDK components to {config.wizard.runtime.type} live runtime...</p>
@@ -252,175 +241,23 @@ export const DeploymentStep = ({
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {subStep === 'ready' && (
-        <div className="space-y-8 animate-in zoom-in-95 duration-500">
-          {error ? (
-            <div className="p-8 bg-red-50 border border-red-100 rounded-3xl space-y-4 shadow-sm animate-in shake duration-500">
+          
+          {!isDeploying && globalDeploymentItems.length > 0 && (
+            <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 shadow-inner">
-                  <AlertCircle size={32} />
+                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                  <ShieldCheck size={24} />
                 </div>
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-bold text-red-900">Deployment Critical Failure</h3>
-                  <p className="text-red-700 font-medium">The SDK encountered an obstacle while syncing with the cluster.</p>
+                <div>
+                  <h4 className="font-bold text-emerald-900">Deployment Logic Finished</h4>
+                  <p className="text-xs text-emerald-700">All resources have been applied to the cluster. Click continue to verify runtime health.</p>
                 </div>
-              </div>
-              <div className="bg-white/50 rounded-2xl p-6 border border-red-200 font-mono text-xs text-red-800 leading-relaxed max-h-[150px] overflow-y-auto">
-                <div className="font-bold mb-2 uppercase opacity-50 tracking-widest text-[10px]">Technical Trace</div>
-                {error}
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-red-600 font-bold px-1">
-                <Zap size={14} /> Recommended Action: Verify if the target namespaces exist and if your token has 'cluster-admin' permissions.
-              </div>
-              <div className="pt-4 flex gap-4">
-                 <button onClick={() => setSubStep('review')} className="px-6 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-all">
-                   Modify Plan and Retry
-                 </button>
-              </div>
-            </div>
-          ) : (
-            <div className="p-8 bg-emerald-50 border border-emerald-100 rounded-3xl text-center space-y-4 shadow-sm">
-              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
-                <CheckCircle2 size={40} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-3xl font-bold text-emerald-900">SDK Runtime establishes Live!</h3>
-                <p className="text-emerald-700 font-medium">Sanity checks passed. Your cluster is healthy and operational.</p>
               </div>
             </div>
           )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white rounded-3xl border border-[#E9ECEF] shadow-sm overflow-hidden border-t-4 border-t-[#0D6EFD]">
-              <div className="px-8 py-6 border-b border-[#F1F3F5] bg-[#F8F9FA]/50 flex items-center justify-between">
-                <h4 className="font-bold flex items-center gap-4 text-gray-800">
-                  <div className="p-2 bg-[#0D6EFD]/10 rounded-lg text-[#0D6EFD]"><Layers size={20} /></div>
-                  Namespace Health Dashboard
-                </h4>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Real-time Verified</span>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#F8F9FA] text-[#6C757D] text-[10px] uppercase font-bold tracking-[0.2em]">
-                    <tr>
-                      <th className="px-8 py-4">Resource Layer</th>
-                      <th className="px-8 py-4">Verification</th>
-                      <th className="px-8 py-4">Endpoint</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F1F3F5]">
-                    {namespaces.map((ns) => (
-                      <React.Fragment key={ns}>
-                        <tr className="bg-gray-50/50">
-                          <td className="px-8 py-3 font-bold text-[#0D6EFD] flex items-center gap-2">
-                             <ShieldCheck size={14} /> NS: {ns}
-                          </td>
-                          <td className="px-8 py-3">
-                             <span className="flex items-center gap-1.5 text-emerald-600 font-bold text-[11px]">
-                               <CheckCircle2 size={12} /> {healthStatus[ns!] || 'Healthy'}
-                             </span>
-                          </td>
-                          <td className="px-8 py-3"></td>
-                        </tr>
-                        {workloads.filter(w => w.namespace === ns).map(svc => (
-                          <tr key={svc.id} className="hover:bg-gray-50/30">
-                            <td className="pl-12 px-8 py-4">
-                              <div className="font-bold text-gray-900">{svc.id}</div>
-                              <div className="text-[10px] text-gray-500 font-mono">service/cluster-ip</div>
-                            </td>
-                            <td className="px-8 py-4">
-                              <div className={cn(
-                                "flex items-center gap-1.5 font-bold text-[11px]",
-                                healthStatus[svc.id] === 'healthy' ? "text-emerald-600" : "text-amber-600"
-                              )}>
-                                {healthStatus[svc.id] === 'healthy' ? <CheckCircle2 size={12} /> : <Zap size={12} />}
-                                {healthStatus[svc.id] === 'healthy' ? 'Verified Healthy' : 'Warning'}
-                              </div>
-                            </td>
-                            <td className="px-8 py-4">
-                              <a 
-                                href={`http://localhost:8080`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-[#0D6EFD] hover:underline font-bold text-[11px] flex items-center gap-1"
-                              >
-                                Access <ExternalLink size={10} />
-                              </a>
-                            </td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="p-8 bg-white rounded-3xl border border-[#E9ECEF] shadow-sm flex flex-col justify-between h-full">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-[#0D6EFD]/10 rounded-2xl flex items-center justify-center text-[#0D6EFD] shadow-inner">
-                      <Zap size={28} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xl text-gray-900 tracking-tight">Post-Deploy Toolkit</h4>
-                      <p className="text-sm text-gray-500">Tools to manage your live environment.</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Exposed Gateways</h5>
-                    <div className="space-y-2">
-                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group">
-                          <div className="flex items-center gap-3">
-                             <Globe size={18} className="text-gray-400 group-hover:text-[#0D6EFD]" />
-                             <div>
-                                <div className="text-sm font-bold text-gray-800">API Gateway</div>
-                                <div className="text-[10px] text-gray-500 font-mono">http://localhost:8080</div>
-                             </div>
-                          </div>
-                          <ExternalLink size={14} className="text-gray-300 group-hover:text-[#0D6EFD]" />
-                       </div>
-                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group">
-                          <div className="flex items-center gap-3">
-                             <Activity size={18} className="text-gray-400 group-hover:text-[#0D6EFD]" />
-                             <div>
-                                <div className="text-sm font-bold text-gray-800">Dashboard UI</div>
-                                <div className="text-[10px] text-gray-500 font-mono">http://localhost:3000</div>
-                             </div>
-                          </div>
-                          <ExternalLink size={14} className="text-gray-300 group-hover:text-[#0D6EFD]" />
-                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-8">
-                  <button 
-                    onClick={() => window.location.reload()}
-                    className="w-full py-4 bg-[#0D6EFD] text-white rounded-2xl text-sm font-bold hover:bg-[#0B5ED7] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#0D6EFD]/20 active:scale-[0.98]"
-                  >
-                    <CheckCircle2 size={18} /> Finish and Exit Wizard
-                  </button>
-                  <button 
-                    onClick={() => setSubStep('review')}
-                    className="w-full py-4 bg-white text-[#0D6EFD] border-2 border-[#0D6EFD] rounded-2xl text-sm font-bold hover:bg-[#E7F1FF] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                  >
-                    <Zap size={18} /> Rerun Sanity Health Checks
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
+

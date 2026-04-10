@@ -51,14 +51,18 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
 
   // --- Derived: Totals calculation ---
   const totals = React.useMemo(() => {
-    const apps = config.components.filter(c => c.category === 'application');
+    const ignoredNS = config.wizard.ignoredNamespaces || [];
+    const apps = config.components.filter(c => 
+      c.category === 'application' && 
+      (!c.namespace || !ignoredNS.includes(c.namespace))
+    );
     return apps.reduce((acc, comp) => {
       const replicas = comp.resources?.sdk?.replicas || 1;
       const cpu = parseCpu(comp.resources?.sdk?.cpu) * replicas;
       const mem = parseMemory(comp.resources?.sdk?.memory) * replicas;
       return { cpu: acc.cpu + cpu, mem: acc.mem + mem };
     }, { cpu: 0, mem: 0 });
-  }, [config.components]);
+  }, [config.components, config.wizard.ignoredNamespaces]);
 
   const updateResource = (id: string, field: 'cpu' | 'memory' | 'replicas', value: any) => {
     const newComponents = config.components.map(comp => {
@@ -101,16 +105,68 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
     URL.revokeObjectURL(url);
   };
 // ... guidelines and other logic remains same ...
-  const runtimeGuidelines: Record<string, { title: string, steps: string[] }> = {
+  const rancherScript = `# Create ServiceAccount
+kubectl apply -f - << 'EOF'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-admin-user
+  namespace: kube-system
+EOF
+
+# Create ClusterRoleBinding for full admin rights
+kubectl apply -f - << 'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-user-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: cluster-admin-user
+    namespace: kube-system
+EOF
+
+# Create token for the ServiceAccount
+kubectl apply -f - << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-admin-user-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: cluster-admin-user
+type: kubernetes.io/service-account-token
+EOF
+
+# Wait a moment for token to be generated
+sleep 2
+
+echo "==== CLUSTER ADMIN TOKEN ===="
+kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' | base64 --decode
+echo ""
+echo "============================="
+
+echo "==== API SERVER URL ===="
+kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+echo ""
+echo "========================"
+`;
+
+  const [copying, setCopying] = React.useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(rancherScript);
+    setCopying(true);
+    setTimeout(() => setCopying(false), 2000);
+  };
+
+  const runtimeGuidelines: Record<string, { title: string, steps?: string[], script?: string }> = {
     'rancher-desktop': {
       title: 'Rancher Desktop Setup',
-      steps: [
-        '🔐 **Dedicated API User:** `kubectl create serviceaccount api-user -n default`',
-        '🔑 **Bind Cluster Role:** `kubectl create clusterrolebinding api-user-binding --clusterrole=cluster-admin --serviceaccount=default:api-user`',
-        '🎫 **Generate Auth Token:** `kubectl create token api-user -n default`',
-        '⏳ **Long-Lived Token:** `kubectl create token api-user -n default --duration=24h`',
-        '🌐 **Test Connection:** `curl -k https://127.0.0.1:6443/api -H "Authorization: Bearer <TOKEN>"`'
-      ]
+      script: rancherScript
     },
     'k3d': {
       title: 'K3d Cluster Setup',
@@ -158,7 +214,10 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F3F5]">
-                  {config.components.filter(c => c.category === 'application').map((comp) => (
+                  {config.components.filter(c => {
+                    const ignoredNS = config.wizard.ignoredNamespaces || [];
+                    return c.category === 'application' && (!c.namespace || !ignoredNS.includes(c.namespace));
+                  }).map((comp) => (
                     <tr key={comp.id} className="hover:bg-[#F8F9FA]/50 transition-all group">
                       <td className="px-6 py-3 font-medium text-[#212529] max-w-[150px] truncate">{comp.id}</td>
                       <td className="px-4 py-2">
@@ -211,7 +270,10 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
                         {totals.mem >= 1024 ? `${(totals.mem / 1024).toFixed(1)} GiB` : `${Math.round(totals.mem)} MiB`}
                       </td>
                       <td className="px-4 py-4 text-[#0D6EFD] font-mono text-xs">
-                        {config.components.filter(c => c.category === 'application').reduce((acc, c) => acc + (c.resources?.sdk?.replicas || 1), 0)}
+                        {config.components.filter(c => {
+                          const ignoredNS = config.wizard.ignoredNamespaces || [];
+                          return c.category === 'application' && (!c.namespace || !ignoredNS.includes(c.namespace));
+                        }).reduce((acc, c) => acc + (c.resources?.sdk?.replicas || 1), 0)}
                       </td>
                       <td></td>
                     </tr>
@@ -428,16 +490,37 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
             
             {isHelpExpanded && (
               <div className="px-6 pb-6 pt-2 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                <ul className="space-y-3">
-                  {guidelines.steps.map((step, idx) => (
-                    <li key={idx} className="flex gap-3 text-xs text-[#495057] leading-relaxed">
-                      <div className="w-5 h-5 rounded-full bg-[#0D6EFD]/10 flex items-center justify-center shrink-0 font-bold text-[#0D6EFD] text-[10px]">
-                        {idx + 1}
-                      </div>
-                      <span className="break-all" dangerouslySetInnerHTML={{ __html: step.replace(/`([^`]+)`/g, '<code class="bg-[#F8F9FA] px-1 rounded border border-[#DEE2E6] font-mono">$1</code>') }} />
-                    </li>
-                  ))}
-                </ul>
+                {guidelines.script ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-[10px] uppercase font-bold text-gray-400 tracking-wider px-1">
+                      <span>Setup Bash Script</span>
+                      <button 
+                        onClick={handleCopy}
+                        className={cn(
+                          "transition-all flex items-center gap-1 hover:text-[#0D6EFD]",
+                          copying ? "text-emerald-500" : ""
+                        )}
+                      >
+                        {copying ? <CheckCircle2 size={12} /> : <Terminal size={12} />}
+                        {copying ? 'Copied!' : 'Copy Script'}
+                      </button>
+                    </div>
+                    <pre className="p-4 bg-gray-50 border border-gray-100 rounded-xl font-mono text-[10px] text-gray-700 leading-relaxed overflow-x-auto">
+                      {guidelines.script}
+                    </pre>
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {guidelines.steps?.map((step, idx) => (
+                      <li key={idx} className="flex gap-3 text-xs text-[#495057] leading-relaxed">
+                        <div className="w-5 h-5 rounded-full bg-[#0D6EFD]/10 flex items-center justify-center shrink-0 font-bold text-[#0D6EFD] text-[10px]">
+                          {idx + 1}
+                        </div>
+                        <span className="break-all" dangerouslySetInnerHTML={{ __html: step.replace(/`([^`]+)`/g, '<code class="bg-[#F8F9FA] px-1 rounded border border-[#DEE2E6] font-mono">$1</code>') }} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
                   <p className="text-[10px] text-amber-800 leading-relaxed font-medium">
                     ⚠️ Ensure your kubeconfig is pointing to the correct context before running these commands.

@@ -97,28 +97,58 @@ export const ImportStep = ({ config, setConfig, isFetching, onFetchCluster }: Im
           
           <div className="space-y-6">
             <div>
-              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🧭 1. Get Kubernetes API Server URL</h6>
-              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre">
-                {`kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'`}
-              </div>
-            </div>
+              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🚀 Quick Setup (Standard/Rancher)</h6>
+              <p className="text-xs mb-3 text-[#6C757D]">Copy and run this script in your terminal to create a long-lived admin token and get your API URL.</p>
+              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre leading-relaxed border border-black shadow-inner">
+{`# Create ServiceAccount
+kubectl apply -f - << 'EOF'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-admin-user
+  namespace: kube-system
+EOF
 
-            <hr className="border-[#DEE2E6]" />
+# Create ClusterRoleBinding for full admin rights
+kubectl apply -f - << 'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-user-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: cluster-admin-user
+    namespace: kube-system
+EOF
 
-            <div>
-              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🔐 2. Get Auth Token (Service Account)</h6>
-              <p className="text-xs mb-2 mt-4"><strong>Step 1:</strong> Create token (v1.24+)</p>
-              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
-                {`kubectl create token <service-account-name>`}
-              </div>
-            </div>
-            
-            <hr className="border-[#DEE2E6]" />
+# Create token for the ServiceAccount
+kubectl apply -f - << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-admin-user-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: cluster-admin-user
+type: kubernetes.io/service-account-token
+EOF
 
-            <div>
-              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🪪 3. Get CA Certificate</h6>
-              <div className="bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre mb-2">
-                {`kubectl config view --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 --decode`}
+# Wait a moment for token to be generated
+sleep 2
+
+echo "==== CLUSTER ADMIN TOKEN ===="
+kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' | base64 --decode
+echo ""
+echo "============================="
+
+echo "==== API SERVER URL ===="
+kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+echo ""
+echo "========================"`}
               </div>
             </div>
           </div>
