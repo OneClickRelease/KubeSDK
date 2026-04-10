@@ -17,10 +17,9 @@ import { ImportStep } from './components/wizard/steps/ImportStep';
 import { UploadStep } from './components/wizard/steps/UploadStep';
 import { ModelStep } from './components/wizard/steps/ModelStep';
 import { MappingStep } from './components/wizard/steps/MappingStep';
-import { LaptopStep } from './components/wizard/steps/LaptopStep';
-import { FeasibilityStep } from './components/wizard/steps/FeasibilityStep';
-import { ValidationStep } from './components/wizard/steps/ValidationStep';
+import { ReviewStep } from './components/wizard/steps/ReviewStep';
 import { DeploymentStep } from './components/wizard/steps/DeploymentStep';
+import { VerificationStep } from './components/wizard/steps/VerificationStep';
 
 export default function App() {
   const {
@@ -44,6 +43,13 @@ export default function App() {
     nextStep: baseNextStep,
     prevStep
   } = useWizard();
+
+  const [isTestingConnection, setIsTestingConnection] = React.useState(false);
+  const [connectionStatus, setConnectionStatus] = React.useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
+  const [clusterCapacity, setClusterCapacity] = React.useState<{ cpu: number, memory: number } | null>(null);
+  const [healthStatus, setHealthStatus] = React.useState<Record<string, any>>({});
+  const [wizardError, setWizardError] = React.useState<string | null>(null);
+  const [deploymentItems, setDeploymentItems] = React.useState<any[]>([]);
 
   // 1. Global Validation Effect
   React.useEffect(() => {
@@ -72,6 +78,18 @@ export default function App() {
     }, 500);
     return () => clearTimeout(timer);
   }, [config.components]);
+
+  // 1b. Real-time Status Polling (30s) - Active on Step 8
+  React.useEffect(() => {
+    if (currentStep !== 8) return;
+    
+    console.log("Starting 30s health-check polling...");
+    const interval = setInterval(() => {
+      handleHealthCheck();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [currentStep, config.wizard.connectivity]);
 
   // 2. Individual Component Resource Validation
   React.useEffect(() => {
@@ -207,19 +225,113 @@ export default function App() {
       setIsFitting(false);
     }
   };
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('testing');
+    setClusterCapacity(null);
+    setWizardError(null);
+    try {
+      const response = await fetch('/api/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+          token: config.wizard.connectivity?.token
+        }),
+      });
+      
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Invalid server response (Non-JSON): ${text.slice(0, 100)}...`);
+      }
 
-  const handleDeploy = async () => {
-    setIsDeploying(true);
-    setDeploymentStatus(['Initializing k3d cluster...', 'Creating namespaces...', 'Applying base policies...']);
-    const steps = ['Deploying infra components...', 'Deploying app workloads...', 'Verifying readiness...', 'Cluster ready!'];
-    for (const step of steps) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setDeploymentStatus(prev => [...prev, step]);
+      if (!response.ok) throw new Error(data.error || 'Failed to connect');
+      
+      setConnectionStatus('success');
+      setClusterCapacity(data.capacity); 
+    } catch (e: any) {
+      console.error("Connection failed:", e.message);
+      setConnectionStatus('failed');
+      setWizardError(e.message);
+    } finally {
+      setIsTestingConnection(false);
     }
-    setIsDeploying(false);
-    setIsReady(true);
   };
 
+  const handleDeploy = async (itemsToDeploy: any[]) => {
+    setIsDeploying(true);
+    setWizardError(null);
+    setDeploymentItems(itemsToDeploy.map(item => ({ ...item, status: 'pending' })));
+    
+    const updatedItems = itemsToDeploy.map(item => ({ ...item, status: 'pending' }));
+
+    for (let i = 0; i < updatedItems.length; i++) {
+      const item = updatedItems[i];
+      
+      // Update status to 'applying'
+      updatedItems[i].status = 'applying';
+      setDeploymentItems([...updatedItems]);
+      setDeploymentStatus(prev => [...prev, `Applying ${item.kind}/${item.name}...`]);
+
+      try {
+        const response = await fetch('/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+            token: config.wizard.connectivity?.token,
+            yamlContent: item.content
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Deployment failed');
+
+        updatedItems[i].status = 'success';
+        setDeploymentItems([...updatedItems]);
+        setDeploymentStatus(prev => [...prev, `Successfully applied ${item.kind}/${item.name}`]);
+      } catch (e: any) {
+        updatedItems[i].status = 'failed';
+        updatedItems[i].error = e.message;
+        setDeploymentItems([...updatedItems]);
+        setWizardError(`Failed to apply ${item.kind}/${item.name}: ${e.message}`);
+        setDeploymentStatus(prev => [...prev, `Error applying ${item.kind}/${item.name}: ${e.message}`]);
+        setIsDeploying(false);
+        return; // Halt deployment on error
+      }
+    }
+
+    setDeploymentStatus(prev => [...prev, 'All resources applied. Verifying health...']);
+    await handleHealthCheck();
+    setIsReady(true);
+    setIsDeploying(false);
+  };
+
+  const handleHealthCheck = async () => {
+    try {
+      const namespaces = Array.from(new Set(config.components.map(c => c.namespace).filter(Boolean)));
+      const response = await fetch('/api/health-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+          token: config.wizard.connectivity?.token,
+          namespaces
+        }),
+      });
+
+      const results = await response.json();
+      if (response.ok) {
+        setHealthStatus(results);
+      }
+    } catch (e) {
+      console.error("Health check failed", e);
+    }
+  };
   const handleResetSession = () => {
     if (confirm('Reset all session data and start fresh?')) {
       localStorage.removeItem(STORAGE_KEY);
@@ -241,7 +353,7 @@ export default function App() {
       <main className="flex-1 overflow-y-auto">
         <div className={cn(
           "mx-auto p-8 lg:p-12 transition-all duration-300 w-full", 
-          activeMenu === 'define' && ['model', 'mapping', 'feasibility', 'laptop'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl"
+          activeMenu === 'define' && ['model', 'mapping', 'review', 'deployment', 'verification'].includes(visibleSteps[currentStep]?.id) ? "max-w-[1800px]" : "max-w-5xl"
         )}>
           <AnimatePresence mode="wait">
             {activeMenu === 'home' && <HomeView onStart={() => setActiveMenu('define')} />}
@@ -315,21 +427,37 @@ export default function App() {
                       generateYamlFromConfig={generateYamlFromConfig} 
                     />
                   )}
-                  {visibleSteps[currentStep].id === 'laptop' && (
-                    <LaptopStep config={config} setConfig={setConfig} />
-                  )}
-                  {visibleSteps[currentStep].id === 'feasibility' && (
-                    <FeasibilityStep config={config} isValidating={isValidating} />
-                  )}
-                  {visibleSteps[currentStep].id === 'validation' && <ValidationStep />}
-                  {visibleSteps[currentStep].id === 'deployment' && (
+                  {visibleSteps[currentStep].id === 'review' && (
+                  <ReviewStep 
+                    config={config} 
+                    setConfig={setConfig} 
+                    onTestConnection={handleTestConnection}
+                    isTesting={isTestingConnection}
+                    connectionStatus={connectionStatus}
+                    modelYamlContent={modelYamlContent}
+                    clusterCapacity={clusterCapacity}
+                    error={wizardError}
+                    clearError={() => setWizardError(null)}
+                  />
+                )}
+                
+                {visibleSteps[currentStep].id === 'deployment' && (
                     <DeploymentStep 
-                      isReady={isReady}
                       isDeploying={isDeploying}
                       deploymentStatus={deploymentStatus}
                       modelYamlContent={modelYamlContent}
                       onDeploy={handleDeploy}
-                      onDirectDeploy={() => alert('SDK link successful')}
+                      config={config}
+                      deploymentItems={deploymentItems}
+                    />
+                  )}
+                  {visibleSteps[currentStep].id === 'verification' && (
+                    <VerificationStep 
+                      config={config}
+                      healthStatus={healthStatus}
+                      onRerunHealthCheck={handleHealthCheck}
+                      onResetSession={handleResetSession}
+                      error={wizardError}
                     />
                   )}
                 </div>

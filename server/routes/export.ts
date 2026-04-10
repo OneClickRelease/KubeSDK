@@ -88,7 +88,17 @@ router.post("/upload-export", upload.single("export"), (req, res) => {
                       properties.image = container.image;
                       properties.imagePullPolicy = container.imagePullPolicy || 'Always';
                       properties.env = container.env || [];
-                      properties.volumeMounts = container.volumeMounts || [];
+                      
+                      // Filter out ephemeral mounts
+                      properties.volumeMounts = (container.volumeMounts || []).filter((m: any) => 
+                        !/^kube-api-access-/.test(m.name) && !/^default-token-/.test(m.name)
+                      );
+                      
+                      // Capture and filter volumes
+                      properties.volumes = (spec.volumes || []).filter((v: any) => 
+                        !/^kube-api-access-/.test(v.name) && !/^default-token-/.test(v.name)
+                      );
+
                       properties.ports = container.ports || [];
                       
                       const reqs = container.resources?.requests;
@@ -140,7 +150,7 @@ router.post("/upload-export", upload.single("export"), (req, res) => {
                       },
                       sdk: {
                         cpu: '100m',
-                        memory: '512Mi',
+                        memory: '128Mi',
                         replicas: 1
                       }
                     }

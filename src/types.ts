@@ -1,5 +1,5 @@
 export type LocalRunSource = 'live' | 'manual';
-export type LocalRuntimeType = 'k3d' | 'rancher-desktop';
+export type LocalRuntimeType = 'k3d' | 'rancher-desktop' | 'kind';
 
 export interface KubeSDKLocalRun {
   apiVersion: 'kubesdk.dev/v1alpha1';

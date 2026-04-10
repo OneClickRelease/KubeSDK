@@ -7,10 +7,9 @@ export const WIZARD_STEPS = [
   { id: 'upload', title: 'Offline Cluster Upload' },
   { id: 'model', title: 'Cluster Model & Components' },
   { id: 'mapping', title: 'Dependency Mapping' },
-  { id: 'laptop', title: 'Laptop Resource Profile' },
-  { id: 'feasibility', title: 'Feasibility & Suggestions' },
-  { id: 'validation', title: 'Final Validation' },
-  { id: 'deployment', title: 'Simulated Cluster Deployment' },
+  { id: 'review', title: 'Review & Runtime Connect' },
+  { id: 'deployment', title: 'Sequential Cluster Run' },
+  { id: 'verification', title: 'Runtime Live Verification' },
 ];
 
 export const INITIAL_CONFIG: KubeSDKLocalRun = {
@@ -28,13 +27,13 @@ export const INITIAL_CONFIG: KubeSDKLocalRun = {
       type: 'rancher-desktop',
       versionConstraint: '>=5.6',
     },
-    ignoredNamespaces: ['default', 'kube-system'],
+    ignoredNamespaces: ['kube-system', 'kube-public', 'kube-node-lease', 'local-path-storage'],
     kindWhitelist: ['pod', 'service', 'ingress', 'configmap', 'secret', 'namespace'],
     steps: {
       completed: [],
     },
     connectivity: {
-      apiServerUrl: '',
+      apiServerUrl: 'https://127.0.0.1:6443',
       token: '',
       caCert: '',
     }
