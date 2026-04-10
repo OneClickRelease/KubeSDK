@@ -46,24 +46,7 @@ export const SourceStep = ({ source, onSourceChange, onSnapshotImport }: SourceS
   return (
     <div className="space-y-6">
       <p className="text-[#495057]">Decide how the local simulation is defined.</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <button 
-          onClick={() => onSourceChange('live')}
-          disabled={isProcessing}
-          className={cn(
-            "p-6 rounded-3xl border-2 text-left transition-all",
-            source === 'live' ? "border-[#0D6EFD] bg-[#E7F1FF]/30" : "border-[#E9ECEF] hover:border-[#DEE2E6]"
-          )}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", source === 'live' ? "bg-[#0D6EFD] text-white" : "bg-[#F8F9FA] text-[#6C757D]")}>
-              <Cloud size={20} />
-            </div>
-            <h4 className="font-bold">Live Cluster Import</h4>
-          </div>
-          <p className="text-sm text-[#6C757D]">Connect to an existing Kubernetes cluster and snapshot its current state (namespaces, apps, etc.)</p>
-        </button>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <button 
           onClick={() => onSourceChange('manual')}
           disabled={isProcessing}

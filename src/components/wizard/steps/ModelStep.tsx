@@ -44,8 +44,26 @@ export const ModelStep = ({
   namespaces,
   validationStatus
 }: ModelStepProps) => {
+  const [showDiscovery, setShowDiscovery] = React.useState(false);
+  const [importStatus, setImportStatus] = React.useState<Record<string, 'pending' | 'imported'>>({});
 
   const selectedComponent = config.components[selectedComponentIndex];
+
+  // Logic to import a component from the discovery snapshot
+  const handleImportComponent = (comp: any) => {
+    // Check if ID already exists in current components to avoid duplicates
+    if (config.components.some(c => c.id === comp.id && c.namespace === comp.namespace)) {
+      alert(`Component '${comp.id}' already exists in simulation.`);
+      return;
+    }
+
+    setConfig(prev => ({
+      ...prev,
+      components: [...prev.components, { ...comp }]
+    }));
+    
+    setImportStatus(prev => ({ ...prev, [`${comp.namespace}/${comp.id}`]: 'imported' }));
+  };
 
   return (
     <div className="space-y-6">
@@ -153,6 +171,59 @@ export const ModelStep = ({
               </div>
             )})}
           </div>
+
+          {/* 📬 Discovery Inbox Section */}
+          {config.clusterSnapshot && (
+            <div className="border-t border-[#E9ECEF] flex flex-col min-h-0">
+              <div 
+                className={cn(
+                  "px-4 py-3 cursor-pointer flex items-center justify-between transition-colors shrink-0",
+                  showDiscovery ? "bg-amber-50 text-amber-900 border-b border-amber-100" : "bg-[#F8F9FA] text-[#6C757D] hover:bg-[#F1F3F5]"
+                )}
+                onClick={() => setShowDiscovery(!showDiscovery)}
+              >
+                <div className="flex items-center gap-2">
+                  <RefreshCw size={14} className={cn(showDiscovery ? "text-amber-600 animate-spin-slow" : "text-[#ADB5BD]")} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Discovery Inbox</span>
+                </div>
+                {config.clusterSnapshot.components.length > 0 && !showDiscovery && (
+                  <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                    {config.clusterSnapshot.components.filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace)).length}
+                  </span>
+                )}
+              </div>
+              
+              {showDiscovery && (
+                <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-amber-50/20">
+                  {config.clusterSnapshot.components
+                    .filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace))
+                    .map(comp => (
+                      <div key={`${comp.namespace}/${comp.id}`} className="p-3 bg-white rounded-xl border border-amber-100 shadow-sm flex flex-col gap-2 group hover:border-amber-300 transition-all">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-md uppercase">{comp.category}</span>
+                          <span className="text-[9px] text-[#ADB5BD] font-mono">{comp.namespace}</span>
+                        </div>
+                        <p className="text-xs font-bold text-[#212529] truncate">{comp.id}</p>
+                        <button 
+                          onClick={() => handleImportComponent(comp)}
+                          className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded-lg transition-all opacity-90 hover:opacity-100 uppercase tracking-tight"
+                        >
+                          Import to Simulation
+                        </button>
+                      </div>
+                    ))}
+                  {config.clusterSnapshot.components.filter(c => !config.components.some(active => active.id === c.id && active.namespace === c.namespace)).length === 0 && (
+                    <div className="py-8 text-center px-4">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-600">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <p className="text-[10px] text-emerald-800 font-medium italic">All discovered resources have been imported.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Cluster Model Layers */}
