@@ -1,4 +1,4 @@
-export type LocalRunSource = 'live' | 'manual';
+export type LocalRunSource = 'live' | 'manual' | 'snapshot_yaml';
 export type LocalRuntimeType = 'k3d' | 'rancher-desktop' | 'kind';
 
 export interface KubeSDKLocalRun {

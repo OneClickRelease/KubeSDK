@@ -1,0 +1,770 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: localrundefinitions.kubesdk.dev
+spec:
+  group: kubesdk.dev
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+  scope: Namespaced
+  names:
+    plural: localrundefinitions
+    singular: localrundefinition
+    kind: LocalRunDefinition
+    shortNames:
+      - lrd
+
+---
+apiVersion: kubesdk.dev/v1alpha1
+kind: LocalRunDefinition
+metadata:
+  name: kubesdk-simulation
+  createdBy: sdk-user
+  createdAt: '2026-04-10T14:01:22.996Z'
+  toolVersion: 1.0.0
+  annotations:
+    kubesdk.dev/sync-at: '2026-04-10T14:08:46.980Z'
+spec:
+  dependencyGraph:
+    edges:
+      - from: app1
+        to: nginx1
+      - from: app1
+        to: postgres
+      - from: app1
+        to: minio
+      - from: app1
+        to: mongo
+      - from: app2
+        to: postgres
+      - from: app2
+        to: mongo
+      - from: app2
+        to: kubernetes
+      - from: app2
+        to: kafka
+      - from: nginx1
+        to: service2
+      - from: nginx1
+        to: service1
+      - from: nginx1
+        to: postgres
+      - from: nginx1
+        to: mongo
+      - from: service1
+        to: mongo
+      - from: service1
+        to: minio
+      - from: service2
+        to: mongo
+      - from: service2
+        to: minio
+      - from: service2
+        to: kafka
+  wizard:
+    source: manual
+    runtime:
+      type: rancher-desktop
+      versionConstraint: '>=5.6'
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant1
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: services
+  namespace: tenant1
+  labels:
+    infra.example.com/configset: 'true'
+    infra.example.com/source-ns: services
+data:
+  SERVICE2_ENDPOINT: service2.services.svc.cluster.local
+  SERVICE1_ENDPOINT: service1.services.svc.cluster.local
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform
+  namespace: tenant1
+  labels:
+    infra.example.com/configset: 'true'
+    infra.example.com/source-ns: platform
+data:
+  POSTGRES_ENDPOINT: postgres.platform.svc.cluster.local
+  MONGO_ENDPOINT: mongo.platform.svc.cluster.local
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: services
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform
+  namespace: services
+  labels:
+    infra.example.com/configset: 'true'
+    infra.example.com/source-ns: platform
+data:
+  MONGO_ENDPOINT: mongo.platform.svc.cluster.local
+  MINIO_ENDPOINT: minio.platform.svc.cluster.local
+  KAFKA_ENDPOINT: kafka.platform.svc.cluster.local
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant2
+  labels:
+    infra.example.com/profile: sdk
+  annotations:
+    infra.example.com/profile: sdk
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant1
+  namespace: tenant2
+  labels:
+    infra.example.com/configset: 'true'
+    infra.example.com/source-ns: tenant1
+data:
+  NGINX1_ENDPOINT: nginx1.tenant1.svc.cluster.local
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform
+  namespace: tenant2
+  labels:
+    infra.example.com/configset: 'true'
+    infra.example.com/source-ns: platform
+data:
+  POSTGRES_ENDPOINT: postgres.platform.svc.cluster.local
+  MINIO_ENDPOINT: minio.platform.svc.cluster.local
+  MONGO_ENDPOINT: mongo.platform.svc.cluster.local
+  KAFKA_ENDPOINT: kafka.platform.svc.cluster.local
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: default
+  namespace: tenant2
+  labels:
+    infra.example.com/configset: 'true'
+    infra.example.com/source-ns: default
+data:
+  KUBERNETES_HOST: kubernetes.default.svc.cluster.local
+  KUBERNETES_PORT: '443'
+  KUBERNETES_URL: http://kubernetes.default.svc.cluster.local:443
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka
+  namespace: platform
+  labels:
+    app: kafka
+    infra.example.com/profile: sdk
+    pod-template-hash: 7d8c5c4648
+  annotations:
+    infra.example.com/id: kafka
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: kafka
+      image: ghcr.io/bitnami/kafka:3.7.0
+      imagePullPolicy: Always
+      env:
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: 'yes'
+        - name: KAFKA_CFG_LISTENERS
+          value: PLAINTEXT://:9092
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: PLAINTEXT://kafka.platform.svc.cluster.local:9092
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 9092
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: minio
+  namespace: platform
+  labels:
+    app: minio
+    infra.example.com/profile: sdk
+    pod-template-hash: 5d9bbd7b59
+  annotations:
+    infra.example.com/id: minio
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: minio
+      image: minio/minio
+      imagePullPolicy: Always
+      env:
+        - name: MINIO_ROOT_USER
+          value: admin
+        - name: MINIO_ROOT_PASSWORD
+          value: password123
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 9000
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mongo
+  namespace: platform
+  labels:
+    app: mongo
+    infra.example.com/profile: sdk
+    pod-template-hash: 7c94fcd666
+  annotations:
+    infra.example.com/id: mongo
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: mongo
+      image: mongo:6
+      imagePullPolicy: IfNotPresent
+      env: []
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 27017
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres
+  namespace: platform
+  labels:
+    app: postgres
+    infra.example.com/profile: sdk
+    pod-template-hash: 644977c467
+  annotations:
+    infra.example.com/id: postgres
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: postgres
+      image: postgres:15
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: POSTGRES_PASSWORD
+          value: test
+      envFrom: []
+      volumeMounts: []
+      ports:
+        - containerPort: 5432
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: platform
+  labels:
+    app: kafka
+  annotations:
+    infra.example.com/id: kafka
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9092
+      targetPort: 9092
+  selector:
+    app: kafka
+  clusterIP: 10.43.18.190
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: platform
+  labels:
+    app: minio
+  annotations:
+    infra.example.com/id: minio
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+  selector:
+    app: minio
+  clusterIP: 10.43.43.142
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: platform
+  labels:
+    app: mongo
+  annotations:
+    infra.example.com/id: mongo
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: mongo
+  clusterIP: 10.43.81.34
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: platform
+  labels:
+    app: postgres
+  annotations:
+    infra.example.com/id: postgres
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+  clusterIP: 10.43.45.167
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes
+  namespace: default
+  labels:
+    app: kubernetes
+  annotations:
+    infra.example.com/id: kubernetes
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+spec:
+  type: ClusterIP
+  ports:
+    - port: 443
+      targetPort: 6443
+  clusterIP: 10.43.0.1
+  selector: {}
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx1
+  namespace: tenant1
+  labels:
+    app: nginx1
+    infra.example.com/profile: sdk
+    pod-template-hash: 6c5b4ff5cc
+  annotations:
+    infra.example.com/id: nginx1
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: service2,service1,postgres,mongo
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: nginx1
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom:
+        - configMapRef:
+            name: services
+        - configMapRef:
+            name: platform
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx1
+  namespace: tenant1
+  labels:
+    app: nginx1
+  annotations:
+    infra.example.com/id: nginx1
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: service2,service1,postgres,mongo
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: nginx1
+  clusterIP: 10.43.75.10
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service1
+  namespace: services
+  labels:
+    app: service1
+    infra.example.com/profile: sdk
+    pod-template-hash: 6f647dc5bc
+  annotations:
+    infra.example.com/id: service1
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: mongo,minio
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: service1
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom:
+        - configMapRef:
+            name: platform
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service2
+  namespace: services
+  labels:
+    app: service2
+    infra.example.com/profile: sdk
+    pod-template-hash: 7c4bfccd96
+  annotations:
+    infra.example.com/id: service2
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: mongo,minio,kafka
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: service2
+      image: fullstorydev/grpcurl
+      imagePullPolicy: Always
+      env: []
+      envFrom:
+        - configMapRef:
+            name: platform
+      volumeMounts: []
+      ports:
+        - containerPort: 50051
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service1
+  namespace: services
+  labels:
+    app: service1
+  annotations:
+    infra.example.com/id: service1
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: mongo,minio
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: service1
+  clusterIP: 10.43.223.12
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service2
+  namespace: services
+  labels:
+    app: service2
+  annotations:
+    infra.example.com/id: service2
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: mongo,minio,kafka
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    app: service2
+  clusterIP: 10.43.226.152
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app1
+  namespace: tenant2
+  labels:
+    app: app1
+    infra.example.com/profile: sdk
+    pod-template-hash: 5c8c5777bc
+  annotations:
+    infra.example.com/id: app1
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: nginx1,postgres,minio,mongo
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: app1
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom:
+        - configMapRef:
+            name: tenant1
+        - configMapRef:
+            name: platform
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app2
+  namespace: tenant2
+  labels:
+    app: app2
+    infra.example.com/profile: sdk
+    pod-template-hash: 69858d97b5
+  annotations:
+    infra.example.com/id: app2
+    infra.example.com/category: application
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: postgres,mongo,kubernetes,kafka
+    infra.example.com/source-kind: Pod
+spec:
+  volumes: []
+  containers:
+    - name: app2
+      image: nginx
+      imagePullPolicy: Always
+      env: []
+      envFrom:
+        - configMapRef:
+            name: platform
+        - configMapRef:
+            name: default
+      volumeMounts: []
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app1
+  namespace: tenant2
+  labels:
+    app: app1
+  annotations:
+    infra.example.com/id: app1
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: nginx1,postgres,minio,mongo
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: app1
+  clusterIP: 10.43.173.59
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app2
+  namespace: tenant2
+  labels:
+    app: app2
+  annotations:
+    infra.example.com/id: app2
+    infra.example.com/category: service
+    infra.example.com/kind: workload
+    infra.example.com/depends-on: postgres,mongo,kubernetes,kafka
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: app2
+  clusterIP: 10.43.199.9

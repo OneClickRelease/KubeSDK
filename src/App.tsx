@@ -9,11 +9,11 @@ import { generateYamlFromConfig } from './lib/yaml-utils';
 import { Sidebar } from './components/layout/Sidebar';
 import { HomeView } from './components/layout/HomeView';
 import { SettingsView } from './components/layout/SettingsView';
+import { HistoryView } from './components/layout/HistoryView';
 
 // Wizard Steps
 import { SourceStep } from './components/wizard/steps/SourceStep';
 import { ModeStep } from './components/wizard/steps/ModeStep';
-import { ImportStep } from './components/wizard/steps/ImportStep';
 import { UploadStep } from './components/wizard/steps/UploadStep';
 import { ModelStep } from './components/wizard/steps/ModelStep';
 import { MappingStep } from './components/wizard/steps/MappingStep';
@@ -40,6 +40,7 @@ export default function App() {
     modelYamlContent, setModelYamlContent,
     namespaces,
     handleSourceChange,
+    handleSnapshotImport,
     nextStep: baseNextStep,
     prevStep
   } = useWizard();
@@ -307,6 +308,7 @@ export default function App() {
 
     setDeploymentStatus(prev => [...prev, 'All resources applied. Verifying health...']);
     await handleHealthCheck();
+    await saveToHistory(); // Archive the successful run
     setIsReady(true);
     setIsDeploying(false);
   };
@@ -330,6 +332,41 @@ export default function App() {
       }
     } catch (e) {
       console.error("Health check failed", e);
+    }
+  };
+
+  const handleHistoryRestore = (yaml: string) => {
+    handleSnapshotImport({ components: [], ...config, ...JSON.parse(JSON.stringify(config)) }); // Placeholder to reset
+    // Actually our handleSnapshotImport takes the config object. 
+    // We need to parse the YAML back to JSON components or just fetch the backend to do it.
+    // For now, let's trigger handleSnapshotImport with the parsed data
+    fetch('/api/parse-snapshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yaml }),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status !== 'error') {
+        handleSnapshotImport(data);
+        setActiveMenu('define');
+        setCurrentStep(visibleSteps.findIndex(s => s.id === 'model'));
+      }
+    });
+  };
+
+  const saveToHistory = async () => {
+    try {
+      await fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          yaml: modelYamlContent,
+          name: 'SDK_Simulation'
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to save history", e);
     }
   };
   const handleResetSession = () => {
@@ -389,17 +426,13 @@ export default function App() {
                 {/* Step Content Card */}
                 <div className="bg-white rounded-2xl border border-[#E9ECEF] p-8 shadow-sm min-h-[400px]">
                   {visibleSteps[currentStep].id === 'source' && (
-                    <SourceStep source={config.wizard.source} onSourceChange={handleSourceChange} />
-                  )}
-                  {visibleSteps[currentStep].id === 'mode' && <ModeStep />}
-                  {visibleSteps[currentStep].id === 'import' && (
-                    <ImportStep 
-                      config={config} 
-                      setConfig={setConfig} 
-                      isFetching={isFetching} 
-                      onFetchCluster={handleFetchCluster} 
+                    <SourceStep 
+                      source={config.wizard.source} 
+                      onSourceChange={handleSourceChange} 
+                      onSnapshotImport={handleSnapshotImport}
                     />
                   )}
+                  {visibleSteps[currentStep].id === 'mode' && <ModeStep />}
                   {visibleSteps[currentStep].id === 'upload' && (
                     <UploadStep isUploading={isUploading} onUpload={handleUpload} />
                   )}
@@ -417,6 +450,10 @@ export default function App() {
                       setSelectedComponentIndex={setSelectedComponentIndex}
                       namespaces={namespaces}
                       validationStatus={validationStatus}
+                      onFetchCluster={handleFetchCluster}
+                      onTestConnection={handleTestConnection}
+                      connectionStatus={connectionStatus}
+                      isFetching={isFetching}
                     />
                   )}
                   {visibleSteps[currentStep].id === 'mapping' && (
@@ -482,19 +519,9 @@ export default function App() {
               </motion.div>
             )}
 
-            {activeMenu === 'settings' && <SettingsView />}
+            {activeMenu === 'settings' && <SettingsView config={config} setConfig={setConfig} />}
             
-            {(activeMenu === 'history' ) && (
-              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                <div className="w-16 h-16 bg-[#F8F9FA] rounded-full flex items-center justify-center border border-[#E9ECEF]">
-                  <Activity size={32} className="text-[#ADB5BD]" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">No History Found</h3>
-                  <p className="text-[#6C757D]">Previous simulation runs will appear here once completed.</p>
-                </div>
-              </div>
-            )}
+            {activeMenu === 'history' && <HistoryView onRestore={handleHistoryRestore} />}
           </AnimatePresence>
         </div>
       </main>

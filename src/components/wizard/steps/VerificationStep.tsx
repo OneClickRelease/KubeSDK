@@ -2,10 +2,11 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, CheckCircle2, ShieldCheck, Terminal, Layers, Globe, Activity, AlertCircle, 
-  ExternalLink, ChevronDown, ChevronUp, FileText, X, Loader2
+  ExternalLink, ChevronDown, ChevronUp, FileText, X, Loader2, Download
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { KubeSDKLocalRun } from '../../../types';
+import { generateYamlFromConfig } from '../../../lib/yaml-utils';
 
 interface VerificationStepProps {
   config: KubeSDKLocalRun;
@@ -27,6 +28,19 @@ export const VerificationStep = ({
   const [isFetchingLogs, setIsFetchingLogs] = React.useState(false);
   const [expandedDetails, setExpandedDetails] = React.useState<Record<string, boolean>>({});
   const [showSystemResources, setShowSystemResources] = React.useState(false);
+
+  const handleDownloadSnapshot = () => {
+    const yaml = generateYamlFromConfig(config);
+    const blob = new Blob([yaml], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kubesdk-snapshot-${config.metadata.name || 'cluster'}.yaml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const ignoredNS = config.wizard.ignoredNamespaces || [];
   const namespaces = Array.from(new Set(config.components.map(c => c.namespace).filter(Boolean)))
@@ -317,6 +331,12 @@ export const VerificationStep = ({
                 className="w-full py-4 bg-[#0D6EFD] text-white rounded-2xl text-sm font-bold hover:bg-[#0B5ED7] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#0D6EFD]/20 active:scale-[0.98]"
               >
                 <CheckCircle2 size={18} /> Finish and Exit Wizard
+              </button>
+              <button 
+                onClick={handleDownloadSnapshot}
+                className="w-full py-4 bg-white border-2 border-[#E9ECEF] text-gray-700 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:border-[#0D6EFD] hover:text-[#0D6EFD] transition-all"
+              >
+                <Download size={18} /> Download Snapshot YAML
               </button>
               <button 
                 onClick={onRerunHealthCheck}
