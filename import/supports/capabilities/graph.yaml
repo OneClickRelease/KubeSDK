@@ -1,0 +1,43 @@
+graph:
+  parent: Database
+  providers:
+
+    - name: Neo4j
+      description: Graph database optimized for relationship-heavy data.
+      image_url: "images/neo4j.png"
+      version: "v1"
+      latest_version: "5.15"
+      license_conditions: "Neo4j Community GPL; Enterprise proprietary."
+      protocols_supported: [Bolt, HTTP]
+      default_ports: [7687, 7474]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Java runtime"]
+      ha_recommendation: "Deploy Neo4j causal cluster with 3+ core nodes."
+      languages:
+        java:
+          frameworks: [Spring Data Neo4j]
+          sample_code: "samples/java/database/graph/neo4j/sample.yaml"
+          config_template: "samples/java/database/graph/neo4j/config.mustache"
+
+    - name: JanusGraph
+      description: Open-source distributed graph database built on Cassandra and HBase.
+      image_url: "images/janusgraph.png"
+      version: "v1"
+      latest_version: "1.0.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [Gremlin, HTTP]
+      default_ports: [8182]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Cassandra or HBase backend", "Elasticsearch for indexing"]
+      ha_recommendation: "Deploy across multiple datacenters with replication."
+      languages:
+        python:
+          frameworks: [Gremlin-Python]
+          sample_code: "samples/python/database/graph/janusgraph/sample.yaml"
+          config_template: "samples/python/database/graph/janusgraph/config.mustache"

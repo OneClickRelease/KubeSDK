@@ -1,0 +1,71 @@
+sql:
+  parent: Database
+  providers:
+
+    - name: MySQL
+      description: Popular open-source relational database for transactional workloads.
+      image_url: "images/mysql.png"
+      version: "v1"
+      latest_version: "8.4.0"
+      license_conditions: "GPL v2 for community edition; proprietary for enterprise."
+      protocols_supported: [TCP, JDBC, ODBC]
+      default_ports: [3306]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Linux host", "MySQL server installed"]
+      ha_recommendation: "Deploy with replication or InnoDB cluster across 3+ nodes."
+      languages:
+        java:
+          frameworks: [Spring Boot, Hibernate]
+          sample_code: "samples/java/database/sql/mysql/sample.yaml"
+          config_template: "samples/java/database/sql/mysql/config.mustache"
+        python:
+          frameworks: [Django ORM, SQLAlchemy]
+          sample_code: "samples/python/database/sql/mysql/sample.yaml"
+          config_template: "samples/python/database/sql/mysql/config.mustache"
+
+    - name: PostgreSQL
+      description: Advanced open-source relational database with strong SQL compliance.
+      image_url: "images/postgresql.png"
+      version: "v1"
+      latest_version: "16.2"
+      license_conditions: "PostgreSQL License (BSD-style)."
+      protocols_supported: [TCP, JDBC, ODBC]
+      default_ports: [5432]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Linux host", "PostgreSQL server installed"]
+      ha_recommendation: "Deploy with streaming replication or Patroni cluster."
+      languages:
+        java:
+          frameworks: [Spring Boot, Micronaut]
+          sample_code: "samples/java/database/sql/postgresql/sample.yaml"
+          config_template: "samples/java/database/sql/postgresql/config.mustache"
+        python:
+          frameworks: [Django ORM, SQLAlchemy]
+          sample_code: "samples/python/database/sql/postgresql/sample.yaml"
+          config_template: "samples/python/database/sql/postgresql/config.mustache"
+
+    - name: Oracle Database
+      description: Enterprise-grade relational database with advanced features.
+      image_url: "images/oracle-db.png"
+      version: "v1"
+      latest_version: "23c"
+      license_conditions: "Proprietary Oracle license."
+      protocols_supported: [TCP, JDBC, OCI]
+      default_ports: [1521]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Oracle client libraries"]
+      ha_recommendation: "Deploy with Oracle RAC for HA."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/database/sql/oracle/sample.yaml"
+          config_template: "samples/java/database/sql/oracle/config.mustache"

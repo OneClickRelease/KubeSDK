@@ -1,0 +1,130 @@
+messaging:
+  parent: Capability
+  providers:
+    - name: Apache Kafka
+      description: Distributed event streaming platform for high-throughput, fault-tolerant messaging.
+      image_url: "images/kafka.png"
+      version: "v1"
+      latest_version: "3.7.0"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [Kafka Protocol, TCP]
+      default_ports: [9092]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "100Gi"
+      dependencies: ["Zookeeper (for older versions)", "Kafka brokers installed"]
+      ha_recommendation: "Deploy 3+ broker nodes, replication factor ≥ 3."
+      languages:
+        java:
+          frameworks: [Spring Kafka, Kafka Streams]
+          sample_code: "samples/java/messaging/kafka/apache/sample.yaml"
+          config_template: "samples/java/messaging/kafka/apache/config.mustache"
+        python:
+          frameworks: [confluent-kafka, Faust]
+          sample_code: "samples/python/messaging/kafka/apache/sample.yaml"
+          config_template: "samples/python/messaging/kafka/apache/config.mustache"
+        nodejs:
+          frameworks: [kafkajs]
+          sample_code: "samples/nodejs/messaging/kafka/apache/sample.yaml"
+          config_template: "samples/nodejs/messaging/kafka/apache/config.mustache"
+
+    - name: Confluent Kafka
+      description: Enterprise distribution of Kafka with additional tooling and managed services.
+      image_url: "images/confluent.png"
+      version: "v1"
+      latest_version: "7.6.0"
+      license_conditions: "Commercial license; free community edition available."
+      protocols_supported: [Kafka Protocol, REST Proxy]
+      default_ports: [9092, 8082]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "200Gi"
+      dependencies: ["Confluent Control Center", "Schema Registry"]
+      ha_recommendation: "Deploy Confluent cluster with 3+ brokers and HA schema registry."
+      languages:
+        java:
+          frameworks: [Confluent Kafka Streams]
+          sample_code: "samples/java/messaging/kafka/confluent/sample.yaml"
+          config_template: "samples/java/messaging/kafka/confluent/config.mustache"
+        python:
+          frameworks: [confluent-kafka-python]
+          sample_code: "samples/python/messaging/kafka/confluent/sample.yaml"
+          config_template: "samples/python/messaging/kafka/confluent/config.mustache"
+
+    - name: RabbitMQ
+      description: Open-source message broker supporting AMQP, MQTT, and STOMP protocols.
+      image_url: "images/rabbitmq.png"
+      version: "v1"
+      latest_version: "3.13.0"
+      license_conditions: "Open-source Mozilla Public License."
+      protocols_supported: [AMQP, MQTT, STOMP]
+      default_ports: [5672, 15672]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Erlang runtime"]
+      ha_recommendation: "Deploy RabbitMQ cluster with mirrored queues across 3+ nodes."
+      languages:
+        java:
+          frameworks: [Spring AMQP]
+          sample_code: "samples/java/messaging/rabbitmq/apache/sample.yaml"
+          config_template: "samples/java/messaging/rabbitmq/apache/config.mustache"
+        python:
+          frameworks: [pika, aio-pika]
+          sample_code: "samples/python/messaging/rabbitmq/apache/sample.yaml"
+          config_template: "samples/python/messaging/rabbitmq/apache/config.mustache"
+        nodejs:
+          frameworks: [amqplib]
+          sample_code: "samples/nodejs/messaging/rabbitmq/apache/sample.yaml"
+          config_template: "samples/nodejs/messaging/rabbitmq/apache/config.mustache"
+
+    - name: NATS
+      description: Lightweight, high-performance messaging system for microservices and IoT.
+      image_url: "images/nats.png"
+      version: "v1"
+      latest_version: "2.10.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [NATS Protocol, TCP]
+      default_ports: [4222]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "10Gi"
+      dependencies: ["NATS server binary"]
+      ha_recommendation: "Deploy NATS cluster with 3+ servers for HA."
+      languages:
+        go:
+          frameworks: [NATS Go Client]
+          sample_code: "samples/go/messaging/nats/sample.yaml"
+          config_template: "samples/go/messaging/nats/config.mustache"
+        python:
+          frameworks: [nats-py]
+          sample_code: "samples/python/messaging/nats/sample.yaml"
+          config_template: "samples/python/messaging/nats/config.mustache"
+
+    - name: Apache Pulsar
+      description: Distributed pub/sub messaging and streaming platform with multi-tenancy.
+      image_url: "images/pulsar.png"
+      version: "v1"
+      latest_version: "3.2.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [Pulsar Protocol, HTTP]
+      default_ports: [6650, 8080]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "100Gi"
+      dependencies: ["BookKeeper cluster", "Zookeeper"]
+      ha_recommendation: "Deploy Pulsar cluster with 3+ brokers and replicated BookKeeper nodes."
+      languages:
+        java:
+          frameworks: [Pulsar Java Client]
+          sample_code: "samples/java/messaging/pulsar/sample.yaml"
+          config_template: "samples/java/messaging/pulsar/config.mustache"
+        python:
+          frameworks: [pulsar-client]
+          sample_code: "samples/python/messaging/pulsar/sample.yaml"
+          config_template: "samples/python/messaging/pulsar/config.mustache"

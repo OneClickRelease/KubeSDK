@@ -1,0 +1,43 @@
+file-storage:
+  parent: Storage
+  providers:
+
+    - name: AWS EFS
+      description: Elastic File System for scalable NFS storage in AWS cloud.
+      image_url: "images/aws-efs.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary AWS service."
+      protocols_supported: [NFS]
+      default_ports: [2049]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "10Gi"
+      dependencies: ["AWS VPC configured", "Security groups allowing NFS"]
+      ha_recommendation: "Mount EFS across multiple AZs for HA."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/storage/file-storage/aws-efs/sample.yaml"
+          config_template: "samples/java/storage/file-storage/aws-efs/config.mustache"
+
+    - name: GlusterFS
+      description: Open-source distributed file system for scalable storage clusters.
+      image_url: "images/glusterfs.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Open-source GPL/LGPL."
+      protocols_supported: [NFS, SMB, FUSE]
+      default_ports: [24007, 24008]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "100Gi"
+      dependencies: ["GlusterFS installed on all nodes", "Network connectivity"]
+      ha_recommendation: "Deploy 3+ nodes with replication volumes."
+      languages:
+        python:
+          frameworks: [FastAPI]
+          sample_code: "samples/python/storage/file-storage/glusterfs/sample.yaml"
+          config_template: "samples/python/storage/file-storage/glusterfs/config.mustache"

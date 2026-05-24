@@ -5,7 +5,7 @@ import {
   Terminal, Layers, Globe, Activity, AlertCircle, 
   Code2, Loader2, ChevronDown, ChevronUp, Play, X, FileText
 } from 'lucide-react';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { cn } from '../../../lib/utils';
 import { KubeSDKLocalRun } from '../../../types';
 

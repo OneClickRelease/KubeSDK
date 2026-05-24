@@ -1,0 +1,43 @@
+data-lake:
+  parent: Data
+  providers:
+
+    - name: AWS S3 Data Lake
+      description: Centralized repository for raw structured and unstructured data on AWS.
+      image_url: "images/aws-s3-datalake.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary AWS service."
+      protocols_supported: [S3 API, HTTP]
+      default_ports: [443, 80]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "100Gi"
+      dependencies: ["AWS account", "IAM roles configured"]
+      ha_recommendation: "Enable cross-region replication for HA."
+      languages:
+        python:
+          frameworks: [Boto3, PySpark]
+          sample_code: "samples/python/data/data-lake/aws-s3/sample.yaml"
+          config_template: "samples/python/data/data-lake/aws-s3/config.mustache"
+
+    - name: Azure Data Lake Storage
+      description: Scalable data lake built on Azure Blob Storage.
+      image_url: "images/azure-datalake.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary Azure service."
+      protocols_supported: [HTTP, S3-compatible API]
+      default_ports: [443, 80]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "100Gi"
+      dependencies: ["Azure account", "Azure CLI configured"]
+      ha_recommendation: "Deploy across multiple regions for HA."
+      languages:
+        java:
+          frameworks: [Hadoop, Spark]
+          sample_code: "samples/java/data/data-lake/azure/sample.yaml"
+          config_template: "samples/java/data/data-lake/azure/config.mustache"

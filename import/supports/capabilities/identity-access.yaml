@@ -1,0 +1,47 @@
+identity-access:
+  parent: Security
+  providers:
+
+    - name: Keycloak
+      description: Open-source identity and access management solution with SSO, OAuth2, and OpenID Connect.
+      image_url: "images/keycloak.png"
+      version: "v1"
+      latest_version: "23.0.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, OpenID Connect, OAuth2, SAML]
+      default_ports: [8080, 8443]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Java runtime", "Database backend (PostgreSQL, MySQL)"]
+      ha_recommendation: "Deploy Keycloak cluster with multiple nodes and HA database."
+      languages:
+        java:
+          frameworks: [Spring Security, Quarkus]
+          sample_code: "samples/java/security/identity-access/keycloak/sample.yaml"
+          config_template: "samples/java/security/identity-access/keycloak/config.mustache"
+        python:
+          frameworks: [python-keycloak]
+          sample_code: "samples/python/security/identity-access/keycloak/sample.yaml"
+          config_template: "samples/python/security/identity-access/keycloak/config.mustache"
+
+    - name: Okta
+      description: Cloud-based identity and access management service.
+      image_url: "images/okta.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Commercial subscription."
+      protocols_supported: [OAuth2, OpenID Connect, SAML]
+      default_ports: [443]
+      resources:
+        vcpu: "N/A (cloud managed)"
+        memory: "N/A (cloud managed)"
+        disk: "N/A (cloud managed)"
+      dependencies: ["Okta account"]
+      ha_recommendation: "Cloud-managed HA by Okta."
+      languages:
+        nodejs:
+          frameworks: [Okta SDK]
+          sample_code: "samples/nodejs/security/identity-access/okta/sample.yaml"
+          config_template: "samples/nodejs/security/identity-access/okta/config.mustache"

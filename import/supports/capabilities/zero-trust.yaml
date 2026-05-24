@@ -1,0 +1,43 @@
+zero-trust:
+  parent: Security
+  providers:
+
+    - name: Open Policy Agent (OPA)
+      description: Policy engine for cloud-native environments enabling fine-grained access control.
+      image_url: "images/opa.png"
+      version: "v1"
+      latest_version: "0.65.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [8181]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "10Gi"
+      dependencies: ["Rego policies defined", "Kubernetes or service mesh integration"]
+      ha_recommendation: "Deploy OPA sidecars across multiple nodes for HA."
+      languages:
+        go:
+          frameworks: [OPA Go SDK]
+          sample_code: "samples/go/security/zero-trust/opa/sample.yaml"
+          config_template: "samples/go/security/zero-trust/opa/config.mustache"
+
+    - name: Istio (Zero Trust Mesh)
+      description: Service mesh enforcing zero trust security with mTLS and policy enforcement.
+      image_url: "images/istio.png"
+      version: "v1"
+      latest_version: "1.22.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, gRPC, TCP]
+      default_ports: [15012, 15017]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "20Gi"
+      dependencies: ["Kubernetes cluster", "Envoy sidecars"]
+      ha_recommendation: "Deploy Istio control plane with multiple replicas and sidecars on all workloads."
+      languages:
+        java:
+          frameworks: [Spring Boot with Istio integration]
+          sample_code: "samples/java/security/zero-trust/istio/sample.yaml"
+          config_template: "samples/java/security/zero-trust/istio/config.mustache"

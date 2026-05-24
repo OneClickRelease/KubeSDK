@@ -1,0 +1,123 @@
+kubernetes:
+  parent: Orchestrator
+  providers:
+
+    - name: Kubernetes (Upstream)
+      description: Open-source container orchestration system for automating deployment, scaling, and management.
+      image_url: "images/kubernetes.png"
+      version: "v1"
+      latest_version: "1.30.0"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, gRPC, REST]
+      default_ports: [6443, 10250]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Container runtime (containerd, CRI-O)", "etcd cluster", "CNI plugin"]
+      ha_recommendation: "Deploy 3+ master nodes with etcd quorum, worker nodes across AZs."
+      languages:
+        go:
+          frameworks: [client-go]
+          sample_code: "samples/go/orchestrator/kubernetes/upstream/sample.yaml"
+          config_template: "samples/go/orchestrator/kubernetes/upstream/config.mustache"
+
+    - name: k0s
+      description: Lightweight Kubernetes distribution focused on simplicity and minimal dependencies.
+      image_url: "images/k0s.png"
+      version: "v1"
+      latest_version: "1.30.0-k0s"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [6443]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "10Gi"
+      dependencies: ["Linux host", "systemd or init"]
+      ha_recommendation: "Deploy k0s controllers in HA mode with 3+ nodes."
+      languages:
+        python:
+          frameworks: [kubernetes-client]
+          sample_code: "samples/python/orchestrator/kubernetes/k0s/sample.yaml"
+          config_template: "samples/python/orchestrator/kubernetes/k0s/config.mustache"
+
+    - name: k3s
+      description: Lightweight Kubernetes distribution optimized for edge and IoT workloads.
+      image_url: "images/k3s.png"
+      version: "v1"
+      latest_version: "1.30.0-k3s"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [6443]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "5Gi"
+      dependencies: ["Linux host", "containerd runtime"]
+      ha_recommendation: "Deploy k3s server with multiple agents for HA."
+      languages:
+        go:
+          frameworks: [client-go]
+          sample_code: "samples/go/orchestrator/kubernetes/k3s/sample.yaml"
+          config_template: "samples/go/orchestrator/kubernetes/k3s/config.mustache"
+
+    - name: RKE1
+      description: Rancher Kubernetes Engine v1, a CNCF-certified Kubernetes distribution.
+      image_url: "images/rke1.png"
+      version: "v1"
+      latest_version: "1.24-rke1"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [6443]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Docker runtime", "Rancher CLI"]
+      ha_recommendation: "Deploy multiple control plane nodes with etcd HA."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/orchestrator/kubernetes/rke1/sample.yaml"
+          config_template: "samples/java/orchestrator/kubernetes/rke1/config.mustache"
+
+    - name: RKE2
+      description: Rancher Kubernetes Engine v2, hardened Kubernetes distribution with SELinux and CIS compliance.
+      image_url: "images/rke2.png"
+      version: "v1"
+      latest_version: "1.27-rke2"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [6443]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["containerd runtime", "Rancher CLI"]
+      ha_recommendation: "Deploy 3+ control plane nodes with etcd HA."
+      languages:
+        python:
+          frameworks: [FastAPI, Django]
+          sample_code: "samples/python/orchestrator/kubernetes/rke2/sample.yaml"
+          config_template: "samples/python/orchestrator/kubernetes/rke2/config.mustache"
+
+    - name: OpenShift
+      description: Red Hat’s enterprise Kubernetes distribution with integrated developer tools and security.
+      image_url: "images/openshift.png"
+      version: "v1"
+      latest_version: "4.15"
+      license_conditions: "Enterprise subscription required."
+      protocols_supported: [HTTP, REST, gRPC]
+      default_ports: [6443, 10250]
+      resources:
+        vcpu: "8"
+        memory: "16Gi"
+        disk: "100Gi"
+      dependencies: ["RHEL or CoreOS base", "etcd cluster", "OperatorHub"]
+      ha_recommendation: "Deploy 3+ control plane nodes, multiple worker pools."
+      languages:
+        java:
+          frameworks: [Spring Boot, Quarkus]
+          sample_code: "samples/java/orchestrator/kubernetes/openshift/sample.yaml"
+          config_template: "samples/java/orchestrator/kubernetes/openshift/config.mustache"

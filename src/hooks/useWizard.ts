@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { KubeSDKLocalRun, LocalRunSource, ValidationResult, ResourcePlan } from '../types';
-import { STORAGE_KEY, STEP_KEY, NS_KEY, INITIAL_CONFIG } from '../lib/constants';
+import { STORAGE_KEY, STEP_KEY, NS_KEY, MENU_KEY, INITIAL_CONFIG } from '../lib/constants';
 import { generateYamlFromConfig } from '../lib/yaml-utils';
 
 export function useWizard() {
-  const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'history' | 'settings'>('define');
+  const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'registry' | 'history' | 'settings'>(() => {
+    try { return (localStorage.getItem(MENU_KEY) as any) || 'home'; } catch { return 'home'; }
+  });
   
   const [currentStep, setCurrentStep] = useState<number>(() => {
     try { return parseInt(localStorage.getItem(STEP_KEY) || '0') || 0; } catch { return 0; }
@@ -55,6 +57,11 @@ export function useWizard() {
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); } catch (e) { console.warn('Could not save config', e); }
   }, [config]);
+
+  // Persist menu
+  useEffect(() => {
+    try { localStorage.setItem(MENU_KEY, activeMenu); } catch {}
+  }, [activeMenu]);
 
   // Persist step
   useEffect(() => {

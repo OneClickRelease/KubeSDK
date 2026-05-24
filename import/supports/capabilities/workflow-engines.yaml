@@ -1,0 +1,67 @@
+workflow-engines:
+  parent: Orchestrator
+  providers:
+
+    - name: Argo Workflows
+      description: Kubernetes-native workflow engine for orchestrating parallel jobs.
+      image_url: "images/argo.png"
+      version: "v1"
+      latest_version: "3.6.0"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, REST, gRPC]
+      default_ports: [2746]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Kubernetes cluster", "Argo controller installed"]
+      ha_recommendation: "Deploy Argo controllers in HA mode with multiple replicas."
+      languages:
+        go:
+          frameworks: [Argo SDK]
+          sample_code: "samples/go/orchestrator/workflow-engines/argo/sample.yaml"
+          config_template: "samples/go/orchestrator/workflow-engines/argo/config.mustache"
+        python:
+          frameworks: [Argo Python SDK]
+          sample_code: "samples/python/orchestrator/workflow-engines/argo/sample.yaml"
+          config_template: "samples/python/orchestrator/workflow-engines/argo/config.mustache"
+
+    - name: Apache Airflow
+      description: Workflow orchestration platform for scheduling and monitoring data pipelines.
+      image_url: "images/airflow.png"
+      version: "v1"
+      latest_version: "2.9.0"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [8080]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Metadata DB (PostgreSQL/MySQL)", "Celery or Kubernetes executor"]
+      ha_recommendation: "Deploy multiple schedulers and workers, metadata DB in HA mode."
+      languages:
+        python:
+          frameworks: [Airflow DAGs]
+          sample_code: "samples/python/orchestrator/workflow-engines/airflow/sample.yaml"
+          config_template: "samples/python/orchestrator/workflow-engines/airflow/config.mustache"
+
+    - name: Prefect
+      description: Workflow orchestration tool with cloud and open-source editions.
+      image_url: "images/prefect.png"
+      version: "v1"
+      latest_version: "2.14.0"
+      license_conditions: "Open-core; Prefect Cloud requires subscription."
+      protocols_supported: [HTTP, REST]
+      default_ports: [4200]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "10Gi"
+      dependencies: ["Python runtime", "Prefect server or Prefect Cloud account"]
+      ha_recommendation: "Deploy Prefect server with multiple agents for HA."
+      languages:
+        python:
+          frameworks: [Prefect Flows]
+          sample_code: "samples/python/orchestrator/workflow-engines/prefect/sample.yaml"
+          config_template: "samples/python/orchestrator/workflow-engines/prefect/config.mustache"

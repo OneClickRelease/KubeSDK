@@ -1,0 +1,43 @@
+object-storage:
+  parent: Storage
+  providers:
+
+    - name: AWS S3
+      description: Object storage service for unstructured data in AWS cloud.
+      image_url: "images/aws-s3.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary AWS service."
+      protocols_supported: [S3 API, HTTP]
+      default_ports: [443, 80]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "50Gi"
+      dependencies: ["AWS account", "IAM roles configured"]
+      ha_recommendation: "Enable cross-region replication for HA."
+      languages:
+        python:
+          frameworks: [Boto3, FastAPI]
+          sample_code: "samples/python/storage/object-storage/aws-s3/sample.yaml"
+          config_template: "samples/python/storage/object-storage/aws-s3/config.mustache"
+
+    - name: MinIO
+      description: Open-source high-performance object storage compatible with S3 API.
+      image_url: "images/minio.png"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Open-source Apache License."
+      protocols_supported: [S3 API, HTTP]
+      default_ports: [443, 80]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "200Gi"
+      dependencies: ["Docker or Kubernetes runtime", "Persistent volumes provisioned"]
+      ha_recommendation: "Deploy MinIO in distributed mode with 4+ nodes."
+      languages:
+        go:
+          frameworks: [Gin, Echo]
+          sample_code: "samples/go/storage/object-storage/minio/sample.yaml"
+          config_template: "samples/go/storage/object-storage/minio/config.mustache"

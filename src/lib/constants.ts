@@ -80,3 +80,5 @@ export const INFRA_CATEGORIES = ['namespace', 'config', 'service', 'ingress', 's
 export const STORAGE_KEY = 'kubesdksim_config_v1';
 export const STEP_KEY = 'kubesdksim_step';
 export const NS_KEY = 'kubesdksim_ns';
+export const MENU_KEY = 'kubesdksim_menu';
+export const REGISTRY_SOURCE_KEY = 'kubesdksim_registry_source';

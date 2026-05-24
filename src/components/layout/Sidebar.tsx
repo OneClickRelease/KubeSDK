@@ -6,7 +6,8 @@ import {
   Activity, 
   Terminal, 
   XCircle, 
-  Zap 
+  Zap,
+  Library
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -52,8 +53,14 @@ export const Sidebar = ({ activeMenu, setActiveMenu, onResetSession }: SidebarPr
             <Settings size={18} /> Define Local Run
           </button>
           
-          <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#6C757D] opacity-50 cursor-not-allowed text-sm font-medium">
-            <Layers size={18} /> Capabilities (Future)
+          <button 
+            onClick={() => setActiveMenu('registry')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium",
+              activeMenu === 'registry' ? "bg-[#E7F1FF] text-[#0D6EFD]" : "text-[#6C757D] hover:bg-[#F8F9FA]"
+            )}
+          >
+            <Library size={18} /> Capability Registry
           </button>
           
           <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#6C757D] opacity-50 cursor-not-allowed text-sm font-medium">

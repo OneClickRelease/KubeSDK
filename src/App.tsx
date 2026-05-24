@@ -10,6 +10,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { HomeView } from './components/layout/HomeView';
 import { SettingsView } from './components/layout/SettingsView';
 import { HistoryView } from './components/layout/HistoryView';
+import { RegistryView } from './components/registry/RegistryView';
 
 // Wizard Steps
 import { SourceStep } from './components/wizard/steps/SourceStep';
@@ -369,12 +370,22 @@ export default function App() {
       console.error("Failed to save history", e);
     }
   };
-  const handleResetSession = () => {
+  const handleResetSession = async () => {
     if (confirm('Reset all session data and start fresh?')) {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STEP_KEY);
-      localStorage.removeItem(NS_KEY);
-      window.location.reload();
+      try {
+        await fetch('/api/registry/reset', { method: 'POST' });
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STEP_KEY);
+        localStorage.removeItem(NS_KEY);
+        window.location.reload();
+      } catch (e) {
+        console.error("Failed to reset registry", e);
+        // Fallback to local reset if server fails
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STEP_KEY);
+        localStorage.removeItem(NS_KEY);
+        window.location.reload();
+      }
     }
   };
 
@@ -522,6 +533,8 @@ export default function App() {
             {activeMenu === 'settings' && <SettingsView config={config} setConfig={setConfig} />}
             
             {activeMenu === 'history' && <HistoryView onRestore={handleHistoryRestore} />}
+            
+            {activeMenu === 'registry' && <RegistryView />}
           </AnimatePresence>
         </div>
       </main>

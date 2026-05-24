@@ -1,0 +1,43 @@
+ml-frameworks:
+  parent: AI-ML
+  providers:
+
+    - name: TensorFlow
+      description: Open-source machine learning framework for deep learning and numerical computation.
+      image_url: "images/tensorflow.png"
+      version: "v1"
+      latest_version: "2.16.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [Python API, gRPC]
+      default_ports: [8500]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Python runtime", "CUDA/cuDNN for GPU acceleration"]
+      ha_recommendation: "Deploy TensorFlow Serving with multiple replicas."
+      languages:
+        python:
+          frameworks: [Keras, tf.data]
+          sample_code: "samples/python/ai-ml/ml-frameworks/tensorflow/sample.yaml"
+          config_template: "samples/python/ai-ml/ml-frameworks/tensorflow/config.mustache"
+
+    - name: PyTorch
+      description: Open-source deep learning framework with dynamic computation graphs.
+      image_url: "images/pytorch.png"
+      version: "v1"
+      latest_version: "2.3.0"
+      license_conditions: "BSD-style license."
+      protocols_supported: [Python API, TorchServe]
+      default_ports: [7070]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Python runtime", "CUDA/cuDNN for GPU acceleration"]
+      ha_recommendation: "Deploy TorchServe with multiple replicas."
+      languages:
+        python:
+          frameworks: [FastAI, HuggingFace Transformers]
+          sample_code: "samples/python/ai-ml/ml-frameworks/pytorch/sample.yaml"
+          config_template: "samples/python/ai-ml/ml-frameworks/pytorch/config.mustache"
