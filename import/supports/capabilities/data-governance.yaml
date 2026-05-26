@@ -4,7 +4,10 @@ data-governance:
 
     - name: Apache Atlas
       description: Open-source metadata management and governance framework.
-      image_url: "images/apache-atlas.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/apache.svg"
+      website_url: "https://atlas.apache.org"
+      repo_url: "https://github.com/apache/atlas"
+      documentation_url: "https://atlas.apache.org/#/Overview"
       version: "v1"
       latest_version: "2.3.0"
       license_conditions: "Apache License 2.0."
@@ -24,7 +27,10 @@ data-governance:
 
     - name: Collibra
       description: Enterprise data governance and catalog platform.
-      image_url: "images/collibra.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://www.collibra.com"
+      repo_url: ""
+      documentation_url: "https://datacitizen.collibra.com/forum/hc/en-us"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Commercial subscription."

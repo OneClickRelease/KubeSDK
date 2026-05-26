@@ -1,0 +1,14 @@
+dependencies:
+  TAO:
+    default: '# Default dependency for CORBA in c++/TAO using default'
+  omniORB:
+    default: '# Default dependency for CORBA in c++/omniORB using default'
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

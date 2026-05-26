@@ -4,7 +4,10 @@ block-storage:
 
     - name: AWS EBS
       description: Elastic Block Store for persistent block-level storage in AWS cloud.
-      image_url: "images/aws-ebs.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/amazonwebservices.svg"
+      website_url: "https://aws.amazon.com/ebs/"
+      repo_url: ""
+      documentation_url: "https://docs.aws.amazon.com/ebs/"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Proprietary AWS service."
@@ -24,7 +27,10 @@ block-storage:
 
     - name: Ceph RBD
       description: Open-source distributed block storage using RADOS Block Device.
-      image_url: "images/ceph-rbd.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/ceph.svg"
+      website_url: "https://ceph.io"
+      repo_url: "https://github.com/ceph/ceph"
+      documentation_url: "https://docs.ceph.com/"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Open-source LGPL."

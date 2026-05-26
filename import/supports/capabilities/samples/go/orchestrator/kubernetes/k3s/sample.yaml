@@ -1,0 +1,13 @@
+dependencies:
+  client-go:
+    go-build: github.com/example/k3s-client-go v1.0.0
+    go-mod: github.com/example/k3s-client-go v1.0.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

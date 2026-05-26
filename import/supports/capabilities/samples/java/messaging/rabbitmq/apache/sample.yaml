@@ -1,0 +1,17 @@
+dependencies:
+  Spring AMQP:
+    maven: "<dependency>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-starter-amqp</artifactId>\n\
+      </dependency>"
+    gradle: implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    ant: '<!-- Ant dependency for RabbitMQ -->
+
+      <ivy:dependency org="org.example" name="rabbitmq-client" rev="1.0.0"/>'
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

@@ -4,7 +4,10 @@ mlops:
 
     - name: MLflow
       description: Open-source platform for managing ML lifecycle including experiments, reproducibility, and deployment.
-      image_url: "images/mlflow.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/mlflow.svg"
+      website_url: "https://mlflow.org"
+      repo_url: "https://github.com/mlflow/mlflow"
+      documentation_url: "https://mlflow.org/docs/latest/index.html"
       version: "v1"
       latest_version: "2.12.0"
       license_conditions: "Apache License 2.0."
@@ -24,7 +27,10 @@ mlops:
 
     - name: Kubeflow
       description: Kubernetes-native MLOps platform for ML pipelines and workflows.
-      image_url: "images/kubeflow.png"
+      image_url: "https://raw.githubusercontent.com/kubeflow/kubeflow/master/logo/Kubeflow-Logo-Color.svg"
+      website_url: "https://www.kubeflow.org"
+      repo_url: "https://github.com/kubeflow/kubeflow"
+      documentation_url: "https://www.kubeflow.org/docs/"
       version: "v1"
       latest_version: "1.9.0"
       license_conditions: "Apache License 2.0."
@@ -44,7 +50,10 @@ mlops:
 
     - name: DVC (Data Version Control)
       description: Open-source tool for data and model versioning integrated with Git.
-      image_url: "images/dvc.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/dvc.svg"
+      website_url: "https://dvc.org"
+      repo_url: "https://github.com/iterative/dvc"
+      documentation_url: "https://dvc.org/doc"
       version: "v1"
       latest_version: "3.0.0"
       license_conditions: "Apache License 2.0."

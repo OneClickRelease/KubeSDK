@@ -4,6 +4,10 @@ import path from 'path';
 import yaml from 'js-yaml';
 import multer from 'multer';
 
+const SUPPORTS_DIR = path.join(process.cwd(), 'import', 'supports');
+const CAPABILITY_LAYERS_FILE = path.join(SUPPORTS_DIR, 'capability-layers.yaml');
+const CAPABILITIES_DIR = path.join(SUPPORTS_DIR, 'capabilities');
+
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const REGISTRY_FILE = path.join(process.cwd(), 'registry.json');
@@ -307,4 +311,163 @@ router.get('/download', (req, res) => {
   }
 });
 
+// --- Capability Layers (Dynamic YAML-driven) ---
+
+// Helper: Load a capability YAML file given the relative path in capability-layers.yaml
+function loadCapabilityFile(relativeFile: string): { providers: any[] } {
+  const filePath = path.join(SUPPORTS_DIR, relativeFile);
+  if (!fs.existsSync(filePath)) return { providers: [] };
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    if (!doc) return { providers: [] };
+    // The YAML has a root key (e.g., "messaging", "sql") that contains the data
+    const rootKey = Object.keys(doc)[0];
+    const data = doc[rootKey] || {};
+    return { providers: data.providers || [] };
+  } catch {
+    return { providers: [] };
+  }
+}
+
+// GET /api/registry/capabilities/layers - Return full layer hierarchy with enriched providers
+router.get('/capabilities/layers', (req, res) => {
+  try {
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const meta = doc['capability-layers'] || {};
+    const layersMap = meta.layers || {};
+
+    const enrichedLayers: any[] = [];
+
+    for (const [layerKey, layerDef] of Object.entries<any>(layersMap)) {
+      const layer: any = {
+        id: layerKey,
+        name: layerDef.name,
+        description: layerDef.description,
+        image_url: layerDef.image_url,
+        sub_layers: [],
+        providers: [],
+      };
+
+      // If layer has direct file (no sub-layers, e.g. messaging, applications)
+      if (layerDef.file) {
+        const { providers } = loadCapabilityFile(layerDef.file);
+        layer.providers = providers;
+        layer.file = layerDef.file;
+      }
+
+      // If layer has sub_layers
+      if (layerDef.sub_layers && Array.isArray(layerDef.sub_layers)) {
+        for (const sub of layerDef.sub_layers) {
+          const subLayer: any = {
+            name: sub.name,
+            parent: sub.parent,
+            description: sub.description,
+            image_url: sub.image_url,
+            file: sub.file,
+            providers: [],
+          };
+          if (sub.file) {
+            const { providers } = loadCapabilityFile(sub.file);
+            subLayer.providers = providers;
+          }
+          layer.sub_layers.push(subLayer);
+        }
+      }
+
+      enrichedLayers.push(layer);
+    }
+
+    res.json({
+      status: 'success',
+      version: meta.version,
+      updated: meta.updated,
+      layers: enrichedLayers,
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// GET /api/registry/capabilities/files - List all capability YAML filenames
+router.get('/capabilities/files', (req, res) => {
+  try {
+    if (!fs.existsSync(CAPABILITIES_DIR)) {
+      return res.json({ status: 'success', files: [] });
+    }
+    const files = fs.readdirSync(CAPABILITIES_DIR)
+      .filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+    res.json({ status: 'success', files });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// GET /api/registry/capabilities/sample-payload - Load and resolve capability provider sample files
+router.get('/capabilities/sample-payload', (req, res) => {
+  const { sample_code, config_template, framework, build_tool } = req.query;
+
+  if (!sample_code && !config_template) {
+    return res.status(400).json({ status: 'error', message: 'sample_code or config_template query parameters are required' });
+  }
+
+  let dependencies = '';
+  let envVars: any[] = [];
+  let snippetTemplate = '';
+
+  try {
+    if (sample_code) {
+      const samplePath = path.join(CAPABILITIES_DIR, sample_code as string);
+      if (fs.existsSync(samplePath)) {
+        const raw = fs.readFileSync(samplePath, 'utf-8');
+        const doc = yaml.load(raw) as any;
+        if (doc) {
+          const depsRoot = doc.dependencies || {};
+          // Find matching framework key (case-insensitive, loose match)
+          const matchedFwKey = Object.keys(depsRoot).find(
+            k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === (framework as string || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+          ) || Object.keys(depsRoot)[0]; // Fallback to first framework
+
+          if (matchedFwKey) {
+            const fwDeps = depsRoot[matchedFwKey] || {};
+            // Find matching build tool key (case-insensitive, loose match)
+            const matchedBtKey = Object.keys(fwDeps).find(
+              k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === (build_tool as string || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+            ) || Object.keys(fwDeps)[0]; // Fallback to first build tool
+
+            if (matchedBtKey) {
+              dependencies = fwDeps[matchedBtKey] || '';
+            }
+          }
+
+          // envVars is direct
+          envVars = doc.envVars || [];
+        }
+      }
+    }
+
+    if (config_template) {
+      const configPath = path.join(CAPABILITIES_DIR, config_template as string);
+      if (fs.existsSync(configPath)) {
+        snippetTemplate = fs.readFileSync(configPath, 'utf-8');
+      }
+    }
+
+    res.json({
+      status: 'success',
+      dependencies,
+      envVars,
+      snippetTemplate
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
 export default router;
+

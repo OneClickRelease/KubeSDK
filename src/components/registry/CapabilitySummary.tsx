@@ -59,13 +59,21 @@ export const CapabilitySummary = ({ discovery, registered, onSelectService }: Ca
                 ) : (
                   services.map(service => {
                     const isRegistered = registered.some(r => r.serviceId === service.id && r.namespace === ns);
+                    const regCap = isRegistered ? registered.find(r => r.serviceId === service.id && r.namespace === ns) : null;
                     return (
                       <ServiceSummaryCard 
                         key={service.id}
                         service={service}
                         ns={ns}
                         isRegistered={isRegistered}
-                        onClick={() => onSelectService({ ...service, namespace: ns })}
+                        registered={registered}
+                        onClick={() => {
+                          if (isRegistered && regCap) {
+                            onSelectService({ ...regCap, id: regCap.serviceId, name: regCap.displayName, isEdit: true });
+                          } else {
+                            onSelectService({ ...service, namespace: ns });
+                          }
+                        }}
                       />
                     );
                   })
@@ -80,7 +88,7 @@ export const CapabilitySummary = ({ discovery, registered, onSelectService }: Ca
   );
 };
 
-const ServiceSummaryCard = ({ service, ns, isRegistered, onClick }: any) => {
+const ServiceSummaryCard = ({ service, ns, isRegistered, registered, onClick }: any) => {
   const name = service.name.toLowerCase();
 
   // Simple heuristic for icon matching the design
@@ -96,6 +104,21 @@ const ServiceSummaryCard = ({ service, ns, isRegistered, onClick }: any) => {
 
   // Heuristic for programming language support layer
   const getLangs = () => {
+    if (isRegistered) {
+      const regCap = (registered || []).find((r: any) => r.serviceId === service.id && r.namespace === ns);
+      if (regCap && regCap.sdkSupport) {
+        const keys = Object.keys(regCap.sdkSupport);
+        if (keys.length > 0) {
+          return keys.map((k: string) => {
+            if (k === 'cpp') return 'C++';
+            if (k === 'dotnet') return '.NET';
+            if (k === 'nodejs') return 'Node.js';
+            return k.charAt(0).toUpperCase() + k.slice(1);
+          });
+        }
+      }
+    }
+
     if (name.includes('db') || name.includes('sql') || name.includes('mongo') || name.includes('postgres') || name.includes('kafka') || name.includes('minio')) return [];
     if (name.includes('node') || name.includes('react') || name.includes('js') || name.includes('npm')) return ['Node.js'];
     if (name.includes('py') || name.includes('django') || name.includes('flask')) return ['Python'];
@@ -143,15 +166,25 @@ const ServiceSummaryCard = ({ service, ns, isRegistered, onClick }: any) => {
 
       {/* Programming Language Support Badge Layer */}
       {langs.length > 0 && (
-        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none">
-          {langs.map(l => (
+        <div 
+          title={langs.join(', ')} 
+          className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex gap-0.5 z-10"
+        >
+          {langs.slice(0, 2).map(l => (
             <span 
               key={l} 
-              className="bg-[#1A1A1A] text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold shadow-md shadow-black/10 border border-white whitespace-nowrap"
+              className="bg-[#1A1A1A] text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold shadow-md shadow-black/10 border border-white whitespace-nowrap pointer-events-none"
             >
               {l}
             </span>
           ))}
+          {langs.length > 2 && (
+            <span 
+              className="bg-gray-800 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow-md shadow-black/10 border border-white whitespace-nowrap cursor-help"
+            >
+              +{langs.length - 2}
+            </span>
+          )}
         </div>
       )}
     </motion.button>

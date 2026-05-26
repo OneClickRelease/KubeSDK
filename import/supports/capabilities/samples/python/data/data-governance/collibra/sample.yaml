@@ -1,0 +1,18 @@
+dependencies:
+  Collibra API SDK:
+    pip: collibra-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      collibra-client = "^1.0.0"'
+    setuptools: collibra-client>=1.0.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

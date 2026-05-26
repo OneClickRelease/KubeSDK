@@ -1,0 +1,16 @@
+dependencies:
+  Gin:
+    go-build: github.com/minio/minio-go/v7 v7.0.66
+    go-mod: github.com/minio/minio-go/v7 v7.0.66
+  Echo:
+    go-build: github.com/minio/minio-go/v7 v7.0.66
+    go-mod: github.com/minio/minio-go/v7 v7.0.66
+envVars:
+- key: STORAGE_ENDPOINT
+  value: http://{{host}}:{{port}}
+- key: STORAGE_BUCKET
+  value: '{{database}}'
+- key: ACCESS_KEY_ID
+  value: '{{username}}'
+- key: SECRET_ACCESS_KEY
+  value: '{{password}}'

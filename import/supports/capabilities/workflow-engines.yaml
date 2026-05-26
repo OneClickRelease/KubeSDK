@@ -4,7 +4,10 @@ workflow-engines:
 
     - name: Argo Workflows
       description: Kubernetes-native workflow engine for orchestrating parallel jobs.
-      image_url: "images/argo.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/argo.svg"
+      website_url: "https://argoproj.github.io/workflows"
+      repo_url: "https://github.com/argoproj/argo-workflows"
+      documentation_url: "https://argoproj.github.io/argo-workflows/"
       version: "v1"
       latest_version: "3.6.0"
       license_conditions: "Open-source Apache License 2.0."
@@ -28,7 +31,10 @@ workflow-engines:
 
     - name: Apache Airflow
       description: Workflow orchestration platform for scheduling and monitoring data pipelines.
-      image_url: "images/airflow.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/apacheairflow.svg"
+      website_url: "https://airflow.apache.org"
+      repo_url: "https://github.com/apache/airflow"
+      documentation_url: "https://airflow.apache.org/docs/"
       version: "v1"
       latest_version: "2.9.0"
       license_conditions: "Open-source Apache License 2.0."
@@ -48,7 +54,10 @@ workflow-engines:
 
     - name: Prefect
       description: Workflow orchestration tool with cloud and open-source editions.
-      image_url: "images/prefect.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/prefect.svg"
+      website_url: "https://www.prefect.io"
+      repo_url: "https://github.com/PrefectHQ/prefect"
+      documentation_url: "https://docs.prefect.io/"
       version: "v1"
       latest_version: "2.14.0"
       license_conditions: "Open-core; Prefect Cloud requires subscription."

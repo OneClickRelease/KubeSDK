@@ -1,0 +1,26 @@
+dependencies:
+  Boto3:
+    pip: boto3>=1.30.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      boto3 = "^1.30.0"'
+    setuptools: boto3>=1.30.0
+  PySpark:
+    pip: boto3>=1.30.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      boto3 = "^1.30.0"'
+    setuptools: boto3>=1.30.0
+envVars:
+- key: STORAGE_ENDPOINT
+  value: http://{{host}}:{{port}}
+- key: STORAGE_BUCKET
+  value: '{{database}}'
+- key: ACCESS_KEY_ID
+  value: '{{username}}'
+- key: SECRET_ACCESS_KEY
+  value: '{{password}}'

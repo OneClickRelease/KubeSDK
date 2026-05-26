@@ -4,7 +4,10 @@ graph:
 
     - name: Neo4j
       description: Graph database optimized for relationship-heavy data.
-      image_url: "images/neo4j.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/neo4j.svg"
+      website_url: "https://neo4j.com"
+      repo_url: "https://github.com/neo4j/neo4j"
+      documentation_url: "https://neo4j.com/docs/"
       version: "v1"
       latest_version: "5.15"
       license_conditions: "Neo4j Community GPL; Enterprise proprietary."
@@ -24,7 +27,10 @@ graph:
 
     - name: JanusGraph
       description: Open-source distributed graph database built on Cassandra and HBase.
-      image_url: "images/janusgraph.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://janusgraph.org"
+      repo_url: "https://github.com/JanusGraph/janusgraph"
+      documentation_url: "https://docs.janusgraph.org/"
       version: "v1"
       latest_version: "1.0.0"
       license_conditions: "Apache License 2.0."

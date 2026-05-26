@@ -1,0 +1,803 @@
+[
+  {
+    "capability_file": "file-storage.yaml",
+    "provider": "AWS EFS",
+    "lang": "java",
+    "sample_code": "samples/java/storage/file-storage/aws-efs/sample.yaml",
+    "config_template": "samples/java/storage/file-storage/aws-efs/config.mustache",
+    "frameworks": [
+      "Spring Boot"
+    ]
+  },
+  {
+    "capability_file": "file-storage.yaml",
+    "provider": "GlusterFS",
+    "lang": "python",
+    "sample_code": "samples/python/storage/file-storage/glusterfs/sample.yaml",
+    "config_template": "samples/python/storage/file-storage/glusterfs/config.mustache",
+    "frameworks": [
+      "FastAPI"
+    ]
+  },
+  {
+    "capability_file": "mlops.yaml",
+    "provider": "MLflow",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/mlops/mlflow/sample.yaml",
+    "config_template": "samples/python/ai-ml/mlops/mlflow/config.mustache",
+    "frameworks": [
+      "Scikit-learn",
+      "TensorFlow",
+      "PyTorch"
+    ]
+  },
+  {
+    "capability_file": "mlops.yaml",
+    "provider": "Kubeflow",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/mlops/kubeflow/sample.yaml",
+    "config_template": "samples/python/ai-ml/mlops/kubeflow/config.mustache",
+    "frameworks": [
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-learn"
+    ]
+  },
+  {
+    "capability_file": "mlops.yaml",
+    "provider": "DVC (Data Version Control)",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/mlops/dvc/sample.yaml",
+    "config_template": "samples/python/ai-ml/mlops/dvc/config.mustache",
+    "frameworks": [
+      "Scikit-learn",
+      "TensorFlow",
+      "PyTorch"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Apache Kafka",
+    "lang": "java",
+    "sample_code": "samples/java/messaging/kafka/apache/sample.yaml",
+    "config_template": "samples/java/messaging/kafka/apache/config.mustache",
+    "frameworks": [
+      "Spring Kafka",
+      "Kafka Streams"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Apache Kafka",
+    "lang": "python",
+    "sample_code": "samples/python/messaging/kafka/apache/sample.yaml",
+    "config_template": "samples/python/messaging/kafka/apache/config.mustache",
+    "frameworks": [
+      "confluent-kafka",
+      "Faust"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Apache Kafka",
+    "lang": "nodejs",
+    "sample_code": "samples/nodejs/messaging/kafka/apache/sample.yaml",
+    "config_template": "samples/nodejs/messaging/kafka/apache/config.mustache",
+    "frameworks": [
+      "kafkajs"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Confluent Kafka",
+    "lang": "java",
+    "sample_code": "samples/java/messaging/kafka/confluent/sample.yaml",
+    "config_template": "samples/java/messaging/kafka/confluent/config.mustache",
+    "frameworks": [
+      "Confluent Kafka Streams"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Confluent Kafka",
+    "lang": "python",
+    "sample_code": "samples/python/messaging/kafka/confluent/sample.yaml",
+    "config_template": "samples/python/messaging/kafka/confluent/config.mustache",
+    "frameworks": [
+      "confluent-kafka-python"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "RabbitMQ",
+    "lang": "java",
+    "sample_code": "samples/java/messaging/rabbitmq/apache/sample.yaml",
+    "config_template": "samples/java/messaging/rabbitmq/apache/config.mustache",
+    "frameworks": [
+      "Spring AMQP"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "RabbitMQ",
+    "lang": "python",
+    "sample_code": "samples/python/messaging/rabbitmq/apache/sample.yaml",
+    "config_template": "samples/python/messaging/rabbitmq/apache/config.mustache",
+    "frameworks": [
+      "pika",
+      "aio-pika"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "RabbitMQ",
+    "lang": "nodejs",
+    "sample_code": "samples/nodejs/messaging/rabbitmq/apache/sample.yaml",
+    "config_template": "samples/nodejs/messaging/rabbitmq/apache/config.mustache",
+    "frameworks": [
+      "amqplib"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "NATS",
+    "lang": "go",
+    "sample_code": "samples/go/messaging/nats/sample.yaml",
+    "config_template": "samples/go/messaging/nats/config.mustache",
+    "frameworks": [
+      "NATS Go Client"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "NATS",
+    "lang": "python",
+    "sample_code": "samples/python/messaging/nats/sample.yaml",
+    "config_template": "samples/python/messaging/nats/config.mustache",
+    "frameworks": [
+      "nats-py"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Apache Pulsar",
+    "lang": "java",
+    "sample_code": "samples/java/messaging/pulsar/sample.yaml",
+    "config_template": "samples/java/messaging/pulsar/config.mustache",
+    "frameworks": [
+      "Pulsar Java Client"
+    ]
+  },
+  {
+    "capability_file": "messaging.yaml",
+    "provider": "Apache Pulsar",
+    "lang": "python",
+    "sample_code": "samples/python/messaging/pulsar/sample.yaml",
+    "config_template": "samples/python/messaging/pulsar/config.mustache",
+    "frameworks": [
+      "pulsar-client"
+    ]
+  },
+  {
+    "capability_file": "secrets.yaml",
+    "provider": "HashiCorp Vault",
+    "lang": "python",
+    "sample_code": "samples/python/security/secrets/vault/sample.yaml",
+    "config_template": "samples/python/security/secrets/vault/config.mustache",
+    "frameworks": [
+      "hvac"
+    ]
+  },
+  {
+    "capability_file": "secrets.yaml",
+    "provider": "HashiCorp Vault",
+    "lang": "java",
+    "sample_code": "samples/java/security/secrets/vault/sample.yaml",
+    "config_template": "samples/java/security/secrets/vault/config.mustache",
+    "frameworks": [
+      "Spring Vault"
+    ]
+  },
+  {
+    "capability_file": "secrets.yaml",
+    "provider": "AWS Secrets Manager",
+    "lang": "python",
+    "sample_code": "samples/python/security/secrets/aws-secrets/sample.yaml",
+    "config_template": "samples/python/security/secrets/aws-secrets/config.mustache",
+    "frameworks": [
+      "Boto3"
+    ]
+  },
+  {
+    "capability_file": "kubernetes.yaml",
+    "provider": "Kubernetes (Upstream)",
+    "lang": "go",
+    "sample_code": "samples/go/orchestrator/kubernetes/upstream/sample.yaml",
+    "config_template": "samples/go/orchestrator/kubernetes/upstream/config.mustache",
+    "frameworks": [
+      "client-go"
+    ]
+  },
+  {
+    "capability_file": "kubernetes.yaml",
+    "provider": "k0s",
+    "lang": "python",
+    "sample_code": "samples/python/orchestrator/kubernetes/k0s/sample.yaml",
+    "config_template": "samples/python/orchestrator/kubernetes/k0s/config.mustache",
+    "frameworks": [
+      "kubernetes-client"
+    ]
+  },
+  {
+    "capability_file": "kubernetes.yaml",
+    "provider": "k3s",
+    "lang": "go",
+    "sample_code": "samples/go/orchestrator/kubernetes/k3s/sample.yaml",
+    "config_template": "samples/go/orchestrator/kubernetes/k3s/config.mustache",
+    "frameworks": [
+      "client-go"
+    ]
+  },
+  {
+    "capability_file": "kubernetes.yaml",
+    "provider": "RKE1",
+    "lang": "java",
+    "sample_code": "samples/java/orchestrator/kubernetes/rke1/sample.yaml",
+    "config_template": "samples/java/orchestrator/kubernetes/rke1/config.mustache",
+    "frameworks": [
+      "Spring Boot"
+    ]
+  },
+  {
+    "capability_file": "kubernetes.yaml",
+    "provider": "RKE2",
+    "lang": "python",
+    "sample_code": "samples/python/orchestrator/kubernetes/rke2/sample.yaml",
+    "config_template": "samples/python/orchestrator/kubernetes/rke2/config.mustache",
+    "frameworks": [
+      "FastAPI",
+      "Django"
+    ]
+  },
+  {
+    "capability_file": "kubernetes.yaml",
+    "provider": "OpenShift",
+    "lang": "java",
+    "sample_code": "samples/java/orchestrator/kubernetes/openshift/sample.yaml",
+    "config_template": "samples/java/orchestrator/kubernetes/openshift/config.mustache",
+    "frameworks": [
+      "Spring Boot",
+      "Quarkus"
+    ]
+  },
+  {
+    "capability_file": "identity-access.yaml",
+    "provider": "Keycloak",
+    "lang": "java",
+    "sample_code": "samples/java/security/identity-access/keycloak/sample.yaml",
+    "config_template": "samples/java/security/identity-access/keycloak/config.mustache",
+    "frameworks": [
+      "Spring Security",
+      "Quarkus"
+    ]
+  },
+  {
+    "capability_file": "identity-access.yaml",
+    "provider": "Keycloak",
+    "lang": "python",
+    "sample_code": "samples/python/security/identity-access/keycloak/sample.yaml",
+    "config_template": "samples/python/security/identity-access/keycloak/config.mustache",
+    "frameworks": [
+      "python-keycloak"
+    ]
+  },
+  {
+    "capability_file": "identity-access.yaml",
+    "provider": "Okta",
+    "lang": "nodejs",
+    "sample_code": "samples/nodejs/security/identity-access/okta/sample.yaml",
+    "config_template": "samples/nodejs/security/identity-access/okta/config.mustache",
+    "frameworks": [
+      "Okta SDK"
+    ]
+  },
+  {
+    "capability_file": "model-serving.yaml",
+    "provider": "TensorFlow Serving",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/model-serving/tf-serving/sample.yaml",
+    "config_template": "samples/python/ai-ml/model-serving/tf-serving/config.mustache",
+    "frameworks": [
+      "TensorFlow",
+      "Keras"
+    ]
+  },
+  {
+    "capability_file": "model-serving.yaml",
+    "provider": "TorchServe",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/model-serving/torchserve/sample.yaml",
+    "config_template": "samples/python/ai-ml/model-serving/torchserve/config.mustache",
+    "frameworks": [
+      "PyTorch",
+      "HuggingFace Transformers"
+    ]
+  },
+  {
+    "capability_file": "model-serving.yaml",
+    "provider": "KFServing (KServe)",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/model-serving/kserve/sample.yaml",
+    "config_template": "samples/python/ai-ml/model-serving/kserve/config.mustache",
+    "frameworks": [
+      "TensorFlow",
+      "PyTorch",
+      "XGBoost",
+      "Scikit-learn"
+    ]
+  },
+  {
+    "capability_file": "timeseries.yaml",
+    "provider": "InfluxDB",
+    "lang": "python",
+    "sample_code": "samples/python/database/timeseries/influxdb/sample.yaml",
+    "config_template": "samples/python/database/timeseries/influxdb/config.mustache",
+    "frameworks": [
+      "Flask",
+      "FastAPI"
+    ]
+  },
+  {
+    "capability_file": "timeseries.yaml",
+    "provider": "TimescaleDB",
+    "lang": "java",
+    "sample_code": "samples/java/database/timeseries/timescaledb/sample.yaml",
+    "config_template": "samples/java/database/timeseries/timescaledb/config.mustache",
+    "frameworks": [
+      "Spring Boot"
+    ]
+  },
+  {
+    "capability_file": "nosql.yaml",
+    "provider": "MongoDB",
+    "lang": "python",
+    "sample_code": "samples/python/database/nosql/mongodb/sample.yaml",
+    "config_template": "samples/python/database/nosql/mongodb/config.mustache",
+    "frameworks": [
+      "FastAPI",
+      "Flask"
+    ]
+  },
+  {
+    "capability_file": "nosql.yaml",
+    "provider": "Cassandra",
+    "lang": "java",
+    "sample_code": "samples/java/database/nosql/cassandra/sample.yaml",
+    "config_template": "samples/java/database/nosql/cassandra/config.mustache",
+    "frameworks": [
+      "Spring Boot"
+    ]
+  },
+  {
+    "capability_file": "block-storage.yaml",
+    "provider": "AWS EBS",
+    "lang": "java",
+    "sample_code": "samples/java/storage/block-storage/aws-ebs/sample.yaml",
+    "config_template": "samples/java/storage/block-storage/aws-ebs/config.mustache",
+    "frameworks": [
+      "Spring Boot",
+      "Hibernate"
+    ]
+  },
+  {
+    "capability_file": "block-storage.yaml",
+    "provider": "Ceph RBD",
+    "lang": "python",
+    "sample_code": "samples/python/storage/block-storage/ceph-rbd/sample.yaml",
+    "config_template": "samples/python/storage/block-storage/ceph-rbd/config.mustache",
+    "frameworks": [
+      "FastAPI"
+    ]
+  },
+  {
+    "capability_file": "graph.yaml",
+    "provider": "Neo4j",
+    "lang": "java",
+    "sample_code": "samples/java/database/graph/neo4j/sample.yaml",
+    "config_template": "samples/java/database/graph/neo4j/config.mustache",
+    "frameworks": [
+      "Spring Data Neo4j"
+    ]
+  },
+  {
+    "capability_file": "graph.yaml",
+    "provider": "JanusGraph",
+    "lang": "python",
+    "sample_code": "samples/python/database/graph/janusgraph/sample.yaml",
+    "config_template": "samples/python/database/graph/janusgraph/config.mustache",
+    "frameworks": [
+      "Gremlin-Python"
+    ]
+  },
+  {
+    "capability_file": "data-warehouse.yaml",
+    "provider": "Amazon Redshift",
+    "lang": "python",
+    "sample_code": "samples/python/data/data-warehouse/redshift/sample.yaml",
+    "config_template": "samples/python/data/data-warehouse/redshift/config.mustache",
+    "frameworks": [
+      "SQLAlchemy",
+      "Pandas"
+    ]
+  },
+  {
+    "capability_file": "data-warehouse.yaml",
+    "provider": "Google BigQuery",
+    "lang": "python",
+    "sample_code": "samples/python/data/data-warehouse/bigquery/sample.yaml",
+    "config_template": "samples/python/data/data-warehouse/bigquery/config.mustache",
+    "frameworks": [
+      "google-cloud-bigquery"
+    ]
+  },
+  {
+    "capability_file": "sql.yaml",
+    "provider": "MySQL",
+    "lang": "java",
+    "sample_code": "samples/java/database/sql/mysql/sample.yaml",
+    "config_template": "samples/java/database/sql/mysql/config.mustache",
+    "frameworks": [
+      "Spring Boot",
+      "Hibernate"
+    ]
+  },
+  {
+    "capability_file": "sql.yaml",
+    "provider": "MySQL",
+    "lang": "python",
+    "sample_code": "samples/python/database/sql/mysql/sample.yaml",
+    "config_template": "samples/python/database/sql/mysql/config.mustache",
+    "frameworks": [
+      "Django ORM",
+      "SQLAlchemy"
+    ]
+  },
+  {
+    "capability_file": "sql.yaml",
+    "provider": "PostgreSQL",
+    "lang": "java",
+    "sample_code": "samples/java/database/sql/postgresql/sample.yaml",
+    "config_template": "samples/java/database/sql/postgresql/config.mustache",
+    "frameworks": [
+      "Spring Boot",
+      "Micronaut"
+    ]
+  },
+  {
+    "capability_file": "sql.yaml",
+    "provider": "PostgreSQL",
+    "lang": "python",
+    "sample_code": "samples/python/database/sql/postgresql/sample.yaml",
+    "config_template": "samples/python/database/sql/postgresql/config.mustache",
+    "frameworks": [
+      "Django ORM",
+      "SQLAlchemy"
+    ]
+  },
+  {
+    "capability_file": "sql.yaml",
+    "provider": "Oracle Database",
+    "lang": "java",
+    "sample_code": "samples/java/database/sql/oracle/sample.yaml",
+    "config_template": "samples/java/database/sql/oracle/config.mustache",
+    "frameworks": [
+      "Spring Boot"
+    ]
+  },
+  {
+    "capability_file": "workflow-engines.yaml",
+    "provider": "Argo Workflows",
+    "lang": "go",
+    "sample_code": "samples/go/orchestrator/workflow-engines/argo/sample.yaml",
+    "config_template": "samples/go/orchestrator/workflow-engines/argo/config.mustache",
+    "frameworks": [
+      "Argo SDK"
+    ]
+  },
+  {
+    "capability_file": "workflow-engines.yaml",
+    "provider": "Argo Workflows",
+    "lang": "python",
+    "sample_code": "samples/python/orchestrator/workflow-engines/argo/sample.yaml",
+    "config_template": "samples/python/orchestrator/workflow-engines/argo/config.mustache",
+    "frameworks": [
+      "Argo Python SDK"
+    ]
+  },
+  {
+    "capability_file": "workflow-engines.yaml",
+    "provider": "Apache Airflow",
+    "lang": "python",
+    "sample_code": "samples/python/orchestrator/workflow-engines/airflow/sample.yaml",
+    "config_template": "samples/python/orchestrator/workflow-engines/airflow/config.mustache",
+    "frameworks": [
+      "Airflow DAGs"
+    ]
+  },
+  {
+    "capability_file": "workflow-engines.yaml",
+    "provider": "Prefect",
+    "lang": "python",
+    "sample_code": "samples/python/orchestrator/workflow-engines/prefect/sample.yaml",
+    "config_template": "samples/python/orchestrator/workflow-engines/prefect/config.mustache",
+    "frameworks": [
+      "Prefect Flows"
+    ]
+  },
+  {
+    "capability_file": "data-mesh.yaml",
+    "provider": "Data Mesh (Generic)",
+    "lang": "java",
+    "sample_code": "samples/java/data/data-mesh/generic/sample.yaml",
+    "config_template": "samples/java/data/data-mesh/generic/config.mustache",
+    "frameworks": [
+      "Spring Boot",
+      "Micronaut"
+    ]
+  },
+  {
+    "capability_file": "ml-frameworks.yaml",
+    "provider": "TensorFlow",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/ml-frameworks/tensorflow/sample.yaml",
+    "config_template": "samples/python/ai-ml/ml-frameworks/tensorflow/config.mustache",
+    "frameworks": [
+      "Keras",
+      "tf.data"
+    ]
+  },
+  {
+    "capability_file": "ml-frameworks.yaml",
+    "provider": "PyTorch",
+    "lang": "python",
+    "sample_code": "samples/python/ai-ml/ml-frameworks/pytorch/sample.yaml",
+    "config_template": "samples/python/ai-ml/ml-frameworks/pytorch/config.mustache",
+    "frameworks": [
+      "FastAI",
+      "HuggingFace Transformers"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "REST API",
+    "lang": "java",
+    "sample_code": "samples/java/applications/rest-api/sample.yaml",
+    "config_template": "samples/java/applications/rest-api/config.mustache",
+    "frameworks": [
+      "Spring Boot",
+      "Micronaut"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "REST API",
+    "lang": "python",
+    "sample_code": "samples/python/applications/rest-api/sample.yaml",
+    "config_template": "samples/python/applications/rest-api/config.mustache",
+    "frameworks": [
+      "Flask",
+      "FastAPI",
+      "Django"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "REST API",
+    "lang": "nodejs",
+    "sample_code": "samples/nodejs/applications/rest-api/sample.yaml",
+    "config_template": "samples/nodejs/applications/rest-api/config.mustache",
+    "frameworks": [
+      "Express",
+      "NestJS"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "SOAP",
+    "lang": "java",
+    "sample_code": "samples/java/applications/soap/sample.yaml",
+    "config_template": "samples/java/applications/soap/config.mustache",
+    "frameworks": [
+      "JAX-WS",
+      "Apache CXF"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "SOAP",
+    "lang": "python",
+    "sample_code": "samples/python/applications/soap/sample.yaml",
+    "config_template": "samples/python/applications/soap/config.mustache",
+    "frameworks": [
+      "zeep"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "gRPC",
+    "lang": "java",
+    "sample_code": "samples/java/applications/grpc/sample.yaml",
+    "config_template": "samples/java/applications/grpc/config.mustache",
+    "frameworks": [
+      "gRPC Java"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "gRPC",
+    "lang": "python",
+    "sample_code": "samples/python/applications/grpc/sample.yaml",
+    "config_template": "samples/python/applications/grpc/config.mustache",
+    "frameworks": [
+      "grpcio"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "gRPC",
+    "lang": "nodejs",
+    "sample_code": "samples/nodejs/applications/grpc/sample.yaml",
+    "config_template": "samples/nodejs/applications/grpc/config.mustache",
+    "frameworks": [
+      "grpc-node"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "gRPC",
+    "lang": "go",
+    "sample_code": "samples/go/applications/grpc/sample.yaml",
+    "config_template": "samples/go/applications/grpc/config.mustache",
+    "frameworks": [
+      "grpc-go"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "CORBA",
+    "lang": "java",
+    "sample_code": "samples/java/applications/corba/sample.yaml",
+    "config_template": "samples/java/applications/corba/config.mustache",
+    "frameworks": [
+      "JacORB",
+      "OpenORB"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "CORBA",
+    "lang": "c++",
+    "sample_code": "samples/cpp/applications/corba/sample.yaml",
+    "config_template": "samples/cpp/applications/corba/config.mustache",
+    "frameworks": [
+      "TAO",
+      "omniORB"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "GraphQL",
+    "lang": "nodejs",
+    "sample_code": "samples/nodejs/applications/graphql/sample.yaml",
+    "config_template": "samples/nodejs/applications/graphql/config.mustache",
+    "frameworks": [
+      "Apollo Server",
+      "Express GraphQL"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "GraphQL",
+    "lang": "python",
+    "sample_code": "samples/python/applications/graphql/sample.yaml",
+    "config_template": "samples/python/applications/graphql/config.mustache",
+    "frameworks": [
+      "Graphene",
+      "Ariadne"
+    ]
+  },
+  {
+    "capability_file": "applications.yaml",
+    "provider": "GraphQL",
+    "lang": "java",
+    "sample_code": "samples/java/applications/graphql/sample.yaml",
+    "config_template": "samples/java/applications/graphql/config.mustache",
+    "frameworks": [
+      "graphql-java"
+    ]
+  },
+  {
+    "capability_file": "zero-trust.yaml",
+    "provider": "Open Policy Agent (OPA)",
+    "lang": "go",
+    "sample_code": "samples/go/security/zero-trust/opa/sample.yaml",
+    "config_template": "samples/go/security/zero-trust/opa/config.mustache",
+    "frameworks": [
+      "OPA Go SDK"
+    ]
+  },
+  {
+    "capability_file": "zero-trust.yaml",
+    "provider": "Istio (Zero Trust Mesh)",
+    "lang": "java",
+    "sample_code": "samples/java/security/zero-trust/istio/sample.yaml",
+    "config_template": "samples/java/security/zero-trust/istio/config.mustache",
+    "frameworks": [
+      "Spring Boot with Istio integration"
+    ]
+  },
+  {
+    "capability_file": "data-governance.yaml",
+    "provider": "Apache Atlas",
+    "lang": "java",
+    "sample_code": "samples/java/data/data-governance/apache-atlas/sample.yaml",
+    "config_template": "samples/java/data/data-governance/apache-atlas/config.mustache",
+    "frameworks": [
+      "Spring Boot"
+    ]
+  },
+  {
+    "capability_file": "data-governance.yaml",
+    "provider": "Collibra",
+    "lang": "python",
+    "sample_code": "samples/python/data/data-governance/collibra/sample.yaml",
+    "config_template": "samples/python/data/data-governance/collibra/config.mustache",
+    "frameworks": [
+      "Collibra API SDK"
+    ]
+  },
+  {
+    "capability_file": "data-lake.yaml",
+    "provider": "AWS S3 Data Lake",
+    "lang": "python",
+    "sample_code": "samples/python/data/data-lake/aws-s3/sample.yaml",
+    "config_template": "samples/python/data/data-lake/aws-s3/config.mustache",
+    "frameworks": [
+      "Boto3",
+      "PySpark"
+    ]
+  },
+  {
+    "capability_file": "data-lake.yaml",
+    "provider": "Azure Data Lake Storage",
+    "lang": "java",
+    "sample_code": "samples/java/data/data-lake/azure/sample.yaml",
+    "config_template": "samples/java/data/data-lake/azure/config.mustache",
+    "frameworks": [
+      "Hadoop",
+      "Spark"
+    ]
+  },
+  {
+    "capability_file": "object-storage.yaml",
+    "provider": "AWS S3",
+    "lang": "python",
+    "sample_code": "samples/python/storage/object-storage/aws-s3/sample.yaml",
+    "config_template": "samples/python/storage/object-storage/aws-s3/config.mustache",
+    "frameworks": [
+      "Boto3",
+      "FastAPI"
+    ]
+  },
+  {
+    "capability_file": "object-storage.yaml",
+    "provider": "MinIO",
+    "lang": "go",
+    "sample_code": "samples/go/storage/object-storage/minio/sample.yaml",
+    "config_template": "samples/go/storage/object-storage/minio/config.mustache",
+    "frameworks": [
+      "Gin",
+      "Echo"
+    ]
+  }
+]

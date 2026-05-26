@@ -1,0 +1,17 @@
+dependencies:
+  Confluent Kafka Streams:
+    maven: "<dependency>\n    <groupId>org.springframework.kafka</groupId>\n    <artifactId>spring-kafka</artifactId>\n\
+      </dependency>"
+    gradle: implementation 'org.springframework.kafka:spring-kafka'
+    ant: '<!-- Ant dependency for Confluent Kafka -->
+
+      <ivy:dependency org="org.example" name="confluent kafka-client" rev="1.0.0"/>'
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

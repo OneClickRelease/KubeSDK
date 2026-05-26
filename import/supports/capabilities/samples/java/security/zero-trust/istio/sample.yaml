@@ -1,0 +1,17 @@
+dependencies:
+  Spring Boot with Istio integration:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>istio\
+      \ (zero trust mesh)-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:istio (zero trust mesh)-client:1.0.0'
+    ant: '<!-- Ant dependency for Istio (Zero Trust Mesh) -->
+
+      <ivy:dependency org="org.example" name="istio (zero trust mesh)-client" rev="1.0.0"/>'
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

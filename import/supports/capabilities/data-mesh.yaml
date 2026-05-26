@@ -4,7 +4,10 @@ data-mesh:
 
     - name: Data Mesh (Generic)
       description: Decentralized approach to data ownership and sharing across domains.
-      image_url: "images/data-mesh.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://martinfowler.com/articles/data-monolith-to-mesh.html"
+      repo_url: ""
+      documentation_url: "https://datamesh-architecture.com"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Conceptual architecture; implementations vary."

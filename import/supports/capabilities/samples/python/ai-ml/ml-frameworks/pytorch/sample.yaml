@@ -1,0 +1,26 @@
+dependencies:
+  FastAI:
+    pip: torch>=2.1.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      torch = "^2.1.0"'
+    setuptools: torch>=2.1.0
+  HuggingFace Transformers:
+    pip: torch>=2.1.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      torch = "^2.1.0"'
+    setuptools: torch>=2.1.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

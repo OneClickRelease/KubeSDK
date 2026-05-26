@@ -1,0 +1,19 @@
+dependencies:
+  Spring Boot:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>oracle\
+      \ database-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:oracle database-client:1.0.0'
+    ant: '<!-- Ant dependency for Oracle Database -->
+
+      <ivy:dependency org="org.example" name="oracle database-client" rev="1.0.0"/>'
+envVars:
+- key: DB_HOST
+  value: '{{host}}'
+- key: DB_PORT
+  value: '{{port}}'
+- key: DB_NAME
+  value: '{{database}}'
+- key: DB_USER
+  value: '{{username}}'
+- key: DB_PASS
+  value: '{{password}}'

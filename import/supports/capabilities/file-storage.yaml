@@ -4,7 +4,10 @@ file-storage:
 
     - name: AWS EFS
       description: Elastic File System for scalable NFS storage in AWS cloud.
-      image_url: "images/aws-efs.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/amazonwebservices.svg"
+      website_url: "https://aws.amazon.com/efs/"
+      repo_url: ""
+      documentation_url: "https://docs.aws.amazon.com/efs/"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Proprietary AWS service."
@@ -24,7 +27,10 @@ file-storage:
 
     - name: GlusterFS
       description: Open-source distributed file system for scalable storage clusters.
-      image_url: "images/glusterfs.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://www.gluster.org"
+      repo_url: "https://github.com/gluster/glusterfs"
+      documentation_url: "https://docs.gluster.org/"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Open-source GPL/LGPL."

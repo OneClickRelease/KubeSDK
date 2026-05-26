@@ -1,0 +1,17 @@
+dependencies:
+  Pulsar Java Client:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>apache\
+      \ pulsar-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:apache pulsar-client:1.0.0'
+    ant: '<!-- Ant dependency for Apache Pulsar -->
+
+      <ivy:dependency org="org.example" name="apache pulsar-client" rev="1.0.0"/>'
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

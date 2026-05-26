@@ -4,7 +4,10 @@ kubernetes:
 
     - name: Kubernetes (Upstream)
       description: Open-source container orchestration system for automating deployment, scaling, and management.
-      image_url: "images/kubernetes.png"
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-original.svg"
+      website_url: "https://kubernetes.io"
+      repo_url: "https://github.com/kubernetes/kubernetes"
+      documentation_url: "https://kubernetes.io/docs/home/"
       version: "v1"
       latest_version: "1.30.0"
       license_conditions: "Open-source Apache License 2.0."
@@ -24,7 +27,10 @@ kubernetes:
 
     - name: k0s
       description: Lightweight Kubernetes distribution focused on simplicity and minimal dependencies.
-      image_url: "images/k0s.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://k0sproject.io"
+      repo_url: "https://github.com/k0sproject/k0s"
+      documentation_url: "https://docs.k0sproject.io/"
       version: "v1"
       latest_version: "1.30.0-k0s"
       license_conditions: "Open-source Apache License 2.0."
@@ -44,7 +50,10 @@ kubernetes:
 
     - name: k3s
       description: Lightweight Kubernetes distribution optimized for edge and IoT workloads.
-      image_url: "images/k3s.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/k3s.svg"
+      website_url: "https://k3s.io"
+      repo_url: "https://github.com/k3s-io/k3s"
+      documentation_url: "https://docs.k3s.io/"
       version: "v1"
       latest_version: "1.30.0-k3s"
       license_conditions: "Open-source Apache License 2.0."
@@ -64,7 +73,10 @@ kubernetes:
 
     - name: RKE1
       description: Rancher Kubernetes Engine v1, a CNCF-certified Kubernetes distribution.
-      image_url: "images/rke1.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/rancher.svg"
+      website_url: "https://rancher.com/products/rke"
+      repo_url: "https://github.com/rancher/rke"
+      documentation_url: "https://rke.docs.rancher.com/"
       version: "v1"
       latest_version: "1.24-rke1"
       license_conditions: "Open-source Apache License 2.0."
@@ -84,7 +96,10 @@ kubernetes:
 
     - name: RKE2
       description: Rancher Kubernetes Engine v2, hardened Kubernetes distribution with SELinux and CIS compliance.
-      image_url: "images/rke2.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/rancher.svg"
+      website_url: "https://docs.rke2.io"
+      repo_url: "https://github.com/rancher/rke2"
+      documentation_url: "https://docs.rke2.io/"
       version: "v1"
       latest_version: "1.27-rke2"
       license_conditions: "Open-source Apache License 2.0."
@@ -104,7 +119,10 @@ kubernetes:
 
     - name: OpenShift
       description: Red Hat’s enterprise Kubernetes distribution with integrated developer tools and security.
-      image_url: "images/openshift.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/redhat.svg"
+      website_url: "https://www.redhat.com/en/technologies/cloud-computing/openshift"
+      repo_url: "https://github.com/openshift/origin"
+      documentation_url: "https://docs.openshift.com/"
       version: "v1"
       latest_version: "4.15"
       license_conditions: "Enterprise subscription required."

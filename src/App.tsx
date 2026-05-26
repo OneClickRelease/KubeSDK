@@ -11,6 +11,7 @@ import { HomeView } from './components/layout/HomeView';
 import { SettingsView } from './components/layout/SettingsView';
 import { HistoryView } from './components/layout/HistoryView';
 import { RegistryView } from './components/registry/RegistryView';
+import { CapabilityLayersBrowser } from './components/registry/CapabilityLayersBrowser';
 
 // Wizard Steps
 import { SourceStep } from './components/wizard/steps/SourceStep';
@@ -535,6 +536,22 @@ export default function App() {
             {activeMenu === 'history' && <HistoryView onRestore={handleHistoryRestore} />}
             
             {activeMenu === 'registry' && <RegistryView />}
+            
+            {activeMenu === 'catalog' && (
+              <motion.div
+                key="catalog"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-8 pb-20"
+              >
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-bold text-[#1A1A1A]">Capability Catalog</h2>
+                  <p className="text-[#6C757D]">Browse all capability layers and providers loaded dynamically from YAML.</p>
+                </div>
+                <CapabilityLayersBrowser />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </main>

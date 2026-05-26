@@ -1,0 +1,26 @@
+dependencies:
+  pika:
+    pip: pika>=1.3.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      pika = "^1.3.0"'
+    setuptools: pika>=1.3.0
+  aio-pika:
+    pip: pika>=1.3.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      pika = "^1.3.0"'
+    setuptools: pika>=1.3.0
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

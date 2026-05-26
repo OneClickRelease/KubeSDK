@@ -4,7 +4,10 @@ sql:
 
     - name: MySQL
       description: Popular open-source relational database for transactional workloads.
-      image_url: "images/mysql.png"
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg"
+      website_url: "https://www.mysql.com"
+      repo_url: "https://github.com/mysql/mysql-server"
+      documentation_url: "https://dev.mysql.com/doc/"
       version: "v1"
       latest_version: "8.4.0"
       license_conditions: "GPL v2 for community edition; proprietary for enterprise."
@@ -28,7 +31,10 @@ sql:
 
     - name: PostgreSQL
       description: Advanced open-source relational database with strong SQL compliance.
-      image_url: "images/postgresql.png"
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg"
+      website_url: "https://www.postgresql.org"
+      repo_url: "https://github.com/postgres/postgres"
+      documentation_url: "https://www.postgresql.org/docs/"
       version: "v1"
       latest_version: "16.2"
       license_conditions: "PostgreSQL License (BSD-style)."
@@ -52,7 +58,10 @@ sql:
 
     - name: Oracle Database
       description: Enterprise-grade relational database with advanced features.
-      image_url: "images/oracle-db.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/oracle.svg"
+      website_url: "https://www.oracle.com/database/"
+      repo_url: ""
+      documentation_url: "https://docs.oracle.com/en/database/"
       version: "v1"
       latest_version: "23c"
       license_conditions: "Proprietary Oracle license."

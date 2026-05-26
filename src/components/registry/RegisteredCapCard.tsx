@@ -79,7 +79,7 @@ export const RegisteredCapCard = ({ capability, onEdit, onDelete }: RegisteredCa
           </div>
           <div className="flex-1" />
           <div className="flex -space-x-1.5">
-            {Object.keys(capability.snippets || {}).map((lang) => (
+            {Object.keys(capability.sdkSupport || {}).map((lang) => (
               <div 
                 key={lang}
                 className="w-5 h-5 rounded-full border-2 border-white bg-[#E9ECEF] flex items-center justify-center text-[8px] font-bold text-[#6C757D] uppercase"

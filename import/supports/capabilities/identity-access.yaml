@@ -4,7 +4,10 @@ identity-access:
 
     - name: Keycloak
       description: Open-source identity and access management solution with SSO, OAuth2, and OpenID Connect.
-      image_url: "images/keycloak.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/keycloak.svg"
+      website_url: "https://www.keycloak.org"
+      repo_url: "https://github.com/keycloak/keycloak"
+      documentation_url: "https://www.keycloak.org/documentation"
       version: "v1"
       latest_version: "23.0.0"
       license_conditions: "Apache License 2.0."
@@ -28,7 +31,10 @@ identity-access:
 
     - name: Okta
       description: Cloud-based identity and access management service.
-      image_url: "images/okta.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/okta.svg"
+      website_url: "https://www.okta.com"
+      repo_url: "https://github.com/okta/okta-sdk-nodejs"
+      documentation_url: "https://developer.okta.com/docs/"
       version: "v1"
       latest_version: "2026.1"
       license_conditions: "Commercial subscription."

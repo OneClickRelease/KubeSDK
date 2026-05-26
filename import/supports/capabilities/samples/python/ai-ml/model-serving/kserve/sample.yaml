@@ -1,0 +1,42 @@
+dependencies:
+  TensorFlow:
+    pip: kfserving (kserve)-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kfserving (kserve)-client = "^1.0.0"'
+    setuptools: kfserving (kserve)-client>=1.0.0
+  PyTorch:
+    pip: kfserving (kserve)-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kfserving (kserve)-client = "^1.0.0"'
+    setuptools: kfserving (kserve)-client>=1.0.0
+  XGBoost:
+    pip: kfserving (kserve)-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kfserving (kserve)-client = "^1.0.0"'
+    setuptools: kfserving (kserve)-client>=1.0.0
+  Scikit-learn:
+    pip: kfserving (kserve)-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kfserving (kserve)-client = "^1.0.0"'
+    setuptools: kfserving (kserve)-client>=1.0.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

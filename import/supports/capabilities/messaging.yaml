@@ -3,7 +3,10 @@ messaging:
   providers:
     - name: Apache Kafka
       description: Distributed event streaming platform for high-throughput, fault-tolerant messaging.
-      image_url: "images/kafka.png"
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/apachekafka/apachekafka-original.svg"
+      website_url: "https://kafka.apache.org"
+      repo_url: "https://github.com/apache/kafka"
+      documentation_url: "https://kafka.apache.org/documentation/"
       version: "v1"
       latest_version: "3.7.0"
       license_conditions: "Open-source Apache License 2.0."
@@ -31,7 +34,10 @@ messaging:
 
     - name: Confluent Kafka
       description: Enterprise distribution of Kafka with additional tooling and managed services.
-      image_url: "images/confluent.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/confluent.svg"
+      website_url: "https://www.confluent.io"
+      repo_url: ""
+      documentation_url: "https://docs.confluent.io/"
       version: "v1"
       latest_version: "7.6.0"
       license_conditions: "Commercial license; free community edition available."
@@ -55,7 +61,10 @@ messaging:
 
     - name: RabbitMQ
       description: Open-source message broker supporting AMQP, MQTT, and STOMP protocols.
-      image_url: "images/rabbitmq.png"
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/rabbitmq/rabbitmq-original.svg"
+      website_url: "https://www.rabbitmq.com"
+      repo_url: "https://github.com/rabbitmq/rabbitmq-server"
+      documentation_url: "https://www.rabbitmq.com/documentation.html"
       version: "v1"
       latest_version: "3.13.0"
       license_conditions: "Open-source Mozilla Public License."
@@ -83,7 +92,10 @@ messaging:
 
     - name: NATS
       description: Lightweight, high-performance messaging system for microservices and IoT.
-      image_url: "images/nats.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/nats.svg"
+      website_url: "https://nats.io"
+      repo_url: "https://github.com/nats-io/nats-server"
+      documentation_url: "https://docs.nats.io/"
       version: "v1"
       latest_version: "2.10.0"
       license_conditions: "Apache License 2.0."
@@ -107,7 +119,10 @@ messaging:
 
     - name: Apache Pulsar
       description: Distributed pub/sub messaging and streaming platform with multi-tenancy.
-      image_url: "images/pulsar.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/apachepulsar.svg"
+      website_url: "https://pulsar.apache.org"
+      repo_url: "https://github.com/apache/pulsar"
+      documentation_url: "https://pulsar.apache.org/docs/en/next/"
       version: "v1"
       latest_version: "3.2.0"
       license_conditions: "Apache License 2.0."

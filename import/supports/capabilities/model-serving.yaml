@@ -4,7 +4,10 @@ model-serving:
 
     - name: TensorFlow Serving
       description: Flexible serving system for machine learning models in production.
-      image_url: "images/tf-serving.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/tensorflow.svg"
+      website_url: "https://www.tensorflow.org/tfx/guide/serving"
+      repo_url: "https://github.com/tensorflow/serving"
+      documentation_url: "https://www.tensorflow.org/tfx/serving/api_docs/cc/"
       version: "v1"
       latest_version: "2.16.0"
       license_conditions: "Apache License 2.0."
@@ -24,7 +27,10 @@ model-serving:
 
     - name: TorchServe
       description: Model serving framework for PyTorch models.
-      image_url: "images/torchserve.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/pytorch.svg"
+      website_url: "https://pytorch.org/serve/"
+      repo_url: "https://github.com/pytorch/serve"
+      documentation_url: "https://pytorch.org/serve/index.html"
       version: "v1"
       latest_version: "0.9.0"
       license_conditions: "Apache License 2.0."
@@ -44,7 +50,10 @@ model-serving:
 
     - name: KFServing (KServe)
       description: Kubernetes-native model serving for multiple ML frameworks.
-      image_url: "images/kserve.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://kserve.github.io/website/"
+      repo_url: "https://github.com/kserve/kserve"
+      documentation_url: "https://kserve.github.io/website/latest/"
       version: "v1"
       latest_version: "0.11.0"
       license_conditions: "Apache License 2.0."

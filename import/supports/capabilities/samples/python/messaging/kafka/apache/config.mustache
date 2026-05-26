@@ -1,0 +1,7 @@
+# Python confluent-kafka producer setup
+from confluent_kafka import Producer
+
+producer = Producer({
+    'bootstrap.servers': '{{host}}:{{port}}',
+    'security.protocol': 'plaintext'
+})

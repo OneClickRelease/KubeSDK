@@ -4,7 +4,10 @@ timeseries:
 
     - name: InfluxDB
       description: Time-series database optimized for metrics and events.
-      image_url: "images/influxdb.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/influxdb.svg"
+      website_url: "https://www.influxdata.com"
+      repo_url: "https://github.com/influxdata/influxdb"
+      documentation_url: "https://docs.influxdata.com/"
       version: "v1"
       latest_version: "2.7"
       license_conditions: "MIT License for OSS; proprietary for enterprise."
@@ -24,7 +27,10 @@ timeseries:
 
     - name: TimescaleDB
       description: PostgreSQL extension for time-series workloads.
-      image_url: "images/timescaledb.png"
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/timescale.svg"
+      website_url: "https://www.timescale.com"
+      repo_url: "https://github.com/timescale/timescaledb"
+      documentation_url: "https://docs.timescale.com/"
       version: "v1"
       latest_version: "2.13"
       license_conditions: "Apache License 2.0."

@@ -1,0 +1,26 @@
+dependencies:
+  confluent-kafka:
+    pip: confluent-kafka>=2.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      confluent-kafka = "^2.0.0"'
+    setuptools: confluent-kafka>=2.0.0
+  Faust:
+    pip: confluent-kafka>=2.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      confluent-kafka = "^2.0.0"'
+    setuptools: confluent-kafka>=2.0.0
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

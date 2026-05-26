@@ -1,0 +1,14 @@
+dependencies:
+  Okta SDK:
+    npm: "\"dependencies\": {\n  \"@okta/okta-sdk-nodejs\": \"^1.0.0\"\n}"
+    yarn: "\"dependencies\": {\n  \"@okta/okta-sdk-nodejs\": \"^1.0.0\"\n}"
+    pnpm: "\"dependencies\": {\n  \"@okta/okta-sdk-nodejs\": \"^1.0.0\"\n}"
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'
