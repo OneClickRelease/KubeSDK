@@ -8,7 +8,8 @@ import {
   XCircle, 
   Zap,
   Library,
-  BookOpen
+  BookOpen,
+  AppWindow
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -75,6 +76,13 @@ export const Sidebar = ({ activeMenu, setActiveMenu, onResetSession }: SidebarPr
             onClick={() => setActiveMenu('define')}
             icon={<Settings size={18} />}
             label="Define Local Run"
+          />
+
+          <NavButton
+            active={activeMenu === 'create-application'}
+            onClick={() => setActiveMenu('create-application')}
+            icon={<AppWindow size={18} />}
+            label="Create Application"
           />
 
           {/* Registry group */}

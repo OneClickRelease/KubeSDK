@@ -218,9 +218,19 @@ export const DeploymentStep = ({
 
             <div className="space-y-4">
               <div className="bg-[#1A1A1A] h-full rounded-2xl p-6 border border-black shadow-2xl flex flex-col">
-                 <h5 className="text-[10px] font-bold text-[#6C757D] uppercase tracking-widest flex items-center gap-2 mb-4">
-                   <Terminal size={14} /> Diagnostic Stream
-                 </h5>
+                 <div className="flex items-center justify-between mb-4">
+                    <h5 className="text-[10px] font-bold text-[#6C757D] uppercase tracking-widest flex items-center gap-2">
+                      <Terminal size={14} /> Diagnostic Stream
+                    </h5>
+                    <a 
+                      href="http://localhost:4466" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-[#0D6EFD] hover:underline flex items-center gap-1"
+                    >
+                      K3s Admin UI <ExternalLink size={10} />
+                    </a>
+                 </div>
                  <div className="flex-1 font-mono text-[11px] text-gray-300 space-y-2 overflow-y-auto max-h-[440px]">
                     {deploymentStatus.map((status, idx) => (
                       <div key={idx} className="flex gap-2">

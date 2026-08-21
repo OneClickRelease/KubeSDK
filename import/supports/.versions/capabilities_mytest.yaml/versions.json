@@ -1,0 +1,20 @@
+[
+  {
+    "version": "v2",
+    "versionNumber": 2,
+    "timestamp": "2026-08-21T10:37:53.504Z",
+    "action": "Added new provider: Robot",
+    "author": "User",
+    "filename": "v2_2026-08-21T10-37-53-504Z.yaml",
+    "size": 468
+  },
+  {
+    "version": "v1",
+    "versionNumber": 1,
+    "timestamp": "2026-08-21T10:37:08.105Z",
+    "action": "Created capability file for sub-layer MyTest",
+    "author": "User",
+    "filename": "v1_2026-08-21T10-37-08-105Z.yaml",
+    "size": 42
+  }
+]

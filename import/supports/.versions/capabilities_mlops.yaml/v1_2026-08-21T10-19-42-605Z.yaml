@@ -1,0 +1,72 @@
+mlops:
+  parent: AI-ML
+  providers:
+
+    - name: MLflow
+      description: Open-source platform for managing ML lifecycle including experiments, reproducibility, and deployment.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/mlflow.svg"
+      website_url: "https://mlflow.org"
+      repo_url: "https://github.com/mlflow/mlflow"
+      documentation_url: "https://mlflow.org/docs/latest/index.html"
+      version: "v1"
+      latest_version: "2.12.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [REST, HTTP]
+      default_ports: [5000]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Python runtime", "Backend DB (SQLite, PostgreSQL)"]
+      ha_recommendation: "Deploy MLflow tracking server with HA database."
+      languages:
+        python:
+          frameworks: [Scikit-learn, TensorFlow, PyTorch]
+          sample_code: "samples/python/ai-ml/mlops/mlflow/sample.yaml"
+          config_template: "samples/python/ai-ml/mlops/mlflow/config.mustache"
+
+    - name: Kubeflow
+      description: Kubernetes-native MLOps platform for ML pipelines and workflows.
+      image_url: "https://raw.githubusercontent.com/kubeflow/kubeflow/master/logo/Kubeflow-Logo-Color.svg"
+      website_url: "https://www.kubeflow.org"
+      repo_url: "https://github.com/kubeflow/kubeflow"
+      documentation_url: "https://www.kubeflow.org/docs/"
+      version: "v1"
+      latest_version: "1.9.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, gRPC]
+      default_ports: [8080]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Kubernetes cluster", "Istio, Argo Workflows"]
+      ha_recommendation: "Deploy Kubeflow with multiple nodes and HA control plane."
+      languages:
+        python:
+          frameworks: [TensorFlow, PyTorch, Scikit-learn]
+          sample_code: "samples/python/ai-ml/mlops/kubeflow/sample.yaml"
+          config_template: "samples/python/ai-ml/mlops/kubeflow/config.mustache"
+
+    - name: DVC (Data Version Control)
+      description: Open-source tool for data and model versioning integrated with Git.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/dvc.svg"
+      website_url: "https://dvc.org"
+      repo_url: "https://github.com/iterative/dvc"
+      documentation_url: "https://dvc.org/doc"
+      version: "v1"
+      latest_version: "3.0.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [CLI, Git]
+      default_ports: []
+      resources:
+        vcpu: "1"
+        memory: "2Gi"
+        disk: "10Gi"
+      dependencies: ["Git installed", "Python runtime"]
+      ha_recommendation: "Use Git remote storage with replication for HA."
+      languages:
+        python:
+          frameworks: [Scikit-learn, TensorFlow, PyTorch]
+          sample_code: "samples/python/ai-ml/mlops/dvc/sample.yaml"
+          config_template: "samples/python/ai-ml/mlops/dvc/config.mustache"

@@ -311,7 +311,76 @@ router.get('/download', (req, res) => {
   }
 });
 
-// --- Capability Layers (Dynamic YAML-driven) ---
+// --- Capability Layers & Versioning Management ---
+
+const VERSIONS_DIR = path.join(SUPPORTS_DIR, '.versions');
+if (!fs.existsSync(VERSIONS_DIR)) {
+  fs.mkdirSync(VERSIONS_DIR, { recursive: true });
+}
+
+// Helper to sanitize path for versioning directory
+function getVersionFolderForRelPath(relPath: string): string {
+  const sanitized = relPath.replace(/^[/\\]+/, '').replace(/[/\\]+/g, '_');
+  const folder = path.join(VERSIONS_DIR, sanitized);
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+  }
+  return folder;
+}
+
+// Helper: Save a version snapshot of a YAML file
+export function saveYamlVersionSnapshot(relPath: string, content: string, action: string, author: string = 'User') {
+  try {
+    const folder = getVersionFolderForRelPath(relPath);
+    const metaFile = path.join(folder, 'versions.json');
+    let versions: any[] = [];
+    if (fs.existsSync(metaFile)) {
+      try {
+        versions = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
+      } catch {
+        versions = [];
+      }
+    }
+
+    const versionNum = versions.length + 1;
+    const versionId = `v${versionNum}`;
+    const now = new Date();
+    const timestampStr = now.toISOString();
+    const safeTimestamp = timestampStr.replace(/[:.]/g, '-');
+    const snapshotFileName = `${versionId}_${safeTimestamp}.yaml`;
+    const snapshotPath = path.join(folder, snapshotFileName);
+
+    fs.writeFileSync(snapshotPath, content, 'utf-8');
+
+    const metaEntry = {
+      version: versionId,
+      versionNumber: versionNum,
+      timestamp: timestampStr,
+      action: action || 'Updated file',
+      author: author || 'User',
+      filename: snapshotFileName,
+      size: Buffer.byteLength(content, 'utf-8')
+    };
+
+    versions.unshift(metaEntry); // newest first
+    fs.writeFileSync(metaFile, JSON.stringify(versions, null, 2), 'utf-8');
+
+    return metaEntry;
+  } catch (err) {
+    console.error('Error saving YAML version snapshot:', err);
+    return null;
+  }
+}
+
+// Helper: Ensure initial snapshot exists for a file if none exists
+function ensureInitialSnapshot(relPath: string, absPath: string) {
+  const folder = getVersionFolderForRelPath(relPath);
+  const metaFile = path.join(folder, 'versions.json');
+  if (!fs.existsSync(metaFile) && fs.existsSync(absPath)) {
+    const content = fs.readFileSync(absPath, 'utf-8');
+    saveYamlVersionSnapshot(relPath, content, 'Initial version snapshot', 'System');
+  }
+}
 
 // Helper: Load a capability YAML file given the relative path in capability-layers.yaml
 function loadCapabilityFile(relativeFile: string): { providers: any[] } {
@@ -321,12 +390,54 @@ function loadCapabilityFile(relativeFile: string): { providers: any[] } {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const doc = yaml.load(raw) as any;
     if (!doc) return { providers: [] };
-    // The YAML has a root key (e.g., "messaging", "sql") that contains the data
     const rootKey = Object.keys(doc)[0];
     const data = doc[rootKey] || {};
     return { providers: data.providers || [] };
   } catch {
     return { providers: [] };
+  }
+}
+
+// Helper: Find capability YAML relative file path given layerId and subLayerName
+function findCapabilityFilePath(layerId: string, subLayerName?: string): { relPath: string; absPath: string; rootKey: string } | null {
+  if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) return null;
+  const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+  const doc = yaml.load(raw) as any;
+  const meta = doc['capability-layers'] || {};
+  const layersMap = meta.layers || {};
+  const layer = layersMap[layerId];
+  if (!layer) return null;
+
+  let targetFile = layer.file;
+  if (subLayerName && layer.sub_layers && Array.isArray(layer.sub_layers)) {
+    const sub = layer.sub_layers.find((s: any) => s.name.toLowerCase() === subLayerName.toLowerCase());
+    if (sub && sub.file) {
+      targetFile = sub.file;
+    }
+  }
+
+  if (!targetFile) return null;
+  const absPath = path.join(SUPPORTS_DIR, targetFile);
+  const filename = path.basename(targetFile, path.extname(targetFile));
+  return { relPath: targetFile, absPath, rootKey: filename };
+}
+
+// Helper to touch capability-layers.yaml update time
+function touchCapabilityLayers(actionDescription: string) {
+  if (fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+    try {
+      const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+      const doc = yaml.load(raw) as any;
+      if (doc && doc['capability-layers']) {
+        const today = new Date().toISOString().split('T')[0];
+        doc['capability-layers'].updated = today;
+        const newYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+        fs.writeFileSync(CAPABILITY_LAYERS_FILE, newYaml, 'utf-8');
+        saveYamlVersionSnapshot('capability-layers.yaml', newYaml, `Catalog updated: ${actionDescription}`, 'System');
+      }
+    } catch (e) {
+      console.error('Failed to touch capability-layers.yaml:', e);
+    }
   }
 }
 
@@ -336,6 +447,9 @@ router.get('/capabilities/layers', (req, res) => {
     if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
       return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
     }
+
+    // Ensure master layer initial snapshot exists
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
 
     const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
     const doc = yaml.load(raw) as any;
@@ -354,14 +468,13 @@ router.get('/capabilities/layers', (req, res) => {
         providers: [],
       };
 
-      // If layer has direct file (no sub-layers, e.g. messaging, applications)
       if (layerDef.file) {
+        ensureInitialSnapshot(layerDef.file, path.join(SUPPORTS_DIR, layerDef.file));
         const { providers } = loadCapabilityFile(layerDef.file);
         layer.providers = providers;
         layer.file = layerDef.file;
       }
 
-      // If layer has sub_layers
       if (layerDef.sub_layers && Array.isArray(layerDef.sub_layers)) {
         for (const sub of layerDef.sub_layers) {
           const subLayer: any = {
@@ -373,6 +486,7 @@ router.get('/capabilities/layers', (req, res) => {
             providers: [],
           };
           if (sub.file) {
+            ensureInitialSnapshot(sub.file, path.join(SUPPORTS_DIR, sub.file));
             const { providers } = loadCapabilityFile(sub.file);
             subLayer.providers = providers;
           }
@@ -394,15 +508,939 @@ router.get('/capabilities/layers', (req, res) => {
   }
 });
 
-// GET /api/registry/capabilities/files - List all capability YAML filenames
+// GET /api/registry/capabilities/files - List all capability YAML files with version stats
 router.get('/capabilities/files', (req, res) => {
   try {
-    if (!fs.existsSync(CAPABILITIES_DIR)) {
-      return res.json({ status: 'success', files: [] });
+    const fileList: any[] = [];
+
+    // Add master capability-layers.yaml
+    if (fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      const stats = fs.statSync(CAPABILITY_LAYERS_FILE);
+      const folder = getVersionFolderForRelPath('capability-layers.yaml');
+      const metaFile = path.join(folder, 'versions.json');
+      let versionsCount = 1;
+      if (fs.existsSync(metaFile)) {
+        try {
+          versionsCount = JSON.parse(fs.readFileSync(metaFile, 'utf-8')).length;
+        } catch { /* ignore */ }
+      }
+      fileList.push({
+        name: 'capability-layers.yaml',
+        relPath: 'capability-layers.yaml',
+        type: 'master',
+        size: stats.size,
+        modifiedAt: stats.mtime.toISOString(),
+        versionsCount
+      });
     }
-    const files = fs.readdirSync(CAPABILITIES_DIR)
-      .filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-    res.json({ status: 'success', files });
+
+    // Add files from capabilities directory
+    if (fs.existsSync(CAPABILITIES_DIR)) {
+      const files = fs.readdirSync(CAPABILITIES_DIR)
+        .filter(f => (f.endsWith('.yaml') || f.endsWith('.yml')) && !fs.statSync(path.join(CAPABILITIES_DIR, f)).isDirectory());
+
+      for (const f of files) {
+        const fullP = path.join(CAPABILITIES_DIR, f);
+        const stats = fs.statSync(fullP);
+        const rel = `capabilities/${f}`;
+        const folder = getVersionFolderForRelPath(rel);
+        const metaFile = path.join(folder, 'versions.json');
+        let versionsCount = 1;
+        if (fs.existsSync(metaFile)) {
+          try {
+            versionsCount = JSON.parse(fs.readFileSync(metaFile, 'utf-8')).length;
+          } catch { /* ignore */ }
+        }
+        fileList.push({
+          name: f,
+          relPath: rel,
+          type: 'capability',
+          size: stats.size,
+          modifiedAt: stats.mtime.toISOString(),
+          versionsCount
+        });
+      }
+    }
+
+    res.json({ status: 'success', files: fileList });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// GET /api/registry/capabilities/file - Get raw content and metadata of a file
+router.get('/capabilities/file', (req, res) => {
+  try {
+    const relPath = req.query.path as string;
+    if (!relPath) {
+      return res.status(400).json({ status: 'error', message: 'Query parameter "path" is required' });
+    }
+
+    const safeRel = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, '');
+    const absPath = path.join(SUPPORTS_DIR, safeRel);
+
+    if (!fs.existsSync(absPath)) {
+      return res.status(404).json({ status: 'error', message: 'File not found' });
+    }
+
+    const content = fs.readFileSync(absPath, 'utf-8');
+    const stats = fs.statSync(absPath);
+
+    res.json({
+      status: 'success',
+      relPath: safeRel,
+      name: path.basename(safeRel),
+      content,
+      size: stats.size,
+      modifiedAt: stats.mtime.toISOString()
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// GET /api/registry/capabilities/versions - Get version history for a file
+router.get('/capabilities/versions', (req, res) => {
+  try {
+    const relPath = req.query.file as string;
+    if (!relPath) {
+      return res.status(400).json({ status: 'error', message: 'Query parameter "file" is required' });
+    }
+
+    const folder = getVersionFolderForRelPath(relPath);
+    const metaFile = path.join(folder, 'versions.json');
+
+    if (!fs.existsSync(metaFile)) {
+      const absPath = path.join(SUPPORTS_DIR, relPath);
+      if (fs.existsSync(absPath)) {
+        ensureInitialSnapshot(relPath, absPath);
+      }
+    }
+
+    let versions: any[] = [];
+    if (fs.existsSync(metaFile)) {
+      try {
+        versions = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
+      } catch {
+        versions = [];
+      }
+    }
+
+    res.json({ status: 'success', file: relPath, versions });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// GET /api/registry/capabilities/version-content - Get content of a specific version snapshot
+router.get('/capabilities/version-content', (req, res) => {
+  try {
+    const relPath = req.query.file as string;
+    const versionId = req.query.versionId as string;
+    if (!relPath || !versionId) {
+      return res.status(400).json({ status: 'error', message: 'Parameters "file" and "versionId" are required' });
+    }
+
+    const folder = getVersionFolderForRelPath(relPath);
+    const metaFile = path.join(folder, 'versions.json');
+    if (!fs.existsSync(metaFile)) {
+      return res.status(404).json({ status: 'error', message: 'Version history not found' });
+    }
+
+    const versions = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
+    const entry = versions.find((v: any) => v.version === versionId || v.filename === versionId);
+    if (!entry) {
+      return res.status(404).json({ status: 'error', message: 'Version snapshot not found' });
+    }
+
+    const snapshotPath = path.join(folder, entry.filename);
+    if (!fs.existsSync(snapshotPath)) {
+      return res.status(404).json({ status: 'error', message: 'Snapshot file missing' });
+    }
+
+    const content = fs.readFileSync(snapshotPath, 'utf-8');
+    res.json({ status: 'success', version: entry, content });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/restore-version - Restore a file from a previous snapshot
+router.post('/capabilities/restore-version', (req, res) => {
+  try {
+    const { file: relPath, versionId } = req.body;
+    if (!relPath || !versionId) {
+      return res.status(400).json({ status: 'error', message: 'file and versionId are required' });
+    }
+
+    const folder = getVersionFolderForRelPath(relPath);
+    const metaFile = path.join(folder, 'versions.json');
+    if (!fs.existsSync(metaFile)) {
+      return res.status(404).json({ status: 'error', message: 'Version history not found' });
+    }
+
+    const versions = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
+    const entry = versions.find((v: any) => v.version === versionId || v.filename === versionId);
+    if (!entry) {
+      return res.status(404).json({ status: 'error', message: 'Version snapshot not found' });
+    }
+
+    const snapshotPath = path.join(folder, entry.filename);
+    if (!fs.existsSync(snapshotPath)) {
+      return res.status(404).json({ status: 'error', message: 'Snapshot file missing' });
+    }
+
+    const restoredContent = fs.readFileSync(snapshotPath, 'utf-8');
+    const targetPath = path.join(SUPPORTS_DIR, relPath);
+
+    // Save snapshot of current state before restoration
+    if (fs.existsSync(targetPath)) {
+      const currentContent = fs.readFileSync(targetPath, 'utf-8');
+      saveYamlVersionSnapshot(relPath, currentContent, `Pre-rollback snapshot before restoring ${versionId}`);
+    }
+
+    // Write restored content
+    fs.writeFileSync(targetPath, restoredContent, 'utf-8');
+
+    // Create snapshot documenting the restoration
+    saveYamlVersionSnapshot(relPath, restoredContent, `Restored from version ${versionId} (${entry.timestamp})`);
+    touchCapabilityLayers(`Restored ${relPath} from version ${versionId}`);
+
+    res.json({ status: 'success', message: `Restored ${relPath} from version ${versionId}` });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/provider - Create a new provider
+router.post('/capabilities/provider', (req, res) => {
+  try {
+    const { layerId, subLayerName, provider } = req.body;
+    if (!layerId || !provider || !provider.name) {
+      return res.status(400).json({ status: 'error', message: 'layerId and provider with name are required' });
+    }
+
+    const fileInfo = findCapabilityFilePath(layerId, subLayerName);
+    if (!fileInfo) {
+      return res.status(404).json({ status: 'error', message: `Capability file not found for layer: ${layerId}, subLayer: ${subLayerName}` });
+    }
+
+    let doc: any = {};
+    if (fs.existsSync(fileInfo.absPath)) {
+      ensureInitialSnapshot(fileInfo.relPath, fileInfo.absPath);
+      const raw = fs.readFileSync(fileInfo.absPath, 'utf-8');
+      doc = yaml.load(raw) || {};
+    }
+
+    const rootKey = Object.keys(doc)[0] || fileInfo.rootKey;
+    if (!doc[rootKey]) {
+      doc[rootKey] = { parent: subLayerName || layerId, providers: [] };
+    }
+    if (!Array.isArray(doc[rootKey].providers)) {
+      doc[rootKey].providers = [];
+    }
+
+    // Check if provider name already exists
+    const existingIndex = doc[rootKey].providers.findIndex((p: any) => p.name.toLowerCase() === provider.name.toLowerCase());
+    if (existingIndex !== -1) {
+      return res.status(400).json({ status: 'error', message: `Provider "${provider.name}" already exists in this capability` });
+    }
+
+    // Add provider
+    const newProv: any = {
+      name: provider.name,
+      description: provider.description || '',
+      image_url: provider.image_url || '',
+      website_url: provider.website_url || '',
+      repo_url: provider.repo_url || '',
+      documentation_url: provider.documentation_url || '',
+      version: provider.version || 'v1',
+      deprecated: provider.deprecated === true,
+      license_conditions: provider.license_conditions || '',
+      protocols_supported: provider.protocols_supported || [],
+      default_ports: provider.default_ports || [],
+      dependencies: provider.dependencies || [],
+      ha_recommendation: provider.ha_recommendation || '',
+      languages: provider.languages || {}
+    };
+
+    if (provider.latest_version) newProv.latest_version = provider.latest_version;
+    if (provider.deprecation_reason) newProv.deprecation_reason = provider.deprecation_reason;
+    if (provider.resources && (provider.resources.vcpu || provider.resources.memory || provider.resources.disk)) {
+      newProv.resources = provider.resources;
+    }
+
+    doc[rootKey].providers.push(newProv);
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(fileInfo.absPath, updatedYaml, 'utf-8');
+
+    // Create YAML version snapshot
+    saveYamlVersionSnapshot(fileInfo.relPath, updatedYaml, `Added new provider: ${provider.name}`);
+    touchCapabilityLayers(`Added provider ${provider.name}`);
+
+    res.json({ status: 'success', message: `Provider "${provider.name}" created successfully`, provider: newProv });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// PUT /api/registry/capabilities/provider - Update an existing provider
+router.put('/capabilities/provider', (req, res) => {
+  try {
+    const { layerId, subLayerName, oldName, provider } = req.body;
+    if (!layerId || !provider || !provider.name) {
+      return res.status(400).json({ status: 'error', message: 'layerId, provider data and provider name are required' });
+    }
+
+    const fileInfo = findCapabilityFilePath(layerId, subLayerName);
+    if (!fileInfo || !fs.existsSync(fileInfo.absPath)) {
+      return res.status(404).json({ status: 'error', message: 'Capability file not found' });
+    }
+
+    ensureInitialSnapshot(fileInfo.relPath, fileInfo.absPath);
+    const raw = fs.readFileSync(fileInfo.absPath, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const rootKey = Object.keys(doc)[0] || fileInfo.rootKey;
+
+    if (!doc[rootKey] || !Array.isArray(doc[rootKey].providers)) {
+      return res.status(404).json({ status: 'error', message: 'No providers list found in YAML' });
+    }
+
+    const targetLookup = (oldName || provider.name).toLowerCase();
+    const index = doc[rootKey].providers.findIndex((p: any) => p.name.toLowerCase() === targetLookup);
+
+    if (index === -1) {
+      return res.status(404).json({ status: 'error', message: `Provider "${oldName || provider.name}" not found` });
+    }
+
+    // Preserve existing extra fields while updating
+    const existing = doc[rootKey].providers[index];
+    doc[rootKey].providers[index] = {
+      ...existing,
+      ...provider,
+      deprecated: provider.deprecated === true,
+      deprecation_reason: provider.deprecation_reason || existing.deprecation_reason || ''
+    };
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(fileInfo.absPath, updatedYaml, 'utf-8');
+
+    saveYamlVersionSnapshot(fileInfo.relPath, updatedYaml, `Updated provider: ${provider.name}`);
+    touchCapabilityLayers(`Updated provider ${provider.name}`);
+
+    res.json({ status: 'success', message: `Provider "${provider.name}" updated successfully`, provider: doc[rootKey].providers[index] });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/provider/version - Add a new version for a provider
+router.post('/capabilities/provider/version', (req, res) => {
+  try {
+    const { layerId, subLayerName, providerName, newVersion, latestVersion, changelog, changes } = req.body;
+    if (!layerId || !providerName || (!newVersion && !latestVersion)) {
+      return res.status(400).json({ status: 'error', message: 'layerId, providerName, and newVersion/latestVersion are required' });
+    }
+
+    const fileInfo = findCapabilityFilePath(layerId, subLayerName);
+    if (!fileInfo || !fs.existsSync(fileInfo.absPath)) {
+      return res.status(404).json({ status: 'error', message: 'Capability file not found' });
+    }
+
+    ensureInitialSnapshot(fileInfo.relPath, fileInfo.absPath);
+    const raw = fs.readFileSync(fileInfo.absPath, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const rootKey = Object.keys(doc)[0] || fileInfo.rootKey;
+
+    const index = doc[rootKey].providers.findIndex((p: any) => p.name.toLowerCase() === providerName.toLowerCase());
+    if (index === -1) {
+      return res.status(404).json({ status: 'error', message: `Provider "${providerName}" not found` });
+    }
+
+    const existing = doc[rootKey].providers[index];
+    const prevVersion = existing.latest_version || existing.version;
+
+    // Archive previous version in history array inside provider if not present
+    if (!Array.isArray(existing.version_history)) {
+      existing.version_history = [];
+    }
+    existing.version_history.push({
+      version: existing.version || 'v1',
+      latest_version: existing.latest_version || '',
+      archived_at: new Date().toISOString()
+    });
+
+    if (newVersion) existing.version = newVersion;
+    if (latestVersion) existing.latest_version = latestVersion;
+    if (changelog) existing.last_changelog = changelog;
+    if (changes && typeof changes === 'object') {
+      Object.assign(existing, changes);
+    }
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(fileInfo.absPath, updatedYaml, 'utf-8');
+
+    const desc = `Version bump for ${providerName} (${prevVersion} -> ${latestVersion || newVersion})`;
+    saveYamlVersionSnapshot(fileInfo.relPath, updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc, provider: existing });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/provider/deprecate - Toggle deprecation
+router.post('/capabilities/provider/deprecate', (req, res) => {
+  try {
+    const { layerId, subLayerName, providerName, deprecated, deprecation_reason } = req.body;
+    if (!layerId || !providerName) {
+      return res.status(400).json({ status: 'error', message: 'layerId and providerName are required' });
+    }
+
+    const fileInfo = findCapabilityFilePath(layerId, subLayerName);
+    if (!fileInfo || !fs.existsSync(fileInfo.absPath)) {
+      return res.status(404).json({ status: 'error', message: 'Capability file not found' });
+    }
+
+    ensureInitialSnapshot(fileInfo.relPath, fileInfo.absPath);
+    const raw = fs.readFileSync(fileInfo.absPath, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const rootKey = Object.keys(doc)[0] || fileInfo.rootKey;
+
+    const index = doc[rootKey].providers.findIndex((p: any) => p.name.toLowerCase() === providerName.toLowerCase());
+    if (index === -1) {
+      return res.status(404).json({ status: 'error', message: `Provider "${providerName}" not found` });
+    }
+
+    const isDep = deprecated !== undefined ? deprecated : !doc[rootKey].providers[index].deprecated;
+    doc[rootKey].providers[index].deprecated = isDep;
+    if (deprecation_reason !== undefined) {
+      doc[rootKey].providers[index].deprecation_reason = deprecation_reason;
+    }
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(fileInfo.absPath, updatedYaml, 'utf-8');
+
+    const desc = isDep
+      ? `Deprecated provider: ${providerName}${deprecation_reason ? ` (${deprecation_reason})` : ''}`
+      : `Un-deprecated provider: ${providerName}`;
+    saveYamlVersionSnapshot(fileInfo.relPath, updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({
+      status: 'success',
+      message: desc,
+      deprecated: isDep,
+      provider: doc[rootKey].providers[index]
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// DELETE /api/registry/capabilities/provider - Delete a provider
+router.delete('/capabilities/provider', (req, res) => {
+  try {
+    const { layerId, subLayerName, providerName } = req.body;
+    if (!layerId || !providerName) {
+      return res.status(400).json({ status: 'error', message: 'layerId and providerName are required' });
+    }
+
+    const fileInfo = findCapabilityFilePath(layerId, subLayerName);
+    if (!fileInfo || !fs.existsSync(fileInfo.absPath)) {
+      return res.status(404).json({ status: 'error', message: 'Capability file not found' });
+    }
+
+    ensureInitialSnapshot(fileInfo.relPath, fileInfo.absPath);
+    const raw = fs.readFileSync(fileInfo.absPath, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const rootKey = Object.keys(doc)[0] || fileInfo.rootKey;
+
+    if (!doc[rootKey] || !Array.isArray(doc[rootKey].providers)) {
+      return res.status(404).json({ status: 'error', message: 'No providers in this capability' });
+    }
+
+    const initialLen = doc[rootKey].providers.length;
+    doc[rootKey].providers = doc[rootKey].providers.filter((p: any) => p.name.toLowerCase() !== providerName.toLowerCase());
+
+    if (doc[rootKey].providers.length === initialLen) {
+      return res.status(404).json({ status: 'error', message: `Provider "${providerName}" not found` });
+    }
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(fileInfo.absPath, updatedYaml, 'utf-8');
+
+    const desc = `Deleted provider: ${providerName}`;
+    saveYamlVersionSnapshot(fileInfo.relPath, updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/layer - Create a new top-level layer
+router.post('/capabilities/layer', (req, res) => {
+  try {
+    const { id, name, description, image_url, hasFile } = req.body;
+    if (!name) {
+      return res.status(400).json({ status: 'error', message: 'Layer name is required' });
+    }
+
+    const layerKey = (id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-|-$/g, '');
+    if (!layerKey) {
+      return res.status(400).json({ status: 'error', message: 'Valid layer identifier is required' });
+    }
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    if (!doc['capability-layers']) doc['capability-layers'] = { version: 'v1', layers: {} };
+    if (!doc['capability-layers'].layers) doc['capability-layers'].layers = {};
+
+    if (doc['capability-layers'].layers[layerKey]) {
+      return res.status(400).json({ status: 'error', message: `Layer "${layerKey}" already exists` });
+    }
+
+    const newLayerDef: any = {
+      name: name.trim(),
+      description: description ? description.trim() : `Platform layer for ${name}`,
+      image_url: image_url ? image_url.trim() : `images/${layerKey}.png`
+    };
+
+    if (hasFile) {
+      const capFileName = `capabilities/${layerKey}.yaml`;
+      newLayerDef.file = capFileName;
+      const capAbsPath = path.join(SUPPORTS_DIR, capFileName);
+      if (!fs.existsSync(capAbsPath)) {
+        const initCapYaml = yaml.dump({ [layerKey]: { parent: name, providers: [] } }, { indent: 2 });
+        fs.writeFileSync(capAbsPath, initCapYaml, 'utf-8');
+        saveYamlVersionSnapshot(capFileName, initCapYaml, `Created initial capability file for ${name}`);
+      }
+    } else {
+      newLayerDef.sub_layers = [];
+    }
+
+    doc['capability-layers'].layers[layerKey] = newLayerDef;
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = `Created new layer: ${name}`;
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({
+      status: 'success',
+      message: desc,
+      layer: { id: layerKey, ...newLayerDef }
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// PUT /api/registry/capabilities/layer - Update layer metadata
+router.put('/capabilities/layer', (req, res) => {
+  try {
+    const { id, name, description, image_url } = req.body;
+    if (!id || !name) {
+      return res.status(400).json({ status: 'error', message: 'Layer id and name are required' });
+    }
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const layersMap = doc['capability-layers']?.layers;
+
+    if (!layersMap || !layersMap[id]) {
+      return res.status(404).json({ status: 'error', message: `Layer "${id}" not found` });
+    }
+
+    layersMap[id].name = name.trim();
+    if (description !== undefined) layersMap[id].description = description.trim();
+    if (image_url !== undefined) layersMap[id].image_url = image_url.trim();
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = `Updated layer: ${name}`;
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc, layer: { id, ...layersMap[id] } });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// DELETE /api/registry/capabilities/layer - Delete a top-level layer
+router.delete('/capabilities/layer', (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ status: 'error', message: 'Layer id is required' });
+    }
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const layersMap = doc['capability-layers']?.layers;
+
+    if (!layersMap || !layersMap[id]) {
+      return res.status(404).json({ status: 'error', message: `Layer "${id}" not found` });
+    }
+
+    const layerName = layersMap[id].name || id;
+    delete layersMap[id];
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = `Deleted layer: ${layerName} (${id})`;
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/sublayer - Create a new sub-layer
+router.post('/capabilities/sublayer', (req, res) => {
+  try {
+    const { layerId, name, description, image_url, file } = req.body;
+    if (!layerId || !name) {
+      return res.status(400).json({ status: 'error', message: 'layerId and sub-layer name are required' });
+    }
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const layersMap = doc['capability-layers']?.layers;
+
+    if (!layersMap || !layersMap[layerId]) {
+      return res.status(404).json({ status: 'error', message: `Parent layer "${layerId}" not found` });
+    }
+
+    const layer = layersMap[layerId];
+    if (!Array.isArray(layer.sub_layers)) {
+      layer.sub_layers = [];
+    }
+
+    const subSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const capFileName = file || `capabilities/${subSlug}.yaml`;
+
+    const existingSub = layer.sub_layers.find((s: any) => s.name.toLowerCase() === name.toLowerCase());
+    if (existingSub) {
+      return res.status(400).json({ status: 'error', message: `Sub-layer "${name}" already exists under ${layer.name}` });
+    }
+
+    const newSub: any = {
+      name: name.trim(),
+      parent: layer.name,
+      description: description ? description.trim() : `Sub-layer for ${name}`,
+      image_url: image_url ? image_url.trim() : `images/${subSlug}.png`,
+      file: capFileName
+    };
+
+    // Ensure the underlying capability file exists
+    const capAbsPath = path.join(SUPPORTS_DIR, capFileName);
+    if (!fs.existsSync(capAbsPath)) {
+      const initDoc = { [subSlug]: { parent: layer.name, providers: [] } };
+      const initYaml = yaml.dump(initDoc, { indent: 2, lineWidth: -1, noRefs: true });
+      fs.writeFileSync(capAbsPath, initYaml, 'utf-8');
+      saveYamlVersionSnapshot(capFileName, initYaml, `Created capability file for sub-layer ${name}`);
+    }
+
+    layer.sub_layers.push(newSub);
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = `Added sub-layer ${name} to ${layer.name}`;
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc, subLayer: newSub });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// PUT /api/registry/capabilities/sublayer - Update sub-layer metadata
+router.put('/capabilities/sublayer', (req, res) => {
+  try {
+    const { layerId, oldName, name, description, image_url } = req.body;
+    if (!layerId || !name) {
+      return res.status(400).json({ status: 'error', message: 'layerId and sub-layer name are required' });
+    }
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const layer = doc['capability-layers']?.layers?.[layerId];
+
+    if (!layer || !Array.isArray(layer.sub_layers)) {
+      return res.status(404).json({ status: 'error', message: `Layer "${layerId}" not found or has no sub-layers` });
+    }
+
+    const targetLookup = (oldName || name).toLowerCase();
+    const sub = layer.sub_layers.find((s: any) => s.name.toLowerCase() === targetLookup);
+    if (!sub) {
+      return res.status(404).json({ status: 'error', message: `Sub-layer "${oldName || name}" not found` });
+    }
+
+    sub.name = name.trim();
+    if (description !== undefined) sub.description = description.trim();
+    if (image_url !== undefined) sub.image_url = image_url.trim();
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = `Updated sub-layer ${name} under ${layer.name}`;
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc, subLayer: sub });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// DELETE /api/registry/capabilities/sublayer - Delete a sub-layer
+router.delete('/capabilities/sublayer', (req, res) => {
+  try {
+    const { layerId, name } = req.body;
+    if (!layerId || !name) {
+      return res.status(400).json({ status: 'error', message: 'layerId and sub-layer name are required' });
+    }
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const layer = doc['capability-layers']?.layers?.[layerId];
+
+    if (!layer || !Array.isArray(layer.sub_layers)) {
+      return res.status(404).json({ status: 'error', message: `Layer "${layerId}" not found or has no sub-layers` });
+    }
+
+    const initLen = layer.sub_layers.length;
+    layer.sub_layers = layer.sub_layers.filter((s: any) => s.name.toLowerCase() !== name.toLowerCase());
+
+    if (layer.sub_layers.length === initLen) {
+      return res.status(404).json({ status: 'error', message: `Sub-layer "${name}" not found` });
+    }
+
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = `Deleted sub-layer ${name} from ${layer.name}`;
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// POST /api/registry/capabilities/reorder - Reorder layers and sub-layers
+router.post('/capabilities/reorder', (req, res) => {
+  try {
+    const { layerOrder, subLayerOrder } = req.body;
+
+    if (!fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'capability-layers.yaml not found' });
+    }
+
+    ensureInitialSnapshot('capability-layers.yaml', CAPABILITY_LAYERS_FILE);
+    const raw = fs.readFileSync(CAPABILITY_LAYERS_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    const currentLayers = doc['capability-layers']?.layers || {};
+
+    // 1. Reorder top-level layers
+    let reorderedLayers: Record<string, any> = {};
+
+    if (Array.isArray(layerOrder) && layerOrder.length > 0) {
+      // Add according to specified order
+      for (const key of layerOrder) {
+        if (currentLayers[key]) {
+          reorderedLayers[key] = currentLayers[key];
+        }
+      }
+      // Add any remaining keys not in layerOrder
+      for (const [key, val] of Object.entries(currentLayers)) {
+        if (!reorderedLayers[key]) {
+          reorderedLayers[key] = val;
+        }
+      }
+    } else {
+      reorderedLayers = { ...currentLayers };
+    }
+
+    // 2. Reorder sub_layers inside layers
+    if (subLayerOrder && typeof subLayerOrder === 'object') {
+      for (const [layerKey, subNames] of Object.entries<string[]>(subLayerOrder)) {
+        if (reorderedLayers[layerKey] && Array.isArray(reorderedLayers[layerKey].sub_layers) && Array.isArray(subNames)) {
+          const currentSubs = reorderedLayers[layerKey].sub_layers;
+          const reorderedSubs: any[] = [];
+
+          for (const subName of subNames) {
+            const found = currentSubs.find((s: any) => s.name.toLowerCase() === subName.toLowerCase());
+            if (found) {
+              reorderedSubs.push(found);
+            }
+          }
+          for (const s of currentSubs) {
+            if (!reorderedSubs.some((rs: any) => rs.name.toLowerCase() === s.name.toLowerCase())) {
+              reorderedSubs.push(s);
+            }
+          }
+
+          reorderedLayers[layerKey].sub_layers = reorderedSubs;
+        }
+      }
+    }
+
+    doc['capability-layers'].layers = reorderedLayers;
+    const updatedYaml = yaml.dump(doc, { indent: 2, lineWidth: -1, noRefs: true });
+    fs.writeFileSync(CAPABILITY_LAYERS_FILE, updatedYaml, 'utf-8');
+
+    const desc = 'Reordered capability layers and sublayers';
+    saveYamlVersionSnapshot('capability-layers.yaml', updatedYaml, desc);
+    touchCapabilityLayers(desc);
+
+    res.json({ status: 'success', message: desc });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+
+// POST /api/registry/capabilities/import - Import/upload a capability YAML or layers YAML
+router.post('/capabilities/import', upload.single('file'), (req, res) => {
+  try {
+    let yamlContent = '';
+    let targetFileName = '';
+
+    if (req.file) {
+      yamlContent = req.file.buffer.toString('utf-8');
+      targetFileName = req.file.originalname;
+    } else if (req.body.content) {
+      yamlContent = req.body.content;
+      targetFileName = req.body.filename || 'imported-capability.yaml';
+    } else {
+      return res.status(400).json({ status: 'error', message: 'No file or content provided' });
+    }
+
+    // Validate YAML
+    let parsed: any;
+    try {
+      parsed = yaml.load(yamlContent);
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('YAML must contain a valid mapping/object');
+      }
+    } catch (e: any) {
+      return res.status(400).json({ status: 'error', message: `Invalid YAML syntax: ${e.message}` });
+    }
+
+    const isMaster = targetFileName === 'capability-layers.yaml' || !!parsed['capability-layers'];
+    const relPath = isMaster ? 'capability-layers.yaml' : `capabilities/${path.basename(targetFileName)}`;
+    const absPath = path.join(SUPPORTS_DIR, relPath);
+
+    // Save snapshot of existing file if present
+    if (fs.existsSync(absPath)) {
+      const existing = fs.readFileSync(absPath, 'utf-8');
+      saveYamlVersionSnapshot(relPath, existing, `Pre-import snapshot before importing ${targetFileName}`);
+    }
+
+    // Write file
+    fs.writeFileSync(absPath, yamlContent, 'utf-8');
+
+    // Create new snapshot
+    saveYamlVersionSnapshot(relPath, yamlContent, `Imported via UI: ${targetFileName}`);
+    touchCapabilityLayers(`Imported ${targetFileName}`);
+
+    res.json({
+      status: 'success',
+      message: `Successfully imported ${targetFileName}`,
+      relPath
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// GET /api/registry/capabilities/export - Export single YAML or full ZIP bundle
+router.get('/capabilities/export', async (req, res) => {
+  try {
+    const file = req.query.file as string;
+
+    if (file) {
+      // Export single file
+      const safeRel = path.normalize(file).replace(/^(\.\.(\/|\\|$))+/, '');
+      const absPath = path.join(SUPPORTS_DIR, safeRel);
+
+      if (!fs.existsSync(absPath)) {
+        return res.status(404).json({ status: 'error', message: 'File not found' });
+      }
+
+      const content = fs.readFileSync(absPath, 'utf-8');
+      const filename = path.basename(safeRel);
+      res.setHeader('Content-Type', 'text/yaml');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.send(content);
+    }
+
+    // Export all capabilities bundle as ZIP
+    const AdmZip = (await import('adm-zip')).default;
+    const zip = new AdmZip();
+
+    // Add capability-layers.yaml
+    if (fs.existsSync(CAPABILITY_LAYERS_FILE)) {
+      zip.addLocalFile(CAPABILITY_LAYERS_FILE);
+    }
+
+    // Add capabilities directory
+    if (fs.existsSync(CAPABILITIES_DIR)) {
+      zip.addLocalFolder(CAPABILITIES_DIR, 'capabilities');
+    }
+
+    const zipBuffer = zip.toBuffer();
+    const timestamp = new Date().toISOString().split('T')[0];
+    const zipName = `capability-catalog-export-${timestamp}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+    res.send(zipBuffer);
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }
@@ -469,5 +1507,21 @@ router.get('/capabilities/sample-payload', (req, res) => {
   }
 });
 
+// GET /api/registry/languages - Retrieve supported languages, frameworks, and tools from YAML config
+router.get('/languages', (req, res) => {
+  try {
+    const LANGUAGES_FILE = path.join(process.cwd(), 'import', 'supports', 'languages.yaml');
+    if (!fs.existsSync(LANGUAGES_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'languages.yaml not found' });
+    }
+    const raw = fs.readFileSync(LANGUAGES_FILE, 'utf-8');
+    const doc = yaml.load(raw) as any;
+    res.json({ status: 'success', languages: doc.languages || {} });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
 export default router;
+
 

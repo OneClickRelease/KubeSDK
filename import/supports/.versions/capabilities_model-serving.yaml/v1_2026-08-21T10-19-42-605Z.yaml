@@ -1,0 +1,72 @@
+model-serving:
+  parent: AI-ML
+  providers:
+
+    - name: TensorFlow Serving
+      description: Flexible serving system for machine learning models in production.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/tensorflow.svg"
+      website_url: "https://www.tensorflow.org/tfx/guide/serving"
+      repo_url: "https://github.com/tensorflow/serving"
+      documentation_url: "https://www.tensorflow.org/tfx/serving/api_docs/cc/"
+      version: "v1"
+      latest_version: "2.16.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [gRPC, REST]
+      default_ports: [8500, 8501]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["TensorFlow models exported in SavedModel format"]
+      ha_recommendation: "Deploy multiple serving instances behind a load balancer."
+      languages:
+        python:
+          frameworks: [TensorFlow, Keras]
+          sample_code: "samples/python/ai-ml/model-serving/tf-serving/sample.yaml"
+          config_template: "samples/python/ai-ml/model-serving/tf-serving/config.mustache"
+
+    - name: TorchServe
+      description: Model serving framework for PyTorch models.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/pytorch.svg"
+      website_url: "https://pytorch.org/serve/"
+      repo_url: "https://github.com/pytorch/serve"
+      documentation_url: "https://pytorch.org/serve/index.html"
+      version: "v1"
+      latest_version: "0.9.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, REST]
+      default_ports: [8080]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["PyTorch models packaged as MAR files"]
+      ha_recommendation: "Deploy TorchServe with autoscaling and multiple replicas."
+      languages:
+        python:
+          frameworks: [PyTorch, HuggingFace Transformers]
+          sample_code: "samples/python/ai-ml/model-serving/torchserve/sample.yaml"
+          config_template: "samples/python/ai-ml/model-serving/torchserve/config.mustache"
+
+    - name: KFServing (KServe)
+      description: Kubernetes-native model serving for multiple ML frameworks.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://kserve.github.io/website/"
+      repo_url: "https://github.com/kserve/kserve"
+      documentation_url: "https://kserve.github.io/website/latest/"
+      version: "v1"
+      latest_version: "0.11.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, gRPC]
+      default_ports: [8080]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Kubernetes cluster", "Istio or Knative"]
+      ha_recommendation: "Deploy KServe with autoscaling and multi-model support."
+      languages:
+        python:
+          frameworks: [TensorFlow, PyTorch, XGBoost, Scikit-learn]
+          sample_code: "samples/python/ai-ml/model-serving/kserve/sample.yaml"
+          config_template: "samples/python/ai-ml/model-serving/kserve/config.mustache"

@@ -97,7 +97,7 @@ export const ImportStep = ({ config, setConfig, isFetching, onFetchCluster }: Im
           
           <div className="space-y-6">
             <div>
-              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🚀 Quick Setup (Standard/Rancher)</h6>
+              <h6 className="font-bold text-[#212529] mb-2 flex items-center gap-2">🚀 Quick Setup (In-built K3s)</h6>
               <p className="text-xs mb-3 text-[#6C757D]">Copy and run this script in your terminal to create a long-lived admin token and get your API URL.</p>
               <div className="bg-[#1E1E1E] text-[#D4D4D4] p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre leading-relaxed border border-black shadow-inner">
 {`# Create ServiceAccount

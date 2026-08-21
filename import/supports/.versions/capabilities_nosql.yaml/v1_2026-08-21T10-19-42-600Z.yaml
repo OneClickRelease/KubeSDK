@@ -1,0 +1,49 @@
+nosql:
+  parent: Database
+  providers:
+
+    - name: MongoDB
+      description: Document-oriented NoSQL database for flexible schemas.
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mongodb/mongodb-original.svg"
+      website_url: "https://www.mongodb.com"
+      repo_url: "https://github.com/mongodb/mongo"
+      documentation_url: "https://www.mongodb.com/docs/"
+      version: "v1"
+      latest_version: "7.0"
+      license_conditions: "Server Side Public License (SSPL)."
+      protocols_supported: [BSON, TCP]
+      default_ports: [27017]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Linux host", "MongoDB server installed"]
+      ha_recommendation: "Deploy replica sets with 3+ nodes."
+      languages:
+        python:
+          frameworks: [FastAPI, Flask]
+          sample_code: "samples/python/database/nosql/mongodb/sample.yaml"
+          config_template: "samples/python/database/nosql/mongodb/config.mustache"
+
+    - name: Cassandra
+      description: Wide-column NoSQL database for high scalability.
+      image_url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cassandra/cassandra-original.svg"
+      website_url: "https://cassandra.apache.org"
+      repo_url: "https://github.com/apache/cassandra"
+      documentation_url: "https://cassandra.apache.org/doc/latest/"
+      version: "v1"
+      latest_version: "5.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [CQL, TCP]
+      default_ports: [9042]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Java runtime"]
+      ha_recommendation: "Deploy across multiple datacenters with replication."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/database/nosql/cassandra/sample.yaml"
+          config_template: "samples/java/database/nosql/cassandra/config.mustache"

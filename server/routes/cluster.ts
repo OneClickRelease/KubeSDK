@@ -2,10 +2,27 @@ import express from "express";
 import { ResourcePlan, KubeSDKLocalRun } from "../../src/types";
 import yaml from "js-yaml";
 import net from "net";
+import fs from "fs";
 
 // 🔐 Programmatic equivalents of 'curl -k' - Required for global fetch in Node 18+ 
 // to ignore self-signed certs in local K3s/Rancher clusters.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Helper: Get local cluster credentials from env / files
+const getLocalClusterCredentials = () => {
+  const apiServerUrl = process.env.K8S_API_SERVER_URL;
+  const tokenFile = process.env.K8S_TOKEN_FILE;
+
+  if (apiServerUrl && tokenFile && fs.existsSync(tokenFile)) {
+    try {
+      const token = fs.readFileSync(tokenFile, "utf8").trim();
+      return { apiServerUrl, token };
+    } catch (e) {
+      console.error("Failed to read local cluster token:", e);
+    }
+  }
+  return null;
+};
 
 const router = express.Router();
 
@@ -170,8 +187,30 @@ const extractComponentFromResource = (res: any, namespaces: Set<string>): any | 
 
 // --- ROUTES ---
 
+router.get("/cluster/credentials", (req, res) => {
+  const creds = getLocalClusterCredentials();
+  if (creds) {
+    return res.json({
+      status: "success",
+      apiServerUrl: creds.apiServerUrl,
+      token: creds.token,
+    });
+  }
+  return res.json({
+    status: "failed",
+    message: "No local cluster credentials found",
+  });
+});
+
 router.post("/test-connection", async (req, res) => {
-  const { apiServerUrl, token } = req.body;
+  let { apiServerUrl, token } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
   if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl.replace(/\/+$/, "");
   try {
@@ -191,7 +230,15 @@ router.post("/test-connection", async (req, res) => {
 });
 
 router.post("/import", async (req, res) => {
-  const { apiServerUrl, token } = req.body;
+  let { apiServerUrl, token } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const components: any[] = [];
@@ -278,18 +325,34 @@ router.post("/parse-snapshot", async (req, res) => {
       }
     });
 
-    res.json({ components: final, dependencyGraph: { edges: Array.from(new Set(edges.map(e => JSON.stringify(e)))).map(s => JSON.parse(s)) }, wizard: lrd?.spec?.wizard || { source: 'snapshot_yaml', runtime: { type: 'rancher-desktop', versionConstraint: '>=1.0.0' } } });
+    res.json({ components: final, dependencyGraph: { edges: Array.from(new Set(edges.map(e => JSON.stringify(e)))).map(s => JSON.parse(s)) }, wizard: lrd?.spec?.wizard || { source: 'snapshot_yaml', runtime: { type: 'inbuild-k3s', versionConstraint: '>=1.0.0' } } });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
 router.post("/deploy", async (req, res) => {
-  const { apiServerUrl, token, yamlContent } = req.body;
+  let { apiServerUrl, token, yamlContent } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const docs = yaml.loadAll(yamlContent) as any[];
     const applied = [];
     for (const doc of docs) {
       if (!doc || !doc.kind || doc.kind === 'LocalRunDefinition') continue;
+
+      // Do not deploy the system and default namespaces/resources which are already part of K3s
+      const ns = doc.kind === 'Namespace' ? doc.metadata?.name : (doc.metadata?.namespace || 'default');
+      if (['kube-system', 'kube-public', 'kube-node-lease', 'local-path-storage', 'default'].includes(ns)) {
+        applied.push(`Skipped built-in ${doc.kind}/${doc.metadata?.name}`);
+        continue;
+      }
+
       const cleanDoc = sanitizeManifest(doc);
       const group = doc.apiVersion.includes('/') ? doc.apiVersion.split('/')[0] : '';
       const version = doc.apiVersion.includes('/') ? doc.apiVersion.split('/')[1] : doc.apiVersion;
@@ -312,7 +375,15 @@ router.post("/deploy", async (req, res) => {
 });
 
 router.post("/health-check", async (req, res) => {
-  const { apiServerUrl, token, namespaces } = req.body;
+  let { apiServerUrl, token, namespaces } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const results: Record<string, any> = {};
@@ -350,7 +421,15 @@ router.post("/health-check", async (req, res) => {
 });
 
 router.post("/logs", async (req, res) => {
-  const { apiServerUrl, token, namespace, podName, containerName } = req.body;
+  let { apiServerUrl, token, namespace, podName, containerName } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const logs = await k8sRequestRaw(`${targetUrl}/api/v1/namespaces/${namespace}/pods/${podName}/log${containerName ? `?container=${containerName}` : ''}`, token);
@@ -367,4 +446,117 @@ router.post("/fit", (req, res) => {
   res.json(plan);
 });
 
+// POST /cleanup - Remove all KubeSDK-managed resources from the cluster
+// Deletes Pods, Services, ConfigMaps, Secrets, Ingresses in user namespaces tagged
+// with infra.example.com/profile=sdk, then removes those namespaces themselves.
+const SYSTEM_NAMESPACES = ['kube-system', 'kube-public', 'kube-node-lease', 'local-path-storage', 'default'];
+
+router.post("/cleanup", async (req, res) => {
+  let { apiServerUrl, token } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) { apiServerUrl = creds.apiServerUrl; token = creds.token; }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
+  const targetUrl = apiServerUrl.replace(/\/+$/, "");
+
+  const deleted: string[] = [];
+  const errors: string[] = [];
+
+  const safeDelete = async (url: string, label: string) => {
+    try {
+      const r = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (r.ok || r.status === 404) {
+        deleted.push(`Deleted ${label}`);
+      } else {
+        const t = await r.text();
+        errors.push(`Failed to delete ${label}: ${t.slice(0, 120)}`);
+      }
+    } catch (e: any) {
+      errors.push(`Error deleting ${label}: ${e.message}`);
+    }
+  };
+
+  try {
+    // 1. Discover all non-system namespaces
+    const nsData = await k8sRequest(`${targetUrl}/api/v1/namespaces`, token);
+    const userNamespaces: string[] = (nsData.items || [])
+      .map((n: any) => n.metadata.name)
+      .filter((n: string) => !SYSTEM_NAMESPACES.includes(n));
+
+    // 2. For each user namespace, delete SDK-labelled workloads
+    const resourceTypes = [
+      { path: 'pods', kind: 'Pod' },
+      { path: 'services', kind: 'Service' },
+      { path: 'configmaps', kind: 'ConfigMap' },
+      { path: 'secrets', kind: 'Secret' },
+    ];
+    const networkTypes = [
+      { path: 'ingresses', kind: 'Ingress', apiBase: '/apis/networking.k8s.io/v1' },
+    ];
+
+    for (const ns of userNamespaces) {
+      // Core resources
+      for (const rt of resourceTypes) {
+        try {
+          const data = await k8sRequest(
+            `${targetUrl}/api/v1/namespaces/${ns}/${rt.path}?labelSelector=infra.example.com%2Fprofile%3Dsdk`,
+            token
+          );
+          for (const item of (data.items || [])) {
+            const name = item.metadata.name;
+            if (rt.kind === 'Secret' && item.type === 'kubernetes.io/service-account-token') continue;
+            await safeDelete(`${targetUrl}/api/v1/namespaces/${ns}/${rt.path}/${name}?gracePeriodSeconds=0`, `${rt.kind}/${ns}/${name}`);
+          }
+        } catch (e) { /* namespace may have been already deleted */ }
+      }
+      // Networking resources
+      for (const rt of networkTypes) {
+        try {
+          const data = await k8sRequest(
+            `${targetUrl}${rt.apiBase}/namespaces/${ns}/${rt.path}?labelSelector=infra.example.com%2Fprofile%3Dsdk`,
+            token
+          );
+          for (const item of (data.items || [])) {
+            await safeDelete(`${targetUrl}${rt.apiBase}/namespaces/${ns}/${rt.path}/${item.metadata.name}`, `${rt.kind}/${ns}/${item.metadata.name}`);
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    // 3. Also delete all resources without label selector but check annotation
+    for (const ns of userNamespaces) {
+      try {
+        const data = await k8sRequest(`${targetUrl}/api/v1/namespaces/${ns}/pods`, token);
+        for (const item of (data.items || [])) {
+          if (item.metadata?.annotations?.['infra.example.com/id']) {
+            await safeDelete(`${targetUrl}/api/v1/namespaces/${ns}/pods/${item.metadata.name}?gracePeriodSeconds=0`, `Pod/${ns}/${item.metadata.name}`);
+          }
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // 4. Delete user namespaces themselves (they were created by KubeSDK)
+    for (const ns of userNamespaces) {
+      await safeDelete(`${targetUrl}/api/v1/namespaces/${ns}`, `Namespace/${ns}`);
+    }
+
+    // 5. Delete the LocalRunDefinition CRD entries if any
+    try {
+      const lrds = await k8sRequest(`${targetUrl}/apis/kubesdk.dev/v1alpha1/namespaces/default/localrundefinitions`, token);
+      for (const lrd of (lrds.items || [])) {
+        await safeDelete(`${targetUrl}/apis/kubesdk.dev/v1alpha1/namespaces/default/localrundefinitions/${lrd.metadata.name}`, `LocalRunDefinition/${lrd.metadata.name}`);
+      }
+    } catch (e) { /* CRD may not exist */ }
+
+    res.json({ status: 'success', deleted, errors, summary: `Removed ${deleted.length} resources from ${userNamespaces.length} namespace(s).` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, deleted, errors });
+  }
+});
+
 export default router;
+

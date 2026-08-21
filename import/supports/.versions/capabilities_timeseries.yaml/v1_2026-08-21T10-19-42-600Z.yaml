@@ -1,0 +1,49 @@
+timeseries:
+  parent: Database
+  providers:
+
+    - name: InfluxDB
+      description: Time-series database optimized for metrics and events.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/influxdb.svg"
+      website_url: "https://www.influxdata.com"
+      repo_url: "https://github.com/influxdata/influxdb"
+      documentation_url: "https://docs.influxdata.com/"
+      version: "v1"
+      latest_version: "2.7"
+      license_conditions: "MIT License for OSS; proprietary for enterprise."
+      protocols_supported: [HTTP, Flux]
+      default_ports: [8086]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Linux host"]
+      ha_recommendation: "Deploy InfluxDB cluster with replication."
+      languages:
+        python:
+          frameworks: [Flask, FastAPI]
+          sample_code: "samples/python/database/timeseries/influxdb/sample.yaml"
+          config_template: "samples/python/database/timeseries/influxdb/config.mustache"
+
+    - name: TimescaleDB
+      description: PostgreSQL extension for time-series workloads.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/timescale.svg"
+      website_url: "https://www.timescale.com"
+      repo_url: "https://github.com/timescale/timescaledb"
+      documentation_url: "https://docs.timescale.com/"
+      version: "v1"
+      latest_version: "2.13"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [TCP, SQL]
+      default_ports: [5432]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["PostgreSQL server"]
+      ha_recommendation: "Deploy with streaming replication."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/database/timeseries/timescaledb/sample.yaml"
+          config_template: "samples/java/database/timeseries/timescaledb/config.mustache"

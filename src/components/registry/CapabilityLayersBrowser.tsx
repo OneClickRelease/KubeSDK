@@ -5,19 +5,29 @@ import {
   ChevronRight, ChevronDown, Search, Star, X, ExternalLink,
   CheckCircle2, RefreshCw, Info, Tag, Zap, Globe, Lock,
   Server, Code, Activity, GitBranch, Package, HardDrive,
-  BarChart, Brain, Workflow, Container, Check
+  BarChart, Brain, Workflow, Container, Check, Plus, FileCode,
+  Edit3, Trash2, AlertTriangle, Sparkles, Archive, RotateCcw,
+  ArrowUp, ArrowDown, MoveVertical, FolderPlus, Edit2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { ProviderFormModal } from './ProviderFormModal';
+import { YamlExplorerModal } from './YamlExplorerModal';
+import { ImportExportModal } from './ImportExportModal';
+import { LayerFormModal, LayerModalMode } from './LayerFormModal';
+import { LayerReorderModal } from './LayerReorderModal';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface Provider {
+export interface Provider {
   name: string;
   description: string;
   image_url?: string;
   version?: string;
   latest_version?: string;
+  deprecated?: boolean;
+  deprecation_reason?: string;
+  version_history?: Array<{ version: string; latest_version: string; archived_at: string }>;
   license_conditions?: string;
   protocols_supported?: string[];
   default_ports?: number[];
@@ -218,10 +228,24 @@ function getLicenseBadge(license?: string): { label: string; color: string } {
 // ---------------------------------------------------------------------------
 // Provider Detail Panel (right side slide-over)
 // ---------------------------------------------------------------------------
-const ProviderDetailPanel = ({ provider, layerId, onClose }: {
+const ProviderDetailPanel = ({
+  provider,
+  layerId,
+  subLayerName,
+  onClose,
+  onEdit,
+  onAddVersion,
+  onDeprecate,
+  onDelete
+}: {
   provider: Provider;
   layerId: string;
+  subLayerName?: string;
   onClose: () => void;
+  onEdit?: () => void;
+  onAddVersion?: () => void;
+  onDeprecate?: () => void;
+  onDelete?: () => void;
 }) => {
   const [activeTab, setActiveTab] = React.useState<'overview' | 'languages' | 'resources'>('overview');
   const colors = LAYER_COLORS[layerId] || LAYER_COLORS['database'];
@@ -245,6 +269,11 @@ const ProviderDetailPanel = ({ provider, layerId, onClose }: {
               {provider.latest_version && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1A1A1A] text-white uppercase tracking-wider">
                   v{provider.latest_version}
+                </span>
+              )}
+              {provider.deprecated && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wider flex items-center gap-1">
+                  <AlertTriangle size={10} /> Deprecated
                 </span>
               )}
             </div>
@@ -283,6 +312,19 @@ const ProviderDetailPanel = ({ provider, layerId, onClose }: {
           )}
         </div>
       </div>
+
+      {/* Deprecated warning box if active */}
+      {provider.deprecated && (
+        <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+          <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-bold text-amber-900">Deprecated Capability</p>
+            <p className="text-amber-700 text-[11px] mt-0.5">
+              {provider.deprecation_reason || 'This provider has been deprecated and should not be used for new deployments.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-[#E9ECEF] px-6 bg-white">
@@ -448,6 +490,57 @@ const ProviderDetailPanel = ({ provider, layerId, onClose }: {
           </>
         )}
       </div>
+
+      {/* Actions Footer */}
+      <div className="p-4 border-t border-[#E9ECEF] bg-[#F8F9FA] flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#1A1A1A] bg-white border border-[#E9ECEF] rounded-lg hover:border-[#0D6EFD] hover:text-[#0D6EFD] transition-all shadow-sm"
+              title="Edit provider fields"
+            >
+              <Edit3 size={13} /> Edit
+            </button>
+          )}
+          {onAddVersion && (
+            <button
+              onClick={onAddVersion}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-all shadow-sm"
+              title="Add new release version"
+            >
+              <Sparkles size={13} /> + Version
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {onDeprecate && (
+            <button
+              onClick={onDeprecate}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all border',
+                provider.deprecated
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+              )}
+              title={provider.deprecated ? 'Restore / Un-deprecate provider' : 'Deprecate this provider'}
+            >
+              <AlertTriangle size={13} />
+              {provider.deprecated ? 'Un-deprecate' : 'Deprecate'}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="p-1.5 text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-colors"
+              title="Delete provider"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 };
@@ -596,11 +689,13 @@ export const ProviderItem = ({
           hoverGlow,
           isSelected 
             ? activeColorStyle 
-            : "border-[#E9ECEF] hover:border-[#DEE2E6]"
+            : prov.deprecated 
+              ? "border-amber-300 bg-amber-50/30 hover:border-amber-400"
+              : "border-[#E9ECEF] hover:border-[#DEE2E6]"
         )}
       >
         {logo ? (
-          <img src={logo} className="w-8 h-8 object-contain" alt={prov.name} />
+          <img src={logo} className={cn("w-8 h-8 object-contain", prov.deprecated ? "opacity-70 grayscale-[20%]" : "")} alt={prov.name} />
         ) : (
           <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center bg-[#F8F9FA]", isSelected ? (LAYER_COLORS[layerId]?.text || 'text-[#0D6EFD]') : "text-[#ADB5BD]")}>
             <Box size={16} />
@@ -611,6 +706,13 @@ export const ProviderItem = ({
         {isSelected && (
           <div className={cn("absolute -top-1.5 -right-1.5 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm z-30", badgeBg)}>
             <Check size={9} strokeWidth={4} />
+          </div>
+        )}
+
+        {/* Deprecated warning badge */}
+        {prov.deprecated && !isSelected && (
+          <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm z-30" title="Deprecated Provider">
+            <AlertTriangle size={8} strokeWidth={3} />
           </div>
         )}
  
@@ -626,9 +728,11 @@ export const ProviderItem = ({
           </button>
         )}
       </motion.button>
-      <span className="text-[10px] font-bold text-[#495057] mt-1.5 text-center max-w-[80px] truncate block" title={prov.name}>
-        {prov.name}
-      </span>
+      <div className="flex items-center gap-1 mt-1.5 max-w-[80px] justify-center">
+        <span className={cn("text-[10px] font-bold truncate block", prov.deprecated ? "text-amber-800" : "text-[#495057]")} title={prov.name}>
+          {prov.name}
+        </span>
+      </div>
     </div>
   );
 };
@@ -643,8 +747,30 @@ export const CapabilityLayersBrowser = () => {
   const [search, setSearch] = React.useState('');
   const [filterLayer, setFilterLayer] = React.useState<string>('all');
   const [selections, setSelections] = React.useState<Record<string, string>>({});
-  const [detailProvider, setDetailProvider] = React.useState<{ provider: Provider; layerId: string } | null>(null);
+  const [detailProvider, setDetailProvider] = React.useState<{ provider: Provider; layerId: string; subLayerName?: string } | null>(null);
   const [collapsedLayers, setCollapsedLayers] = React.useState<Record<string, boolean>>({});
+
+  // Modals state
+  const [providerModalOpen, setProviderModalOpen] = React.useState(false);
+  const [providerModalMode, setProviderModalMode] = React.useState<'create' | 'edit' | 'version'>('create');
+  const [editingProvider, setEditingProvider] = React.useState<Provider | null>(null);
+  const [editingLayerId, setEditingLayerId] = React.useState<string>('database');
+  const [editingSubLayerName, setEditingSubLayerName] = React.useState<string | undefined>(undefined);
+
+  // Layer / Sublayer Modal State
+  const [layerModalOpen, setLayerModalOpen] = React.useState(false);
+  const [layerModalMode, setLayerModalMode] = React.useState<LayerModalMode>('create-layer');
+  const [editingLayerData, setEditingLayerData] = React.useState<any>(null);
+  const [layerTargetId, setLayerTargetId] = React.useState<string>('');
+
+  // Reorder Modal State
+  const [reorderModalOpen, setReorderModalOpen] = React.useState(false);
+
+  const [yamlExplorerOpen, setYamlExplorerOpen] = React.useState(false);
+  const [yamlExplorerFile, setYamlExplorerFile] = React.useState<string>('capability-layers.yaml');
+
+  const [importExportOpen, setImportExportOpen] = React.useState(false);
+  const [filesList, setFilesList] = React.useState<Array<{ name: string; relPath: string }>>([]);
 
   const toggleCollapse = (layerId: string) => {
     setCollapsedLayers(prev => ({ ...prev, [layerId]: !prev[layerId] }));
@@ -667,6 +793,16 @@ export const CapabilityLayersBrowser = () => {
       } else {
         setError(json.message || 'Failed to load capability layers');
       }
+
+      // Also load file list for export/explorer
+      fetch('/api/registry/capabilities/files')
+        .then(r => r.json())
+        .then(fJson => {
+          if (fJson.status === 'success') {
+            setFilesList(fJson.files || []);
+          }
+        })
+        .catch(() => {});
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -679,13 +815,228 @@ export const CapabilityLayersBrowser = () => {
   const handleSelect = (subName: string, providerName: string) => {
     setSelections(prev => {
       if (prev[subName] === providerName) {
-        // deselect
         const next = { ...prev };
         delete next[subName];
         return next;
       }
       return { ...prev, [subName]: providerName };
     });
+  };
+
+  // Provider CRUD Handlers
+  const handleOpenCreate = (targetLayerId?: string, targetSubLayerName?: string) => {
+    setEditingProvider(null);
+    setEditingLayerId(targetLayerId || 'database');
+    setEditingSubLayerName(targetSubLayerName);
+    setProviderModalMode('create');
+    setProviderModalOpen(true);
+  };
+
+  const handleOpenEdit = (prov: Provider, layerId: string, subLayerName?: string) => {
+    setEditingProvider(prov);
+    setEditingLayerId(layerId);
+    setEditingSubLayerName(subLayerName);
+    setProviderModalMode('edit');
+    setProviderModalOpen(true);
+  };
+
+  const handleOpenVersion = (prov: Provider, layerId: string, subLayerName?: string) => {
+    setEditingProvider(prov);
+    setEditingLayerId(layerId);
+    setEditingSubLayerName(subLayerName);
+    setProviderModalMode('version');
+    setProviderModalOpen(true);
+  };
+
+  const handleDeprecate = async (prov: Provider, layerId: string, subLayerName?: string) => {
+    const isCurrentlyDep = prov.deprecated === true;
+    let reason = prov.deprecation_reason || '';
+    if (!isCurrentlyDep) {
+      const inputReason = window.prompt(`Enter deprecation notice for ${prov.name} (optional):`, 'Maintenance phase; migrate to newer alternative.');
+      if (inputReason === null) return;
+      reason = inputReason;
+    }
+
+    try {
+      const res = await fetch('/api/registry/capabilities/provider/deprecate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          layerId,
+          subLayerName,
+          providerName: prov.name,
+          deprecated: !isCurrentlyDep,
+          deprecation_reason: reason
+        })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        if (detailProvider && detailProvider.provider.name === prov.name) {
+          setDetailProvider(prev => prev ? { ...prev, provider: { ...prev.provider, deprecated: !isCurrentlyDep, deprecation_reason: reason } } : null);
+        }
+        loadData();
+      } else {
+        alert(json.message || 'Deprecation update failed');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Request failed');
+    }
+  };
+
+  const handleDelete = async (prov: Provider, layerId: string, subLayerName?: string) => {
+    if (!window.confirm(`Are you sure you want to delete provider "${prov.name}"? A YAML version snapshot will be created before deletion.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/registry/capabilities/provider', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          layerId,
+          subLayerName,
+          providerName: prov.name
+        })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        if (detailProvider && detailProvider.provider.name === prov.name) {
+          setDetailProvider(null);
+        }
+        loadData();
+      } else {
+        alert(json.message || 'Delete failed');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Request failed');
+    }
+  };
+
+  // Layer CRUD Handlers
+  const handleOpenCreateLayer = () => {
+    setEditingLayerData(null);
+    setLayerModalMode('create-layer');
+    setLayerModalOpen(true);
+  };
+
+  const handleOpenEditLayer = (layer: Layer) => {
+    setEditingLayerData({ id: layer.id, name: layer.name, description: layer.description, image_url: layer.image_url });
+    setLayerTargetId(layer.id);
+    setLayerModalMode('edit-layer');
+    setLayerModalOpen(true);
+  };
+
+  const handleDeleteLayer = async (layerId: string, layerName: string) => {
+    if (!window.confirm(`Are you sure you want to delete layer "${layerName}"? All its configurations in capability-layers.yaml will be removed.`)) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/registry/capabilities/layer', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: layerId })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        loadData();
+      } else {
+        alert(json.message || 'Failed to delete layer');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Request failed');
+    }
+  };
+
+  // Sublayer CRUD Handlers
+  const handleOpenCreateSubLayer = (parentLayerId: string) => {
+    setEditingLayerData(null);
+    setLayerTargetId(parentLayerId);
+    setLayerModalMode('create-sublayer');
+    setLayerModalOpen(true);
+  };
+
+  const handleOpenEditSubLayer = (parentLayerId: string, sub: SubLayer) => {
+    setEditingLayerData({ name: sub.name, description: sub.description, image_url: sub.image_url, parent: sub.parent });
+    setLayerTargetId(parentLayerId);
+    setLayerModalMode('edit-sublayer');
+    setLayerModalOpen(true);
+  };
+
+  const handleDeleteSubLayer = async (parentLayerId: string, subName: string) => {
+    if (!window.confirm(`Are you sure you want to delete sub-layer "${subName}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/registry/capabilities/sublayer', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layerId: parentLayerId, name: subName })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        loadData();
+      } else {
+        alert(json.message || 'Failed to delete sub-layer');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Request failed');
+    }
+  };
+
+  // Quick In-Place Reorder Handlers
+  const handleMoveLayer = async (index: number, direction: 'up' | 'down') => {
+    if (!data) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= data.layers.length) return;
+
+    const newLayers = [...data.layers];
+    const [moved] = newLayers.splice(index, 1);
+    newLayers.splice(targetIndex, 0, moved);
+
+    const layerOrder = newLayers.map(l => l.id);
+
+    try {
+      const res = await fetch('/api/registry/capabilities/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layerOrder })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMoveSubLayer = async (layerId: string, subIndex: number, direction: 'up' | 'down') => {
+    if (!data) return;
+    const layer = data.layers.find(l => l.id === layerId);
+    if (!layer || !layer.sub_layers) return;
+
+    const targetIndex = direction === 'up' ? subIndex - 1 : subIndex + 1;
+    if (targetIndex < 0 || targetIndex >= layer.sub_layers.length) return;
+
+    const newSubs = [...layer.sub_layers];
+    const [moved] = newSubs.splice(subIndex, 1);
+    newSubs.splice(targetIndex, 0, moved);
+
+    const subLayerOrder = { [layerId]: newSubs.map(s => s.name) };
+
+    try {
+      const res = await fetch('/api/registry/capabilities/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subLayerOrder })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Filter layers by search and layer filter
@@ -700,7 +1051,6 @@ export const CapabilityLayersBrowser = () => {
     if (search.trim()) {
       const q = search.toLowerCase();
       layers = layers.map(layer => {
-        // Filter sub-layers
         const filteredSubs = layer.sub_layers.map(sub => ({
           ...sub,
           providers: sub.providers.filter(p =>
@@ -712,7 +1062,7 @@ export const CapabilityLayersBrowser = () => {
           sub.description.toLowerCase().includes(q) ||
           sub.providers.length > 0
         );
-        // Filter direct providers
+
         const filteredProviders = layer.providers.filter(p =>
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q)
@@ -732,6 +1082,12 @@ export const CapabilityLayersBrowser = () => {
   const totalProviders = data?.layers.reduce((sum, l) =>
     sum + l.providers.length + l.sub_layers.reduce((s2, sl) => s2 + sl.providers.length, 0), 0) ?? 0;
 
+  const availableLayerOptions = data?.layers.map(l => ({
+    id: l.id,
+    name: l.name,
+    sub_layers: l.sub_layers.map(s => ({ name: s.name }))
+  })) || [];
+
   return (
     <div className="flex gap-0 h-full min-h-[600px]">
       {/* Main panel */}
@@ -745,7 +1101,7 @@ export const CapabilityLayersBrowser = () => {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search capability providers..."
+                placeholder="Search capability providers by name, description, protocol..."
                 className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-[#E9ECEF] rounded-xl focus:outline-none focus:border-[#0D6EFD] transition-colors"
               />
               {search && (
@@ -754,14 +1110,63 @@ export const CapabilityLayersBrowser = () => {
                 </button>
               )}
             </div>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-[#6C757D] bg-white border border-[#E9ECEF] rounded-xl hover:border-[#DEE2E6] transition-all disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleOpenCreateLayer}
+                className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm"
+                title="Add new capability layer"
+              >
+                <FolderPlus size={16} />
+                <span>+ Layer</span>
+              </button>
+
+              <button
+                onClick={() => handleOpenCreate()}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-[#0D6EFD] hover:bg-[#0B5ED7] rounded-xl shadow-md shadow-[#0D6EFD]/20 transition-all"
+                title="Add new capability provider"
+              >
+                <Plus size={16} />
+                <span>+ Provider</span>
+              </button>
+
+              <button
+                onClick={() => setReorderModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-semibold text-[#495057] bg-white border border-[#E9ECEF] hover:border-[#DEE2E6] rounded-xl transition-all shadow-sm"
+                title="Custom order layers and sub-layers"
+              >
+                <MoveVertical size={16} className="text-[#6C757D]" />
+                <span>Reorder</span>
+              </button>
+
+              <button
+                onClick={() => setYamlExplorerOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-all shadow-sm"
+                title="Explore raw YAML definitions, version history, and rollbacks"
+              >
+                <FileCode size={16} />
+                <span>YAML & Versions</span>
+              </button>
+
+              <button
+                onClick={() => setImportExportOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-semibold text-[#495057] bg-white border border-[#E9ECEF] hover:border-[#DEE2E6] rounded-xl transition-all shadow-sm"
+                title="Import or Export YAML specifications"
+              >
+                <Archive size={16} className="text-[#6C757D]" />
+                <span>Import / Export</span>
+              </button>
+
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-bold text-[#6C757D] bg-white border border-[#E9ECEF] rounded-xl hover:border-[#DEE2E6] transition-all disabled:opacity-50"
+                title="Reload catalog"
+              >
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
           </div>
 
           {/* Stats + Layer filter */}
@@ -851,11 +1256,10 @@ export const CapabilityLayersBrowser = () => {
 
         {!loading && !error && filteredLayers.length > 0 && (
           <div className="space-y-6 pb-20">
-            {filteredLayers.map(layer => {
+            {filteredLayers.map((layer, layerIdx) => {
               const hasSubLayers = layer.sub_layers.length > 0;
               const isCollapsed = !!collapsedLayers[layer.id];
               
-              // Get all providers in this layer to count them and show preview
               const allProviders: Provider[] = [];
               if (hasSubLayers) {
                 layer.sub_layers.forEach(sub => allProviders.push(...sub.providers));
@@ -866,7 +1270,6 @@ export const CapabilityLayersBrowser = () => {
               const borderLeft = LAYER_BORDER_COLORS[layer.id] || 'border-l-emerald-500';
               const bgGradient = LAYER_BG_GRADIENTS[layer.id] || 'from-emerald-500/5 to-white';
               
-              // Determine if there is a selected provider in this layer
               const selection = (() => {
                 if (hasSubLayers) {
                   for (const sub of layer.sub_layers) {
@@ -947,7 +1350,6 @@ export const CapabilityLayersBrowser = () => {
                           {allProviders.length} Provider{allProviders.length !== 1 ? 's' : ''}
                         </span>
                         
-                        {/* Selected provider badge summary */}
                         {selection && (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.8 }}
@@ -960,7 +1362,54 @@ export const CapabilityLayersBrowser = () => {
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        {/* Layer Action Controls */}
+                        <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            disabled={layerIdx === 0}
+                            onClick={() => handleMoveLayer(layerIdx, 'up')}
+                            className="p-1 text-gray-500 hover:text-black hover:bg-white rounded disabled:opacity-30 transition-colors"
+                            title="Move Layer Up"
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={layerIdx === filteredLayers.length - 1}
+                            onClick={() => handleMoveLayer(layerIdx, 'down')}
+                            className="p-1 text-gray-500 hover:text-black hover:bg-white rounded disabled:opacity-30 transition-colors"
+                            title="Move Layer Down"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                          <div className="w-[1px] h-3 bg-gray-300 mx-0.5" />
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCreateSubLayer(layer.id)}
+                            className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                            title="Add Sub-Layer to this Layer"
+                          >
+                            <FolderPlus size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditLayer(layer)}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Edit Layer Metadata"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLayer(layer.id, layer.name)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                            title="Delete Layer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+
                         {/* Collapsed logos preview */}
                         {isCollapsed && (
                           <div className="flex -space-x-2 overflow-hidden py-1">
@@ -1005,16 +1454,56 @@ export const CapabilityLayersBrowser = () => {
                           className="overflow-hidden space-y-4 pt-2 border-t border-[#F8F9FA]"
                         >
                           {hasSubLayers ? (
-                            layer.sub_layers.map(sub => (
+                            layer.sub_layers.map((sub, subIdx) => (
                               <div key={sub.name} className="flex items-center gap-4 py-2 border-b last:border-b-0 border-[#F8F9FA]">
-                                {/* Sub-layer label (wider to prevent chopping) */}
-                                <div className="w-36 shrink-0 flex items-center gap-2">
-                                  <Layers size={13} className="text-[#ADB5BD]" />
-                                  <span className="text-xs font-bold text-[#495057]">{sub.name}</span>
+                                <div className="w-44 shrink-0 flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Layers size={13} className="text-[#ADB5BD] shrink-0" />
+                                    <span className="text-xs font-bold text-[#495057] truncate" title={sub.name}>{sub.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      disabled={subIdx === 0}
+                                      onClick={() => handleMoveSubLayer(layer.id, subIdx, 'up')}
+                                      className="text-[#6C757D] hover:bg-gray-100 p-0.5 rounded disabled:opacity-20"
+                                      title="Move Sub-layer Up"
+                                    >
+                                      <ArrowUp size={11} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={subIdx === layer.sub_layers.length - 1}
+                                      onClick={() => handleMoveSubLayer(layer.id, subIdx, 'down')}
+                                      className="text-[#6C757D] hover:bg-gray-100 p-0.5 rounded disabled:opacity-20"
+                                      title="Move Sub-layer Down"
+                                    >
+                                      <ArrowDown size={11} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenEditSubLayer(layer.id, sub)}
+                                      className="text-[10px] text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded-md transition-colors"
+                                      title={`Edit ${sub.name}`}
+                                    >
+                                      <Edit2 size={11} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteSubLayer(layer.id, sub.name)}
+                                      className="text-[10px] text-gray-500 hover:text-red-600 hover:bg-red-50 p-1 rounded-md transition-colors"
+                                      title={`Delete ${sub.name}`}
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleOpenCreate(layer.id, sub.name); }}
+                                      className="text-[10px] text-[#0D6EFD] hover:bg-blue-50 p-1 rounded-md transition-colors"
+                                      title={`Add provider under ${sub.name}`}
+                                    >
+                                      <Plus size={12} />
+                                    </button>
+                                  </div>
                                 </div>
-                                {/* Divider */}
                                 <div className="w-[1px] h-6 bg-[#E9ECEF] shrink-0" />
-                                {/* Providers */}
                                 <div className="flex-1 flex items-center gap-5 overflow-x-auto py-1 scrollbar-hide">
                                   {sub.providers.map(prov => (
                                     <ProviderItem
@@ -1024,7 +1513,7 @@ export const CapabilityLayersBrowser = () => {
                                       subName={sub.name}
                                       isSelected={selections[sub.name] === prov.name}
                                       onClick={() => handleSelect(sub.name, prov.name)}
-                                      onViewDetails={() => setDetailProvider({ provider: prov, layerId: layer.id })}
+                                      onViewDetails={() => setDetailProvider({ provider: prov, layerId: layer.id, subLayerName: sub.name })}
                                     />
                                   ))}
                                 </div>
@@ -1032,14 +1521,20 @@ export const CapabilityLayersBrowser = () => {
                             ))
                           ) : (
                             <div className="flex items-center gap-4 py-2">
-                              {/* Layer label (wider to prevent chopping) */}
-                              <div className="w-36 shrink-0 flex items-center gap-2">
-                                <Layers size={13} className="text-[#ADB5BD]" />
-                                <span className="text-xs font-bold text-[#495057]">{layer.name}</span>
+                              <div className="w-44 shrink-0 flex items-center justify-between">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Layers size={13} className="text-[#ADB5BD] shrink-0" />
+                                  <span className="text-xs font-bold text-[#495057] truncate">{layer.name}</span>
+                                </div>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleOpenCreate(layer.id); }}
+                                  className="text-[10px] text-[#0D6EFD] hover:bg-blue-50 p-1 rounded-md transition-colors"
+                                  title={`Add provider under ${layer.name}`}
+                                >
+                                  <Plus size={12} />
+                                </button>
                               </div>
-                              {/* Divider */}
                               <div className="w-[1px] h-6 bg-[#E9ECEF] shrink-0" />
-                              {/* Providers */}
                               <div className="flex-1 flex items-center gap-5 overflow-x-auto py-1 scrollbar-hide">
                                 {layer.providers.map(prov => (
                                   <ProviderItem
@@ -1049,7 +1544,7 @@ export const CapabilityLayersBrowser = () => {
                                     subName={layer.name}
                                     isSelected={selections[layer.name] === prov.name}
                                     onClick={() => handleSelect(layer.name, prov.name)}
-                                    onViewDetails={() => setDetailProvider({ provider: prov, layerId: layer.id })}
+                                    onViewDetails={() => setDetailProvider({ provider: prov, layerId: layer.id, subLayerName: layer.name })}
                                   />
                                 ))}
                               </div>
@@ -1080,11 +1575,66 @@ export const CapabilityLayersBrowser = () => {
             <ProviderDetailPanel
               provider={detailProvider.provider}
               layerId={detailProvider.layerId}
+              subLayerName={detailProvider.subLayerName}
               onClose={() => setDetailProvider(null)}
+              onEdit={() => handleOpenEdit(detailProvider.provider, detailProvider.layerId, detailProvider.subLayerName)}
+              onAddVersion={() => handleOpenVersion(detailProvider.provider, detailProvider.layerId, detailProvider.subLayerName)}
+              onDeprecate={() => handleDeprecate(detailProvider.provider, detailProvider.layerId, detailProvider.subLayerName)}
+              onDelete={() => handleDelete(detailProvider.provider, detailProvider.layerId, detailProvider.subLayerName)}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modals */}
+      <ProviderFormModal
+        isOpen={providerModalOpen}
+        onClose={() => setProviderModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+          if (detailProvider && editingProvider) {
+            setDetailProvider(prev => prev ? { ...prev, provider: { ...prev.provider, ...editingProvider } } : null);
+          }
+        }}
+        mode={providerModalMode}
+        initialData={editingProvider}
+        layerId={editingLayerId}
+        subLayerName={editingSubLayerName}
+        availableLayers={availableLayerOptions}
+      />
+
+      <LayerFormModal
+        isOpen={layerModalOpen}
+        onClose={() => setLayerModalOpen(false)}
+        onSuccess={() => loadData()}
+        mode={layerModalMode}
+        initialData={editingLayerData}
+        layerId={layerTargetId}
+        availableLayers={availableLayerOptions}
+      />
+
+      <LayerReorderModal
+        isOpen={reorderModalOpen}
+        onClose={() => setReorderModalOpen(false)}
+        onSuccess={() => loadData()}
+        layers={availableLayerOptions}
+      />
+
+      <YamlExplorerModal
+        isOpen={yamlExplorerOpen}
+        onClose={() => setYamlExplorerOpen(false)}
+        initialFile={yamlExplorerFile}
+        onVersionRestored={() => loadData()}
+      />
+
+      <ImportExportModal
+        isOpen={importExportOpen}
+        onClose={() => setImportExportOpen(false)}
+        onSuccess={() => loadData()}
+        availableFiles={filesList}
+      />
     </div>
   );
 };
+
+

@@ -4,7 +4,7 @@ import { STORAGE_KEY, STEP_KEY, NS_KEY, MENU_KEY, INITIAL_CONFIG } from '../lib/
 import { generateYamlFromConfig } from '../lib/yaml-utils';
 
 export function useWizard() {
-  const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'registry' | 'history' | 'settings'>(() => {
+  const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'registry' | 'history' | 'settings' | 'catalog' | 'create-application'>(() => {
     try { return (localStorage.getItem(MENU_KEY) as any) || 'home'; } catch { return 'home'; }
   });
   

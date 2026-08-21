@@ -12,6 +12,7 @@ import { SettingsView } from './components/layout/SettingsView';
 import { HistoryView } from './components/layout/HistoryView';
 import { RegistryView } from './components/registry/RegistryView';
 import { CapabilityLayersBrowser } from './components/registry/CapabilityLayersBrowser';
+import { CreateApplicationView } from './components/layout/CreateApplicationView';
 
 // Wizard Steps
 import { SourceStep } from './components/wizard/steps/SourceStep';
@@ -53,6 +54,17 @@ export default function App() {
   const [healthStatus, setHealthStatus] = React.useState<Record<string, any>>({});
   const [wizardError, setWizardError] = React.useState<string | null>(null);
   const [deploymentItems, setDeploymentItems] = React.useState<any[]>([]);
+  const [isResetting, setIsResetting] = React.useState(false);
+  const [resetLog, setResetLog] = React.useState<{ text: string; ok: boolean }[]>([]);
+  const [resetDone, setResetDone] = React.useState(false);
+
+  // Derived visible steps — MUST be declared before any effect that references it
+  // (const is NOT hoisted; referencing it before this line causes a ReferenceError)
+  const visibleSteps = React.useMemo(() => WIZARD_STEPS.filter(step => {
+    if (step.id === 'import' && config.wizard.source === 'manual') return false;
+    if (step.id === 'upload' && config.wizard.source === 'live') return false;
+    return true;
+  }), [config.wizard.source]);
 
   // 1. Global Validation Effect
   React.useEffect(() => {
@@ -82,17 +94,57 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [config.components]);
 
-  // 1b. Real-time Status Polling (30s) - Active on Step 8
+  // 1b. Real-time Status Polling (5s) - Active on Verification Step
   React.useEffect(() => {
-    if (currentStep !== 8) return;
+    const currentStepId = visibleSteps[currentStep]?.id;
+    if (currentStepId !== 'verification') return;
     
-    console.log("Starting 30s health-check polling...");
+    console.log("Starting 5s health-check polling...");
+    // Poll immediately when entering the step
+    handleHealthCheck();
+    
     const interval = setInterval(() => {
       handleHealthCheck();
-    }, 30000);
+    }, 5000);
     
     return () => clearInterval(interval);
-  }, [currentStep, config.wizard.connectivity]);
+  }, [currentStep, visibleSteps, config.wizard.connectivity]);
+
+  // 1c. Auto-detect cluster credentials on load
+  React.useEffect(() => {
+    const detectCredentials = async () => {
+      try {
+        const response = await fetch('/api/cluster/credentials');
+        const data = await response.json();
+        if (data.status === 'success' && data.apiServerUrl && data.token) {
+          console.log("Auto-detected cluster credentials:", data);
+          setConfig(prev => {
+            if (
+              !prev.wizard.connectivity?.token ||
+              prev.wizard.connectivity.apiServerUrl !== data.apiServerUrl ||
+              prev.wizard.connectivity.token !== data.token
+            ) {
+              return {
+                ...prev,
+                wizard: {
+                  ...prev.wizard,
+                  connectivity: {
+                    apiServerUrl: data.apiServerUrl,
+                    token: data.token,
+                    caCert: prev.wizard.connectivity?.caCert || ''
+                  }
+                }
+              };
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to auto-detect cluster credentials:', err);
+      }
+    };
+    detectCredentials();
+  }, []);
 
   // 2. Individual Component Resource Validation
   React.useEffect(() => {
@@ -122,12 +174,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [config.components[selectedComponentIndex]?.properties?.image]);
 
-  // Derived visible steps
-  const visibleSteps = React.useMemo(() => WIZARD_STEPS.filter(step => {
-    if (step.id === 'import' && config.wizard.source === 'manual') return false;
-    if (step.id === 'upload' && config.wizard.source === 'live') return false;
-    return true;
-  }), [config.wizard.source]);
+  // Derived visible steps — now declared above; duplicate removed
 
   // Enhanced nextStep with API triggers
   const nextStep = async () => {
@@ -372,27 +419,80 @@ export default function App() {
     }
   };
   const handleResetSession = async () => {
-    if (confirm('Reset all session data and start fresh?')) {
-      try {
-        await fetch('/api/registry/reset', { method: 'POST' });
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(STEP_KEY);
-        localStorage.removeItem(NS_KEY);
-        window.location.reload();
-      } catch (e) {
-        console.error("Failed to reset registry", e);
-        // Fallback to local reset if server fails
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(STEP_KEY);
-        localStorage.removeItem(NS_KEY);
-        window.location.reload();
-      }
+    if (!confirm('This will delete ALL KubeSDK-deployed resources from the K3s cluster and reset the wizard. Continue?')) return;
+    setIsResetting(true);
+    setResetDone(false);
+    setResetLog([{ text: '⏳ Connecting to K3s cluster...', ok: true }]);
+
+    try {
+      const response = await fetch('/api/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiServerUrl: config.wizard.connectivity?.apiServerUrl,
+          token: config.wizard.connectivity?.token,
+        }),
+      });
+      const data = await response.json();
+
+      // Stream deleted resources into log
+      const entries: { text: string; ok: boolean }[] = [
+        { text: `✅ Connected. Found resources to clean up.`, ok: true }
+      ];
+      (data.deleted || []).forEach((d: string) => entries.push({ text: `🗑  ${d}`, ok: true }));
+      (data.errors || []).forEach((e: string) => entries.push({ text: `⚠️  ${e}`, ok: false }));
+      entries.push({ text: `✔  ${data.summary || 'Cluster cleaned.'}`, ok: true });
+      setResetLog(entries);
+    } catch (e: any) {
+      setResetLog(prev => [...prev, { text: `⚠️  Cluster cleanup failed: ${e.message}. Resetting local state only.`, ok: false }]);
     }
+
+    // Reset registry and local state
+    try { await fetch('/api/registry/reset', { method: 'POST' }); } catch (_) {}
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STEP_KEY);
+    localStorage.removeItem(NS_KEY);
+    setResetLog(prev => [...prev, { text: '🔄 Session cleared. Ready to start fresh!', ok: true }]);
+    setResetDone(true);
   };
 
   // Rendering logic
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans flex">
+
+      {/* ─── Cluster Reset / Cleanup Overlay ─── */}
+      {isResetting && (
+        <div className="fixed inset-0 z-50 bg-[#0D0D0D]/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-xl bg-[#1A1A1A] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-8 py-6 border-b border-white/10 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400">
+                {resetDone ? <span className="text-2xl">✓</span> : <span className="animate-spin text-xl">⟳</span>}
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">{resetDone ? 'Cluster Cleaned!' : 'Cleaning K3s Cluster...'}</h3>
+                <p className="text-gray-400 text-xs">{resetDone ? 'All KubeSDK resources removed. Click below to start fresh.' : 'Removing all KubeSDK-deployed resources...'}</p>
+              </div>
+            </div>
+            <div className="flex-1 p-6 font-mono text-xs space-y-1.5 max-h-80 overflow-y-auto">
+              {resetLog.map((entry, i) => (
+                <div key={i} className={entry.ok ? 'text-emerald-400' : 'text-amber-400'}>{entry.text}</div>
+              ))}
+              {!resetDone && <div className="text-gray-500 animate-pulse">_</div>}
+            </div>
+            {resetDone && (
+              <div className="px-8 py-6 border-t border-white/10">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full py-4 bg-[#0D6EFD] hover:bg-[#0B5ED7] text-white font-bold rounded-2xl transition-all shadow-lg shadow-[#0D6EFD]/30 text-sm"
+                >
+                  🚀 Start New Session
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <Sidebar 
         activeMenu={activeMenu} 
         setActiveMenu={setActiveMenu} 
@@ -528,6 +628,17 @@ export default function App() {
                     Continue
                   </button>
                 </div>
+              </motion.div>
+            )}
+
+            {activeMenu === 'create-application' && (
+              <motion.div
+                key="create-application"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <CreateApplicationView />
               </motion.div>
             )}
 
