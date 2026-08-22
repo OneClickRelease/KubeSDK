@@ -1,5 +1,14 @@
 [
   {
+    "version": "v8",
+    "versionNumber": 8,
+    "timestamp": "2026-08-22T11:39:54.589Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v8_2026-08-22T11-39-54-589Z.yaml",
+    "size": 151
+  },
+  {
     "version": "v7",
     "versionNumber": 7,
     "timestamp": "2026-08-21T11:57:20.492Z",

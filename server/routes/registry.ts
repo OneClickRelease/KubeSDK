@@ -1513,6 +1513,7 @@ router.post('/orchestrator/package', async (req, res) => {
     const {
       infraType = 'vm',
       hardwareProfile = undefined,
+      hypervisorProfile = undefined,
       orchestrator = 'k3s',
       topology = 'single-node',
       nodesCount = 1,
@@ -1603,11 +1604,14 @@ sudo sysctl -w kernel.pid_max=4194304 2>/dev/null || true
 
     // 2. Generate install.sh
     let installCommands = '';
+    const hypName = hypervisorProfile?.name || 'VM / Hypervisor';
+    const isAsymmetric = hypervisorProfile?.vmMode === 'asymmetrical' && Array.isArray(hypervisorProfile?.pools);
+
     if (isAirgap) {
       installCommands = `#!/bin/bash
 # ==============================================================================
 # KubeSDK Air-Gapped / Offline Cluster Installer
-# Target: ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName} ${hwVersion}]` : ''} | Engine: ${orchestrator.toUpperCase()} | Arch: ${osArch}
+# Target: ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName} ${hwVersion}]` : (infraType === 'hypervisor-vm' ? ` [${hypName}]` : '')}
 # Mode: ZERO OUTBOUND INTERNET ACCESS REQUIRED
 # ==============================================================================
 set -e
@@ -1617,8 +1621,8 @@ SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 echo "========================================================="
 echo " Starting KubeSDK Air-Gapped Cluster Installation"
 ${hwVendor ? `echo " Hardware Profile: ${hwVendor} ${hwName} (${hwVersion})"` : ''}
+${infraType === 'hypervisor-vm' ? `echo " Hypervisor Engine: ${hypName} (${isAsymmetric ? 'Asymmetrical Multi-Pool' : 'Symmetrical'})"` : ''}
 echo " Topology: ${topology} (${nodesCount} Nodes${quorumZone ? ' + Quorum Arbiter' : ''})"
-echo " Resources: ${vcpu} vCPU, ${memoryGi} GiB RAM, ${diskGi} GiB Disk"
 echo "========================================================="
 
 # Step 1: Run Pre-flight System Checks
@@ -1665,11 +1669,10 @@ ${topology === 'single-node' ? `
 if [ -f "\$SCRIPT_DIR/bin/install-k3s.sh" ]; then
   sudo -E bash "\$SCRIPT_DIR/bin/install-k3s.sh" --write-kubeconfig-mode 644 --disable traefik
 else
-  # Fallback to local binary systemd execution
   sudo k3s server --write-kubeconfig-mode 644 --disable traefik &
 fi
-` : topology === 'multi-node' ? `
-# Multi-Node Offline Server
+` : `
+# Multi-Node / Clustered Offline Server
 if [ -f "\$SCRIPT_DIR/bin/install-k3s.sh" ]; then
   sudo -E bash "\$SCRIPT_DIR/bin/install-k3s.sh" --write-kubeconfig-mode 644 --disable traefik
 else
@@ -1680,13 +1683,10 @@ MASTER_IP=$(hostname -I | awk '{print $1}')
 NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token 2>/dev/null || echo "PENDING")
 
 echo ""
-echo "==== Offline Worker Join Instructions ===="
-echo "On worker nodes, transfer this airgap package and run:"
+echo "==== Offline Worker / Node Join Instructions ===="
+echo "On worker, edge, storage, and GPU nodes, run:"
 echo "sudo INSTALL_K3S_SKIP_DOWNLOAD=true k3s agent --server https://\${MASTER_IP}:6443 --token \${NODE_TOKEN}"
-echo "=========================================="
-` : `
-# Multi-Zone Offline Clustered Engine
-sudo -E k3s server --cluster-init --write-kubeconfig-mode 644 --disable traefik &
+echo "================================================="
 `}
 
 echo "Waiting for cluster control-plane readiness..."
@@ -1700,19 +1700,18 @@ sudo k3s kubectl wait --for=condition=Ready node --all --timeout=120s 2>/dev/nul
           installCommands = `#!/bin/bash
 set -e
 echo "========================================================="
-echo " Installing K3s (Single Node) on ${infraType} (${osArch})"
-echo " Resources: ${vcpu} vCPU, ${memoryGi} GiB RAM"
+echo " Installing K3s on ${infraType} (${osArch})"
 echo "========================================================="
 
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" sh -
 echo "Waiting for node ready status..."
 kubectl wait --for=condition=Ready node --all --timeout=120s
 `;
-        } else if (topology === 'multi-node') {
+        } else {
           installCommands = `#!/bin/bash
 set -e
 echo "========================================================="
-echo " Installing K3s Control-Plane + ${nodesCount} Workers (${infraType})"
+echo " Installing K3s Master + Node Topology (${infraType})"
 echo "========================================================="
 
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" sh -
@@ -1720,25 +1719,10 @@ NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
 MASTER_IP=$(hostname -I | awk '{print $1}')
 
 echo ""
-echo "==== Worker Join Command ===="
-echo "Run this on each worker node:"
+echo "==== Node Pool Join Command ===="
+echo "Run this on each worker, storage, CPU, or GPU node:"
 echo "curl -sfL https://get.k3s.io | K3S_URL=https://\${MASTER_IP}:6443 K3S_TOKEN=\${NODE_TOKEN} sh -"
-echo "============================="
-`;
-        } else {
-          installCommands = `#!/bin/bash
-set -e
-echo "========================================================="
-echo " Installing K3s Multi-Zone Topology${quorumZone ? ' with Quorum Arbiter' : ''}"
-echo "========================================================="
-
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--cluster-init --write-kubeconfig-mode 644 --disable traefik" sh -
-NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
-MASTER_IP=$(hostname -I | awk '{print $1}')
-
-${quorumZone ? `echo "Quorum Arbiter zone enabled on zone-3 (etcd learner/witness)"\n` : ''}
-echo "Control-plane initialized. Join additional zone masters with:"
-echo "curl -sfL https://get.k3s.io | K3S_URL=https://\${MASTER_IP}:6443 K3S_TOKEN=\${NODE_TOKEN} INSTALL_K3S_EXEC=\"--server https://\${MASTER_IP}:6443\" sh -"
+echo "================================"
 `;
         }
       } else if (orchestrator === 'microk8s') {
@@ -1996,7 +1980,138 @@ echo "========================================================="
     // 6. Generate images-list.txt
     const imagesListContent = allImagesList.join('\n') + '\n';
 
-    // 7. Generate cluster-config.yaml
+    // 7. Generate Hypervisor Provisioning Artifacts (KubeVirt, Harvester, Proxmox, KVM, Vagrant)
+    let hypervisorManifestContent = '';
+    let hypervisorManifestFilename = '';
+
+    if (infraType === 'hypervisor-vm') {
+      const hypId = hypervisorProfile?.id || 'harvester';
+      const pools = (isAsymmetric && hypervisorProfile?.pools) ? hypervisorProfile.pools : [
+        { id: 'default-vm', name: 'kubesdk-node', category: 'worker', count: Number(nodesCount) || 1, vcpu, memoryGi, diskGi, arch: osArch }
+      ];
+
+      if (hypId === 'harvester' || hypId === 'kubevirt' || hypId === 'openshift-virt') {
+        hypervisorManifestFilename = hypId === 'harvester' ? 'harvester-vms.yaml' : 'kubevirt-vms.yaml';
+        const vmManifests = pools.flatMap((p: any) => {
+          const count = Number(p.count) || 1;
+          const items = [];
+          for (let i = 1; i <= count; i++) {
+            const vmName = `${p.name}-${String(i).padStart(2, '0')}`;
+            items.push({
+              apiVersion: 'kubevirt.io/v1',
+              kind: 'VirtualMachine',
+              metadata: {
+                name: vmName,
+                namespace: 'default',
+                labels: {
+                  'kubesdk.dev/role': p.category,
+                  'kubesdk.dev/pool': p.name,
+                  'kubesdk.dev/hypervisor': hypId
+                }
+              },
+              spec: {
+                running: true,
+                template: {
+                  metadata: {
+                    labels: {
+                      'kubesdk.dev/role': p.category,
+                      'kubesdk.dev/pool': p.name
+                    }
+                  },
+                  spec: {
+                    domain: {
+                      cpu: { cores: Number(p.vcpu) || 2 },
+                      resources: {
+                        requests: {
+                          memory: `${p.memoryGi || 4}Gi`
+                        }
+                      },
+                      devices: {
+                        disks: [
+                          {
+                            name: 'boot-disk',
+                            disk: { bus: 'virtio' }
+                          },
+                          {
+                            name: 'cloudinitdisk',
+                            disk: { bus: 'virtio' }
+                          }
+                        ],
+                        ...(p.category === 'gpu' ? {
+                          gpus: [
+                            {
+                              name: 'gpu-passthrough',
+                              deviceName: p.gpuModel ? `nvidia.com/${p.gpuModel.replace(/\s+/g, '-')}` : 'nvidia.com/gpu'
+                            }
+                          ]
+                        } : {})
+                      }
+                    },
+                    volumes: [
+                      {
+                        name: 'boot-disk',
+                        persistentVolumeClaim: {
+                          claimName: `${vmName}-root-pvc`
+                        }
+                      },
+                      {
+                        name: 'cloudinitdisk',
+                        cloudInitNoCloud: {
+                          userData: `#cloud-config\nhostname: ${vmName}\nmanage_etc_hosts: true\npackage_update: false\n`
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            });
+          }
+          return items;
+        });
+
+        hypervisorManifestContent = vmManifests.map((doc: any) => yaml.dump(doc, { indent: 2 })).join('\n---\n');
+      } else if (hypId === 'proxmox-ve') {
+        hypervisorManifestFilename = 'proxmox-create-vms.sh';
+        let vmid = 200;
+        const commands = ['#!/bin/bash', 'set -e', '# Proxmox VE Automated Multi-VM Creation Script'];
+        pools.forEach((p: any) => {
+          const count = Number(p.count) || 1;
+          for (let i = 1; i <= count; i++) {
+            const vmName = `${p.name}-${String(i).padStart(2, '0')}`;
+            commands.push(`echo "Creating Proxmox VM ${vmid} (${vmName}) [${p.category}]..."`);
+            commands.push(`qm create ${vmid} --name "${vmName}" --cores ${p.vcpu} --memory ${(p.memoryGi || 4) * 1024} --net0 virtio,bridge=vmbr0 --scsihw virtio-scsi-pci --scsi0 local-lvm:${p.diskGi || 50} --ide2 local-lvm:cloudinit --boot c --bootdisk scsi0`);
+            vmid++;
+          }
+        });
+        hypervisorManifestContent = commands.join('\n') + '\n';
+      } else if (hypId === 'kvm-libvirt') {
+        hypervisorManifestFilename = 'kvm-virt-install.sh';
+        const commands = ['#!/bin/bash', 'set -e', '# KVM / libvirt Automated Multi-VM Provisioning Script'];
+        pools.forEach((p: any) => {
+          const count = Number(p.count) || 1;
+          for (let i = 1; i <= count; i++) {
+            const vmName = `${p.name}-${String(i).padStart(2, '0')}`;
+            commands.push(`echo "Provisioning KVM VM: ${vmName} (${p.vcpu} vCPU, ${p.memoryGi} GB RAM)..."`);
+            commands.push(`virt-install --name "${vmName}" --vcpus ${p.vcpu} --memory ${(p.memoryGi || 4) * 1024} --disk size=${p.diskGi || 50},bus=virtio --network bridge=virbr0,model=virtio --os-variant ubuntu22.04 --noautoconsole --import`);
+          }
+        });
+        hypervisorManifestContent = commands.join('\n') + '\n';
+      } else if (hypId === 'virtualbox-vagrant') {
+        hypervisorManifestFilename = 'Vagrantfile';
+        let vagrantBody = `Vagrant.configure("2") do |config|\n  config.vm.box = "ubuntu/jammy64"\n\n`;
+        pools.forEach((p: any) => {
+          const count = Number(p.count) || 1;
+          for (let i = 1; i <= count; i++) {
+            const vmName = `${p.name}-${String(i).padStart(2, '0')}`;
+            vagrantBody += `  config.vm.define "${vmName}" do |node|\n    node.vm.hostname = "${vmName}"\n    node.vm.provider "virtualbox" do |vb|\n      vb.cpus = ${p.vcpu}\n      vb.memory = ${(p.memoryGi || 4) * 1024}\n      vb.name = "${vmName}"\n    end\n  end\n\n`;
+          }
+        });
+        vagrantBody += `end\n`;
+        hypervisorManifestContent = vagrantBody;
+      }
+    }
+
+    // 8. Generate cluster-config.yaml
     const clusterConfigDoc = {
       apiVersion: 'kubesdk.dev/v1alpha1',
       kind: 'OrchestratorTopologySpec',
@@ -2009,6 +2124,7 @@ echo "========================================================="
         infrastructure: {
           type: infraType,
           hardwareProfile: hardwareProfile || undefined,
+          hypervisor: hypervisorProfile || undefined,
           osArch,
           airgap: {
             enabled: isAirgap,
@@ -2037,7 +2153,7 @@ echo "========================================================="
     };
     const clusterConfigYaml = yaml.dump(clusterConfigDoc, { indent: 2 });
 
-    // 8. Generate bootstrap-token.sh
+    // 9. Generate bootstrap-token.sh
     const bootstrapTokenScript = `#!/bin/bash
 # Helper script to display KubeSDK credentials
 echo "==== Cluster API URL ===="
@@ -2048,10 +2164,11 @@ kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.t
 echo ""
 `;
 
-    // 9. Generate AIRGAP_INSTALL_GUIDE.md
+    // 10. Generate AIRGAP_INSTALL_GUIDE.md
     const airgapGuide = `# KubeSDK Complete Air-Gapped Installation Guide
 **Mode:** AIR-GAPPED (100% Offline / Zero Internet Required)
-**Target:** ${infraType.toUpperCase()} | **Orchestrator:** ${orchestrator.toUpperCase()}
+**Target:** ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName}]` : (infraType === 'hypervisor-vm' ? ` [${hypName}]` : '')}
+**Orchestrator:** ${orchestrator.toUpperCase()}
 **Topology:** ${topology} (${nodesCount} Node${nodesCount > 1 ? 's' : ''}${quorumZone ? ' + Quorum Arbiter' : ''})
 **Node Sizing:** ${vcpu} vCPU / ${memoryGi} GiB RAM / ${diskGi} GiB Disk (${osArch})
 
@@ -2082,6 +2199,14 @@ cd kubesdk-setup
 chmod +x *.sh
 \`\`\`
 
+${hypervisorManifestFilename ? `
+### Step 1.5: Hypervisor VM Provisioning (${hypName})
+If creating virtual machines on ${hypName}, execute or apply the bundled hypervisor manifest:
+\`\`\`bash
+${hypervisorManifestFilename.endsWith('.yaml') ? `kubectl apply -f ${hypervisorManifestFilename}` : `bash ./${hypervisorManifestFilename}`}
+\`\`\`
+` : ''}
+
 ### Step 2: Run Pre-Flight Environment Validation
 Validate that kernel modules, cgroups, swap, and required network ports are ready:
 \`\`\`bash
@@ -2110,25 +2235,11 @@ Run the bootstrap helper script to print the connection parameters:
 1. Copy the printed **Cluster API URL** (e.g. \`https://<node-ip>:6443\`) into the **Cluster API URL** input.
 2. Copy the **Authentication Token** into the **Authentication Token** input.
 3. Click **Test SDK Connection** to verify link establishment.
-
----
-
-## Troubleshooting in Airgapped Environments
-
-- **SELinux / Firewall**: If the API server is unreachable from the KubeSDK host, ensure port \`6443/tcp\` is permitted:
-  \`\`\`bash
-  sudo firewall-cmd --add-port=6443/tcp --permanent
-  sudo firewall-cmd --reload
-  \`\`\`
-- **Containerd Image Verification**: Verify loaded offline images:
-  \`\`\`bash
-  sudo k3s ctr images list
-  \`\`\`
 `;
 
-    // 10. Generate README.md
+    // 11. Generate README.md
     const readmeContent = `# KubeSDK Cluster Setup Package
-**Target Infrastructure:** ${infraType.toUpperCase()}
+**Target Infrastructure:** ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName}]` : (infraType === 'hypervisor-vm' ? ` [${hypName}]` : '')}
 **Orchestrator:** ${orchestrator.toUpperCase()}
 **Deployment Mode:** ${isAirgap ? 'AIR-GAPPED / OFFLINE' : 'STANDARD ONLINE'}
 **Topology:** ${topology} (${nodesCount} Node${nodesCount > 1 ? 's' : ''}${quorumZone ? ' + Quorum Arbiter' : ''})
@@ -2145,12 +2256,19 @@ Run the bootstrap helper script to print the connection parameters:
    chmod +x *.sh
    \`\`\`
 
-2. **Run Installation:**
+${hypervisorManifestFilename ? `
+2. **Deploy VMs on ${hypName}:**
    \`\`\`bash
-   ${isAirgap ? './install.sh' : './install.sh'}
+   ${hypervisorManifestFilename.endsWith('.yaml') ? `kubectl apply -f ${hypervisorManifestFilename}` : `bash ./${hypervisorManifestFilename}`}
+   \`\`\`
+` : ''}
+
+3. **Run Installation:**
+   \`\`\`bash
+   ./install.sh
    \`\`\`
 
-3. **Retrieve Credentials for Step 6:**
+4. **Retrieve Credentials for Step 6:**
    \`\`\`bash
    ./bootstrap-token.sh
    \`\`\`
@@ -2165,6 +2283,9 @@ ${isAirgap ? '\nFor detailed offline instructions, see `AIRGAP_INSTALL_GUIDE.md`
     zip.addFile('images-list.txt', Buffer.from(imagesListContent, 'utf-8'));
     zip.addFile('registries.yaml', Buffer.from(registriesYaml, 'utf-8'));
     zip.addFile('cluster-config.yaml', Buffer.from(clusterConfigYaml, 'utf-8'));
+    if (hypervisorManifestFilename && hypervisorManifestContent) {
+      zip.addFile(hypervisorManifestFilename, Buffer.from(hypervisorManifestContent, 'utf-8'), '', hypervisorManifestFilename.endsWith('.sh') ? 0o755 : undefined);
+    }
     zip.addFile('AIRGAP_INSTALL_GUIDE.md', Buffer.from(airgapGuide, 'utf-8'));
     zip.addFile('README.md', Buffer.from(readmeContent, 'utf-8'));
 

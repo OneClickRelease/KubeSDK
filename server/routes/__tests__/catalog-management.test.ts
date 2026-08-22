@@ -359,4 +359,61 @@ describe('Capability Catalog Management Routes', () => {
     expect(res.header['content-type']).toContain('application/zip');
     expect(res.header['content-disposition']).toContain('rpi5-cluster-airgap-setup.zip');
   });
+
+  it('POST /api/registry/orchestrator/package generates Harvester / KubeVirt declarative manifests with Asymmetrical Node Pools (GPU, Storage, Control, Worker)', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'hypervisor-vm',
+        hypervisorProfile: {
+          id: 'harvester',
+          name: 'Harvester HCI',
+          version: 'v1.3',
+          engine: 'KubeVirt / Longhorn',
+          category: 'HCI & Cloud-Native',
+          vmMode: 'asymmetrical',
+          pools: [
+            { id: 'pool-cp', name: 'harvester-cp', category: 'control-plane', count: 3, vcpu: 4, memoryGi: 8, diskGi: 50, arch: 'x86_64' },
+            { id: 'pool-workers', name: 'harvester-workers', category: 'worker', count: 4, vcpu: 8, memoryGi: 16, diskGi: 100, arch: 'x86_64' },
+            { id: 'pool-gpu', name: 'harvester-gpu', category: 'gpu', count: 2, vcpu: 16, memoryGi: 64, diskGi: 200, arch: 'x86_64', gpuModel: 'NVIDIA L40S' },
+            { id: 'pool-storage', name: 'harvester-storage', category: 'storage', count: 3, vcpu: 8, memoryGi: 32, diskGi: 500, arch: 'x86_64' }
+          ]
+        },
+        orchestrator: 'rke2',
+        topology: 'multi-node',
+        isAirgap: true,
+        clusterName: 'harvester-hci-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('harvester-hci-cluster-airgap-setup.zip');
+  });
+
+  it('POST /api/registry/orchestrator/package generates Proxmox VE batch provisioning scripts for heterogeneous VMs', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'hypervisor-vm',
+        hypervisorProfile: {
+          id: 'proxmox-ve',
+          name: 'Proxmox VE',
+          version: '8.1',
+          engine: 'KVM / QEMU',
+          category: 'Open-Source & Linux',
+          vmMode: 'asymmetrical',
+          pools: [
+            { id: 'pool-cp', name: 'pve-cp', category: 'control-plane', count: 3, vcpu: 4, memoryGi: 8, diskGi: 50, arch: 'x86_64' },
+            { id: 'pool-worker', name: 'pve-worker', category: 'worker', count: 5, vcpu: 8, memoryGi: 16, diskGi: 100, arch: 'x86_64' }
+          ]
+        },
+        orchestrator: 'k3s',
+        topology: 'multi-node',
+        clusterName: 'pve-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('pve-cluster-setup.zip');
+  });
 });
