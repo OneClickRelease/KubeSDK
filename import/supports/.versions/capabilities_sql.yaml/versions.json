@@ -1,5 +1,140 @@
 [
   {
+    "version": "v46",
+    "versionNumber": 46,
+    "timestamp": "2026-08-21T11:57:20.428Z",
+    "action": "Deleted provider: VitestTestDB_1787313440398",
+    "author": "User",
+    "filename": "v46_2026-08-21T11-57-20-428Z.yaml",
+    "size": 3613
+  },
+  {
+    "version": "v45",
+    "versionNumber": 45,
+    "timestamp": "2026-08-21T11:57:20.423Z",
+    "action": "Deprecated provider: VitestTestDB_1787313440398 (Testing deprecation flow)",
+    "author": "User",
+    "filename": "v45_2026-08-21T11-57-20-423Z.yaml",
+    "size": 4328
+  },
+  {
+    "version": "v44",
+    "versionNumber": 44,
+    "timestamp": "2026-08-21T11:57:20.418Z",
+    "action": "Version bump for VitestTestDB_1787313440398 (1.0.1 -> 2.0.0)",
+    "author": "User",
+    "filename": "v44_2026-08-21T11-57-20-418Z.yaml",
+    "size": 4307
+  },
+  {
+    "version": "v43",
+    "versionNumber": 43,
+    "timestamp": "2026-08-21T11:57:20.412Z",
+    "action": "Updated provider: VitestTestDB_1787313440398",
+    "author": "User",
+    "filename": "v43_2026-08-21T11-57-20-412Z.yaml",
+    "size": 4113
+  },
+  {
+    "version": "v42",
+    "versionNumber": 42,
+    "timestamp": "2026-08-21T11:57:20.406Z",
+    "action": "Added new provider: VitestTestDB_1787313440398",
+    "author": "User",
+    "filename": "v42_2026-08-21T11-57-20-406Z.yaml",
+    "size": 4069
+  },
+  {
+    "version": "v41",
+    "versionNumber": 41,
+    "timestamp": "2026-08-21T11:48:15.451Z",
+    "action": "Deleted provider: VitestTestDB_1787312895425",
+    "author": "User",
+    "filename": "v41_2026-08-21T11-48-15-451Z.yaml",
+    "size": 3613
+  },
+  {
+    "version": "v40",
+    "versionNumber": 40,
+    "timestamp": "2026-08-21T11:48:15.447Z",
+    "action": "Deprecated provider: VitestTestDB_1787312895425 (Testing deprecation flow)",
+    "author": "User",
+    "filename": "v40_2026-08-21T11-48-15-447Z.yaml",
+    "size": 4328
+  },
+  {
+    "version": "v39",
+    "versionNumber": 39,
+    "timestamp": "2026-08-21T11:48:15.442Z",
+    "action": "Version bump for VitestTestDB_1787312895425 (1.0.1 -> 2.0.0)",
+    "author": "User",
+    "filename": "v39_2026-08-21T11-48-15-442Z.yaml",
+    "size": 4307
+  },
+  {
+    "version": "v38",
+    "versionNumber": 38,
+    "timestamp": "2026-08-21T11:48:15.437Z",
+    "action": "Updated provider: VitestTestDB_1787312895425",
+    "author": "User",
+    "filename": "v38_2026-08-21T11-48-15-437Z.yaml",
+    "size": 4113
+  },
+  {
+    "version": "v37",
+    "versionNumber": 37,
+    "timestamp": "2026-08-21T11:48:15.432Z",
+    "action": "Added new provider: VitestTestDB_1787312895425",
+    "author": "User",
+    "filename": "v37_2026-08-21T11-48-15-432Z.yaml",
+    "size": 4069
+  },
+  {
+    "version": "v36",
+    "versionNumber": 36,
+    "timestamp": "2026-08-21T11:36:18.355Z",
+    "action": "Deleted provider: VitestTestDB_1787312178326",
+    "author": "User",
+    "filename": "v36_2026-08-21T11-36-18-355Z.yaml",
+    "size": 3613
+  },
+  {
+    "version": "v35",
+    "versionNumber": 35,
+    "timestamp": "2026-08-21T11:36:18.350Z",
+    "action": "Deprecated provider: VitestTestDB_1787312178326 (Testing deprecation flow)",
+    "author": "User",
+    "filename": "v35_2026-08-21T11-36-18-350Z.yaml",
+    "size": 4328
+  },
+  {
+    "version": "v34",
+    "versionNumber": 34,
+    "timestamp": "2026-08-21T11:36:18.344Z",
+    "action": "Version bump for VitestTestDB_1787312178326 (1.0.1 -> 2.0.0)",
+    "author": "User",
+    "filename": "v34_2026-08-21T11-36-18-344Z.yaml",
+    "size": 4307
+  },
+  {
+    "version": "v33",
+    "versionNumber": 33,
+    "timestamp": "2026-08-21T11:36:18.339Z",
+    "action": "Updated provider: VitestTestDB_1787312178326",
+    "author": "User",
+    "filename": "v33_2026-08-21T11-36-18-339Z.yaml",
+    "size": 4113
+  },
+  {
+    "version": "v32",
+    "versionNumber": 32,
+    "timestamp": "2026-08-21T11:36:18.333Z",
+    "action": "Added new provider: VitestTestDB_1787312178326",
+    "author": "User",
+    "filename": "v32_2026-08-21T11-36-18-333Z.yaml",
+    "size": 4069
+  },
+  {
     "version": "v31",
     "versionNumber": 31,
     "timestamp": "2026-08-21T10:34:21.384Z",

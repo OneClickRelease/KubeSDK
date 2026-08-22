@@ -288,4 +288,75 @@ describe('Capability Catalog Management Routes', () => {
       fs.unlinkSync(capFile);
     }
   });
+
+  it('POST /api/registry/orchestrator/package generates and downloads a cluster provisioning zip package', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'hypervisor-vm',
+        orchestrator: 'k3s',
+        topology: 'multi-zone-quorum',
+        nodesCount: 3,
+        vcpu: 4,
+        memoryGi: 8,
+        diskGi: 50,
+        osArch: 'x86_64',
+        quorumZone: true,
+        clusterName: 'test-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('attachment');
+  });
+
+  it('POST /api/registry/orchestrator/package generates a full airgap offline bundle with precheck and image loader', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'baremetal',
+        orchestrator: 'k3s',
+        topology: 'single-node',
+        isAirgap: true,
+        airgapMethod: 'local-autoload',
+        includeWorkloadImages: true,
+        workloadImages: ['postgres:16-alpine', 'redis:7-alpine'],
+        vcpu: 4,
+        memoryGi: 8,
+        diskGi: 50,
+        clusterName: 'airgap-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('airgap-setup.zip');
+  });
+
+  it('POST /api/registry/orchestrator/package supports Baremetal hardware presets (e.g. Raspberry Pi 5 8GB, HPE, Dell)', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'baremetal',
+        hardwareProfile: {
+          id: 'rpi-5-8gb',
+          vendor: 'Raspberry Pi',
+          name: 'Raspberry Pi 5',
+          version: '8GB v1.0',
+          category: 'Edge & SBC',
+          arch: 'aarch64'
+        },
+        orchestrator: 'k3s',
+        topology: 'single-node',
+        isAirgap: true,
+        vcpu: 4,
+        memoryGi: 8,
+        diskGi: 64,
+        osArch: 'aarch64',
+        clusterName: 'rpi5-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('rpi5-cluster-airgap-setup.zip');
+  });
 });

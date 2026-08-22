@@ -1,0 +1,103 @@
+sql:
+  parent: Database
+  providers:
+    - name: MySQL
+      description: Popular open-source relational database for transactional workloads.
+      image_url: https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg
+      website_url: https://www.mysql.com
+      repo_url: https://github.com/mysql/mysql-server
+      documentation_url: https://dev.mysql.com/doc/
+      version: v1
+      latest_version: 8.4.0
+      license_conditions: GPL v2 for community edition; proprietary for enterprise.
+      protocols_supported:
+        - TCP
+        - JDBC
+        - ODBC
+      default_ports:
+        - 3306
+      resources:
+        vcpu: '2'
+        memory: 4Gi
+        disk: 20Gi
+      dependencies:
+        - Linux host
+        - MySQL server installed
+      ha_recommendation: Deploy with replication or InnoDB cluster across 3+ nodes.
+      languages:
+        java:
+          frameworks:
+            - Spring Boot
+            - Hibernate
+          sample_code: samples/java/database/sql/mysql/sample.yaml
+          config_template: samples/java/database/sql/mysql/config.mustache
+        python:
+          frameworks:
+            - Django ORM
+            - SQLAlchemy
+          sample_code: samples/python/database/sql/mysql/sample.yaml
+          config_template: samples/python/database/sql/mysql/config.mustache
+    - name: PostgreSQL
+      description: Advanced open-source relational database with strong SQL compliance.
+      image_url: https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg
+      website_url: https://www.postgresql.org
+      repo_url: https://github.com/postgres/postgres
+      documentation_url: https://www.postgresql.org/docs/
+      version: v1
+      latest_version: '16.2'
+      license_conditions: PostgreSQL License (BSD-style).
+      protocols_supported:
+        - TCP
+        - JDBC
+        - ODBC
+      default_ports:
+        - 5432
+      resources:
+        vcpu: '2'
+        memory: 4Gi
+        disk: 20Gi
+      dependencies:
+        - Linux host
+        - PostgreSQL server installed
+      ha_recommendation: Deploy with streaming replication or Patroni cluster.
+      languages:
+        java:
+          frameworks:
+            - Spring Boot
+            - Micronaut
+          sample_code: samples/java/database/sql/postgresql/sample.yaml
+          config_template: samples/java/database/sql/postgresql/config.mustache
+        python:
+          frameworks:
+            - Django ORM
+            - SQLAlchemy
+          sample_code: samples/python/database/sql/postgresql/sample.yaml
+          config_template: samples/python/database/sql/postgresql/config.mustache
+    - name: Oracle Database
+      description: Enterprise-grade relational database with advanced features.
+      image_url: https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/oracle.svg
+      website_url: https://www.oracle.com/database/
+      repo_url: ''
+      documentation_url: https://docs.oracle.com/en/database/
+      version: v1
+      latest_version: 23c
+      license_conditions: Proprietary Oracle license.
+      protocols_supported:
+        - TCP
+        - JDBC
+        - OCI
+      default_ports:
+        - 1521
+      resources:
+        vcpu: '4'
+        memory: 8Gi
+        disk: 50Gi
+      dependencies:
+        - Oracle client libraries
+      ha_recommendation: Deploy with Oracle RAC for HA.
+      languages:
+        java:
+          frameworks:
+            - Spring Boot
+          sample_code: samples/java/database/sql/oracle/sample.yaml
+          config_template: samples/java/database/sql/oracle/config.mustache

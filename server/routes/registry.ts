@@ -1507,21 +1507,678 @@ router.get('/capabilities/sample-payload', (req, res) => {
   }
 });
 
-// GET /api/registry/languages - Retrieve supported languages, frameworks, and tools from YAML config
-router.get('/languages', (req, res) => {
+// POST /api/registry/orchestrator/package - Generate a customized cluster setup package (.zip)
+router.post('/orchestrator/package', async (req, res) => {
   try {
-    const LANGUAGES_FILE = path.join(process.cwd(), 'import', 'supports', 'languages.yaml');
-    if (!fs.existsSync(LANGUAGES_FILE)) {
-      return res.status(404).json({ status: 'error', message: 'languages.yaml not found' });
+    const {
+      infraType = 'vm',
+      hardwareProfile = undefined,
+      orchestrator = 'k3s',
+      topology = 'single-node',
+      nodesCount = 1,
+      vcpu = 2,
+      memoryGi = 4,
+      diskGi = 20,
+      osArch = 'x86_64',
+      quorumZone = false,
+      clusterName = 'kubesdk-cluster',
+      isAirgap = false,
+      airgapMethod = 'local-autoload',
+      includeWorkloadImages = true,
+      workloadImages = [],
+      privateRegistryUrl = ''
+    } = req.body;
+
+    const AdmZipModule = await import('adm-zip');
+    const AdmZip = AdmZipModule.default;
+    const zip = new AdmZip();
+
+    // 1. Core images catalog
+    const coreImages = [
+      'rancher/k3s:v1.30.0-k3s1',
+      'rancher/pause:3.9',
+      'rancher/coredns-coredns:1.10.1',
+      'rancher/local-path-provisioner:v0.0.26',
+      'rancher/metrics-server:v0.7.0'
+    ];
+    const userWorkloadImages = (includeWorkloadImages && Array.isArray(workloadImages) && workloadImages.length > 0)
+      ? workloadImages
+      : ['postgres:16-alpine', 'redis:7-alpine', 'nginx:alpine'];
+    const allImagesList = Array.from(new Set([...coreImages, ...userWorkloadImages]));
+
+    // Hardware Vendor Tuning Script
+    let hwTuningScript = '';
+    const hwVendor = hardwareProfile?.vendor || '';
+    const hwName = hardwareProfile?.name || '';
+    const hwVersion = hardwareProfile?.version || '';
+
+    if (hwVendor === 'Raspberry Pi') {
+      hwTuningScript = `
+# ------------------------------------------------------------------------------
+# Hardware Tuning: ${hwVendor} ${hwName} (${hwVersion})
+# ------------------------------------------------------------------------------
+echo "--> Applying Raspberry Pi specific cgroup & network tuning..."
+CMD_FILE=""
+if [ -f /boot/firmware/cmdline.txt ]; then
+  CMD_FILE="/boot/firmware/cmdline.txt"
+elif [ -f /boot/cmdline.txt ]; then
+  CMD_FILE="/boot/cmdline.txt"
+fi
+
+if [ -n "$CMD_FILE" ]; then
+  if ! grep -q "cgroup_enable=cpuset" "$CMD_FILE"; then
+    echo "  Configuring cgroup memory parameters in $CMD_FILE"
+    sudo sed -i '$ s/$/ cgroup_enable=cpuset cgroup_enable=memory cgroup_memory=1/' "$CMD_FILE" 2>/dev/null || true
+  fi
+fi
+`;
+    } else if (hwVendor === 'HPE' || hwVendor === 'Dell' || hwVendor === 'Cisco') {
+      hwTuningScript = `
+# ------------------------------------------------------------------------------
+# Hardware Tuning: ${hwVendor} ${hwName} (${hwVersion}) - Enterprise Server
+# ------------------------------------------------------------------------------
+echo "--> Optimizing ${hwVendor} enterprise hardware parameters..."
+sudo sysctl -w fs.inotify.max_user_watches=524288 2>/dev/null || true
+sudo sysctl -w fs.inotify.max_user_instances=8192 2>/dev/null || true
+sudo sysctl -w vm.max_map_count=262144 2>/dev/null || true
+`;
+    } else if (hwVendor === 'Advantech') {
+      hwTuningScript = `
+# ------------------------------------------------------------------------------
+# Hardware Tuning: Advantech ${hwName} (${hwVersion}) - Industrial Edge IPC
+# ------------------------------------------------------------------------------
+echo "--> Configuring Advantech industrial edge IPC parameters..."
+sudo sysctl -w net.core.rmem_max=16777216 2>/dev/null || true
+sudo sysctl -w net.core.wmem_max=16777216 2>/dev/null || true
+`;
+    } else if (hwVendor === 'IBM') {
+      hwTuningScript = `
+# ------------------------------------------------------------------------------
+# Hardware Tuning: IBM ${hwName} (${hwVersion}) - Mainframe / Enterprise Power
+# ------------------------------------------------------------------------------
+echo "--> Configuring IBM high-throughput enterprise kernel parameters..."
+sudo sysctl -w kernel.pid_max=4194304 2>/dev/null || true
+`;
     }
-    const raw = fs.readFileSync(LANGUAGES_FILE, 'utf-8');
-    const doc = yaml.load(raw) as any;
-    res.json({ status: 'success', languages: doc.languages || {} });
+
+    // 2. Generate install.sh
+    let installCommands = '';
+    if (isAirgap) {
+      installCommands = `#!/bin/bash
+# ==============================================================================
+# KubeSDK Air-Gapped / Offline Cluster Installer
+# Target: ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName} ${hwVersion}]` : ''} | Engine: ${orchestrator.toUpperCase()} | Arch: ${osArch}
+# Mode: ZERO OUTBOUND INTERNET ACCESS REQUIRED
+# ==============================================================================
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+
+echo "========================================================="
+echo " Starting KubeSDK Air-Gapped Cluster Installation"
+${hwVendor ? `echo " Hardware Profile: ${hwVendor} ${hwName} (${hwVersion})"` : ''}
+echo " Topology: ${topology} (${nodesCount} Nodes${quorumZone ? ' + Quorum Arbiter' : ''})"
+echo " Resources: ${vcpu} vCPU, ${memoryGi} GiB RAM, ${diskGi} GiB Disk"
+echo "========================================================="
+
+# Step 1: Run Pre-flight System Checks
+if [ -f "\$SCRIPT_DIR/airgap-precheck.sh" ]; then
+  echo "--> Running Airgap Environment Pre-checks..."
+  bash "\$SCRIPT_DIR/airgap-precheck.sh"
+fi
+
+${hwTuningScript}
+
+# Step 2: Prepare Binary and Local Directories
+echo "--> Installing local offline binaries to /usr/local/bin..."
+sudo mkdir -p /usr/local/bin /etc/rancher/k3s /var/lib/rancher/k3s/agent/images
+
+if [ -f "\$SCRIPT_DIR/bin/k3s" ]; then
+  sudo cp "\$SCRIPT_DIR/bin/k3s" /usr/local/bin/k3s
+  sudo chmod 755 /usr/local/bin/k3s
+fi
+
+# Step 3: Install Offline Registries Config if present
+if [ -f "\$SCRIPT_DIR/registries.yaml" ]; then
+  echo "--> Deploying offline registry mirrors configuration..."
+  sudo cp "\$SCRIPT_DIR/registries.yaml" /etc/rancher/k3s/registries.yaml
+fi
+
+# Step 4: Import & Autoload Airgap Container Images
+if [ -f "\$SCRIPT_DIR/load-images.sh" ]; then
+  echo "--> Loading offline container images into local runtime..."
+  bash "\$SCRIPT_DIR/load-images.sh"
+fi
+
+# Move any image tarballs directly to k3s agent images autoload path
+if [ -d "\$SCRIPT_DIR/images" ]; then
+  sudo cp \$SCRIPT_DIR/images/*.tar* /var/lib/rancher/k3s/agent/images/ 2>/dev/null || true
+fi
+
+# Step 5: Launch Cluster with Offline Flags
+echo "--> Initializing ${orchestrator.toUpperCase()} service in offline mode..."
+export INSTALL_K3S_SKIP_DOWNLOAD=true
+export INSTALL_K3S_BIN_DIR=/usr/local/bin
+
+${topology === 'single-node' ? `
+# Single-Node Offline Server
+if [ -f "\$SCRIPT_DIR/bin/install-k3s.sh" ]; then
+  sudo -E bash "\$SCRIPT_DIR/bin/install-k3s.sh" --write-kubeconfig-mode 644 --disable traefik
+else
+  # Fallback to local binary systemd execution
+  sudo k3s server --write-kubeconfig-mode 644 --disable traefik &
+fi
+` : topology === 'multi-node' ? `
+# Multi-Node Offline Server
+if [ -f "\$SCRIPT_DIR/bin/install-k3s.sh" ]; then
+  sudo -E bash "\$SCRIPT_DIR/bin/install-k3s.sh" --write-kubeconfig-mode 644 --disable traefik
+else
+  sudo k3s server --write-kubeconfig-mode 644 --disable traefik &
+fi
+
+MASTER_IP=$(hostname -I | awk '{print $1}')
+NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token 2>/dev/null || echo "PENDING")
+
+echo ""
+echo "==== Offline Worker Join Instructions ===="
+echo "On worker nodes, transfer this airgap package and run:"
+echo "sudo INSTALL_K3S_SKIP_DOWNLOAD=true k3s agent --server https://\${MASTER_IP}:6443 --token \${NODE_TOKEN}"
+echo "=========================================="
+` : `
+# Multi-Zone Offline Clustered Engine
+sudo -E k3s server --cluster-init --write-kubeconfig-mode 644 --disable traefik &
+`}
+
+echo "Waiting for cluster control-plane readiness..."
+sleep 8
+sudo k3s kubectl wait --for=condition=Ready node --all --timeout=120s 2>/dev/null || true
+`;
+    } else {
+      // Standard Online installer
+      if (orchestrator === 'k3s') {
+        if (topology === 'single-node') {
+          installCommands = `#!/bin/bash
+set -e
+echo "========================================================="
+echo " Installing K3s (Single Node) on ${infraType} (${osArch})"
+echo " Resources: ${vcpu} vCPU, ${memoryGi} GiB RAM"
+echo "========================================================="
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" sh -
+echo "Waiting for node ready status..."
+kubectl wait --for=condition=Ready node --all --timeout=120s
+`;
+        } else if (topology === 'multi-node') {
+          installCommands = `#!/bin/bash
+set -e
+echo "========================================================="
+echo " Installing K3s Control-Plane + ${nodesCount} Workers (${infraType})"
+echo "========================================================="
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" sh -
+NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
+MASTER_IP=$(hostname -I | awk '{print $1}')
+
+echo ""
+echo "==== Worker Join Command ===="
+echo "Run this on each worker node:"
+echo "curl -sfL https://get.k3s.io | K3S_URL=https://\${MASTER_IP}:6443 K3S_TOKEN=\${NODE_TOKEN} sh -"
+echo "============================="
+`;
+        } else {
+          installCommands = `#!/bin/bash
+set -e
+echo "========================================================="
+echo " Installing K3s Multi-Zone Topology${quorumZone ? ' with Quorum Arbiter' : ''}"
+echo "========================================================="
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--cluster-init --write-kubeconfig-mode 644 --disable traefik" sh -
+NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
+MASTER_IP=$(hostname -I | awk '{print $1}')
+
+${quorumZone ? `echo "Quorum Arbiter zone enabled on zone-3 (etcd learner/witness)"\n` : ''}
+echo "Control-plane initialized. Join additional zone masters with:"
+echo "curl -sfL https://get.k3s.io | K3S_URL=https://\${MASTER_IP}:6443 K3S_TOKEN=\${NODE_TOKEN} INSTALL_K3S_EXEC=\"--server https://\${MASTER_IP}:6443\" sh -"
+`;
+        }
+      } else if (orchestrator === 'microk8s') {
+        installCommands = `#!/bin/bash
+set -e
+echo "Installing MicroK8s on ${infraType}..."
+sudo snap install microk8s --classic
+sudo microk8s status --wait-ready
+sudo microk8s enable dns rbac storage
+sudo snap alias microk8s.kubectl kubectl
+`;
+      } else if (orchestrator === 'minikube') {
+        const memMb = (Number(memoryGi) || 4) * 1024;
+        installCommands = `#!/bin/bash
+set -e
+echo "Starting Minikube (${vcpu} vCPU, ${memMb} MB RAM)..."
+minikube start --cpus=${vcpu} --memory=${memMb}mb ${nodesCount > 1 ? `--nodes=${nodesCount}` : ''}
+`;
+      } else if (orchestrator === 'rke2') {
+        installCommands = `#!/bin/bash
+set -e
+echo "Installing RKE2 CIS-Hardened Kubernetes..."
+curl -sfL https://get.rke2.io | sudo sh -
+sudo systemctl enable rke2-server.service
+sudo systemctl start rke2-server.service
+export PATH=$PATH:/var/lib/rancher/rke2/bin
+export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+`;
+      } else {
+        installCommands = `#!/bin/bash
+set -e
+echo "Initializing Kubeadm Kubernetes Cluster..."
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+`;
+      }
+    }
+
+    // Append ServiceAccount and token bootstrap script
+    const rbacScript = `
+# -------------------------------------------------------------
+# Setup KubeSDK Cluster Admin ServiceAccount & Token
+# -------------------------------------------------------------
+echo "Configuring KubeSDK Admin RBAC & ServiceAccount Token..."
+kubectl apply -f - << 'EOF' || sudo k3s kubectl apply -f - << 'EOF'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-admin-user
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-user-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: cluster-admin-user
+    namespace: kube-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-admin-user-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: cluster-admin-user
+type: kubernetes.io/service-account-token
+EOF
+
+sleep 2
+
+echo ""
+echo "========================================================="
+echo " KUBESDK RUNTIME CREDENTIALS (Copy to Step 6)"
+echo "========================================================="
+API_URL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || sudo k3s kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "https://127.0.0.1:6443")
+TOKEN=$(kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' 2>/dev/null | base64 --decode 2>/dev/null || sudo k3s kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' | base64 --decode 2>/dev/null || echo "")
+
+echo "Cluster API URL: \${API_URL}"
+echo ""
+echo "Authentication Token:"
+echo "\${TOKEN}"
+echo "========================================================="
+`;
+
+    const fullInstallScript = installCommands + rbacScript;
+
+    // 3. Generate load-images.sh (Offline Image Loader)
+    const loadImagesScript = `#!/bin/bash
+# ==============================================================================
+# KubeSDK Air-Gapped Image Loader
+# Loads bundled container images into local containerd / crictl / docker runtime
+# ==============================================================================
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+IMAGES_DIR="\$SCRIPT_DIR/images"
+
+echo "=== Loading Air-Gapped Container Images ==="
+
+if [ ! -d "\$IMAGES_DIR" ]; then
+  echo "Images directory not found at \$IMAGES_DIR. Creating..."
+  mkdir -p "\$IMAGES_DIR"
+fi
+
+LOADED_COUNT=0
+
+# Detect container runtime
+if command -v k3s >/dev/null 2>&1; then
+  echo "--> Using k3s containerd runtime (k3s ctr images import)..."
+  for tarball in "\$IMAGES_DIR"/*.tar* "\$IMAGES_DIR"/*.tar.zst "\$IMAGES_DIR"/*.tar.gz; do
+    if [ -f "\$tarball" ]; then
+      echo "  Importing: \$tarball"
+      sudo k3s ctr images import "\$tarball"
+      LOADED_COUNT=\$((LOADED_COUNT + 1))
+    fi
+  done
+elif command -v ctr >/dev/null 2>&1; then
+  echo "--> Using standalone containerd runtime (ctr -n k8s.io images import)..."
+  for tarball in "\$IMAGES_DIR"/*.tar* "\$IMAGES_DIR"/*.tar.gz; do
+    if [ -f "\$tarball" ]; then
+      echo "  Importing: \$tarball"
+      sudo ctr -n k8s.io images import "\$tarball"
+      LOADED_COUNT=\$((LOADED_COUNT + 1))
+    fi
+  done
+elif command -v docker >/dev/null 2>&1; then
+  echo "--> Using Docker runtime (docker load)..."
+  for tarball in "\$IMAGES_DIR"/*.tar* "\$IMAGES_DIR"/*.tar.gz; do
+    if [ -f "\$tarball" ]; then
+      echo "  Loading: \$tarball"
+      docker load -i "\$tarball"
+      LOADED_COUNT=\$((LOADED_COUNT + 1))
+    fi
+  done
+fi
+
+${privateRegistryUrl ? `
+# Push images to private registry mirror if configured
+echo "--> Pushing images to private registry mirror: ${privateRegistryUrl}..."
+while IFS= read -r img || [ -n "\$img" ]; do
+  if [ -n "\$img" ]; then
+    TARGET_IMG="${privateRegistryUrl}/\$img"
+    echo "  Tagging \$img -> \$TARGET_IMG"
+    docker tag "\$img" "\$TARGET_IMG" 2>/dev/null || true
+    docker push "\$TARGET_IMG" 2>/dev/null || true
+  fi
+done < "\$SCRIPT_DIR/images-list.txt"
+` : ''}
+
+echo "Image loading complete. Processed \$LOADED_COUNT archive(s)."
+`;
+
+    // 4. Generate airgap-precheck.sh (Preflight System Validation)
+    const airgapPrecheckScript = `#!/bin/bash
+# ==============================================================================
+# KubeSDK Air-Gapped Environment Preflight Checks
+# Validates offline system requirements, kernel modules, swap, and ports
+# ==============================================================================
+set -e
+
+echo "=== KubeSDK Air-Gapped Preflight Environment Checks ==="
+FAILURES=0
+
+check_module() {
+  if lsmod | grep -q "$1"; then
+    echo "  [OK] Kernel module '$1' loaded."
+  else
+    echo "  [WARN] Kernel module '$1' not loaded. Attempting modprobe..."
+    sudo modprobe "$1" 2>/dev/null || { echo "  [FAIL] Failed to load '$1'"; FAILURES=$((FAILURES + 1)); }
+  fi
+}
+
+check_sysctl() {
+  local param=$1
+  local expected=$2
+  local current=$(sysctl -n "$param" 2>/dev/null || echo "unknown")
+  if [ "$current" = "$expected" ]; then
+    echo "  [OK] Sysctl $param = $expected"
+  else
+    echo "  [WARN] Sysctl $param is '$current'. Setting to $expected..."
+    sudo sysctl -w "$param=$expected" 2>/dev/null || true
+  fi
+}
+
+check_port() {
+  local port=$1
+  local desc=$2
+  if ss -tuln 2>/dev/null | grep -q ":$port "; then
+    echo "  [WARN] Port $port ($desc) is already in use by another process!"
+  else
+    echo "  [OK] Port $port ($desc) is available."
+  fi
+}
+
+echo "1. Checking Linux Kernel Modules..."
+check_module "overlay"
+check_module "br_netfilter"
+
+echo "2. Checking Networking & IP Forwarding..."
+check_sysctl "net.bridge.bridge-nf-call-iptables" "1"
+check_sysctl "net.ipv4.ip_forward" "1"
+
+echo "3. Checking Local Port Availability..."
+check_port "6443" "Kubernetes API Server"
+check_port "10250" "Kubelet API"
+${topology !== 'single-node' ? `check_port "2379" "etcd Client"\ncheck_port "2380" "etcd Peer"\n` : ''}
+
+echo "4. Checking Memory & Storage..."
+MEM_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}' || echo 4096)
+if [ "$MEM_MB" -lt 1800 ]; then
+  echo "  [WARN] Available RAM is $MEM_MB MB. Minimum 2048 MB recommended."
+else
+  echo "  [OK] Available RAM: $MEM_MB MB."
+fi
+
+FREE_DISK_GB=$(df -BG /var 2>/dev/null | awk 'NR==2{print $4}' | tr -d 'G' || echo 20)
+if [ "\${FREE_DISK_GB:-0}" -lt 10 ]; then
+  echo "  [WARN] Free disk space in /var is \${FREE_DISK_GB} GB. Recommended >= 20 GB."
+else
+  echo "  [OK] Free disk space in /var: \${FREE_DISK_GB} GB."
+fi
+
+echo "========================================================="
+if [ "$FAILURES" -gt 0 ]; then
+  echo "Preflight completed with $FAILURES critical failure(s). Please review warnings above."
+else
+  echo "Preflight check passed successfully! System is ready for offline installation."
+fi
+echo "========================================================="
+`;
+
+    // 5. Generate registries.yaml
+    const registriesYaml = privateRegistryUrl ? `mirrors:
+  "docker.io":
+    endpoint:
+      - "${privateRegistryUrl}"
+  "*":
+    endpoint:
+      - "${privateRegistryUrl}"
+` : `mirrors:
+  "*":
+    endpoint:
+      - "http://127.0.0.1:5000"
+`;
+
+    // 6. Generate images-list.txt
+    const imagesListContent = allImagesList.join('\n') + '\n';
+
+    // 7. Generate cluster-config.yaml
+    const clusterConfigDoc = {
+      apiVersion: 'kubesdk.dev/v1alpha1',
+      kind: 'OrchestratorTopologySpec',
+      metadata: {
+        name: clusterName,
+        generatedAt: new Date().toISOString(),
+        airgapped: isAirgap
+      },
+      spec: {
+        infrastructure: {
+          type: infraType,
+          hardwareProfile: hardwareProfile || undefined,
+          osArch,
+          airgap: {
+            enabled: isAirgap,
+            deliveryMethod: airgapMethod,
+            privateRegistryUrl: privateRegistryUrl || undefined
+          },
+          resourceProfile: {
+            vcpu,
+            memoryGi: `${memoryGi}Gi`,
+            diskGi: `${diskGi}Gi`
+          }
+        },
+        orchestrator: {
+          engine: orchestrator,
+          topology,
+          nodes: Number(nodesCount) || 1,
+          quorumZone: Boolean(quorumZone)
+        },
+        networking: {
+          cni: orchestrator === 'k3s' ? 'flannel-builtin' : 'flannel',
+          serviceCidr: '10.43.0.0/16',
+          podCidr: '10.42.0.0/16'
+        },
+        bundledImages: allImagesList
+      }
+    };
+    const clusterConfigYaml = yaml.dump(clusterConfigDoc, { indent: 2 });
+
+    // 8. Generate bootstrap-token.sh
+    const bootstrapTokenScript = `#!/bin/bash
+# Helper script to display KubeSDK credentials
+echo "==== Cluster API URL ===="
+kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || sudo k3s kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "https://127.0.0.1:6443"
+echo ""
+echo "==== Authentication Token ===="
+kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' 2>/dev/null | base64 --decode 2>/dev/null || sudo k3s kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' | base64 --decode 2>/dev/null || echo ""
+echo ""
+`;
+
+    // 9. Generate AIRGAP_INSTALL_GUIDE.md
+    const airgapGuide = `# KubeSDK Complete Air-Gapped Installation Guide
+**Mode:** AIR-GAPPED (100% Offline / Zero Internet Required)
+**Target:** ${infraType.toUpperCase()} | **Orchestrator:** ${orchestrator.toUpperCase()}
+**Topology:** ${topology} (${nodesCount} Node${nodesCount > 1 ? 's' : ''}${quorumZone ? ' + Quorum Arbiter' : ''})
+**Node Sizing:** ${vcpu} vCPU / ${memoryGi} GiB RAM / ${diskGi} GiB Disk (${osArch})
+
+---
+
+## Air-Gapped Workflow Overview
+
+\`\`\`text
+┌─────────────────────────────────┐       USB / Bastion SCP       ┌─────────────────────────────────┐
+│     Connected Host (KubeSDK)    │ ────────────────────────────> │     Air-Gapped Target Host      │
+│  - Downloads setup bundle (.zip)│                               │  - 0% Outbound Internet Access  │
+│  - Bundles images & binaries    │                               │  - Runs ./install.sh --offline  │
+└─────────────────────────────────┘                               └─────────────────────────────────┘
+\`\`\`
+
+---
+
+## Step-by-Step Offline Installation
+
+### Step 1: Transfer Package to Target Host
+Copy the downloaded package to your offline server (via USB drive, internal bastion host, or jumpbox):
+\`\`\`bash
+scp -r kubesdk-*-setup.zip user@your-offline-node-ip:/tmp/
+ssh user@your-offline-node-ip
+cd /tmp
+unzip kubesdk-*-setup.zip -d kubesdk-setup
+cd kubesdk-setup
+chmod +x *.sh
+\`\`\`
+
+### Step 2: Run Pre-Flight Environment Validation
+Validate that kernel modules, cgroups, swap, and required network ports are ready:
+\`\`\`bash
+./airgap-precheck.sh
+\`\`\`
+
+### Step 3: Load Offline Container Images
+Load all control plane and simulation workload images into the local container runtime cache:
+\`\`\`bash
+./load-images.sh
+\`\`\`
+
+### Step 4: Run Offline Cluster Installation
+Execute the self-contained installation without external network calls:
+\`\`\`bash
+./install.sh
+\`\`\`
+
+### Step 5: Extract KubeSDK Credentials
+Run the bootstrap helper script to print the connection parameters:
+\`\`\`bash
+./bootstrap-token.sh
+\`\`\`
+
+### Step 6: Connect back to KubeSDK (Step 6 of Wizard)
+1. Copy the printed **Cluster API URL** (e.g. \`https://<node-ip>:6443\`) into the **Cluster API URL** input.
+2. Copy the **Authentication Token** into the **Authentication Token** input.
+3. Click **Test SDK Connection** to verify link establishment.
+
+---
+
+## Troubleshooting in Airgapped Environments
+
+- **SELinux / Firewall**: If the API server is unreachable from the KubeSDK host, ensure port \`6443/tcp\` is permitted:
+  \`\`\`bash
+  sudo firewall-cmd --add-port=6443/tcp --permanent
+  sudo firewall-cmd --reload
+  \`\`\`
+- **Containerd Image Verification**: Verify loaded offline images:
+  \`\`\`bash
+  sudo k3s ctr images list
+  \`\`\`
+`;
+
+    // 10. Generate README.md
+    const readmeContent = `# KubeSDK Cluster Setup Package
+**Target Infrastructure:** ${infraType.toUpperCase()}
+**Orchestrator:** ${orchestrator.toUpperCase()}
+**Deployment Mode:** ${isAirgap ? 'AIR-GAPPED / OFFLINE' : 'STANDARD ONLINE'}
+**Topology:** ${topology} (${nodesCount} Node${nodesCount > 1 ? 's' : ''}${quorumZone ? ' + Quorum Arbiter' : ''})
+**Node Sizing:** ${vcpu} vCPU / ${memoryGi} GiB RAM / ${diskGi} GiB Disk (${osArch})
+
+---
+
+## Quick Setup Instructions
+
+1. **Transfer Package to Target Host:**
+   \`\`\`bash
+   scp -r ./* user@your-node-ip:/tmp/kubesdk/
+   cd /tmp/kubesdk
+   chmod +x *.sh
+   \`\`\`
+
+2. **Run Installation:**
+   \`\`\`bash
+   ${isAirgap ? './install.sh' : './install.sh'}
+   \`\`\`
+
+3. **Retrieve Credentials for Step 6:**
+   \`\`\`bash
+   ./bootstrap-token.sh
+   \`\`\`
+${isAirgap ? '\nFor detailed offline instructions, see `AIRGAP_INSTALL_GUIDE.md`.' : ''}
+`;
+
+    // Add files to zip archive
+    zip.addFile('install.sh', Buffer.from(fullInstallScript, 'utf-8'), '', 0o755);
+    zip.addFile('bootstrap-token.sh', Buffer.from(bootstrapTokenScript, 'utf-8'), '', 0o755);
+    zip.addFile('load-images.sh', Buffer.from(loadImagesScript, 'utf-8'), '', 0o755);
+    zip.addFile('airgap-precheck.sh', Buffer.from(airgapPrecheckScript, 'utf-8'), '', 0o755);
+    zip.addFile('images-list.txt', Buffer.from(imagesListContent, 'utf-8'));
+    zip.addFile('registries.yaml', Buffer.from(registriesYaml, 'utf-8'));
+    zip.addFile('cluster-config.yaml', Buffer.from(clusterConfigYaml, 'utf-8'));
+    zip.addFile('AIRGAP_INSTALL_GUIDE.md', Buffer.from(airgapGuide, 'utf-8'));
+    zip.addFile('README.md', Buffer.from(readmeContent, 'utf-8'));
+
+    const zipBuffer = zip.toBuffer();
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${clusterName}-${isAirgap ? 'airgap-' : ''}setup.zip"`);
+    res.send(zipBuffer);
   } catch (err: any) {
     res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
 export default router;
+
+
 
 

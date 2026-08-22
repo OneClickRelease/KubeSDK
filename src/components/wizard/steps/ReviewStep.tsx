@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { KubeSDKLocalRun } from '../../../types';
+import { OrchestratorDeploymentCollapsible } from './OrchestratorDeploymentCollapsible';
 
 interface ReviewStepProps {
   config: KubeSDKLocalRun;
@@ -179,6 +180,22 @@ echo "========================"
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Optional Orchestrator Deployment & Cluster Provisioning */}
+      <OrchestratorDeploymentCollapsible
+        totalRequiredCpu={totals.cpu}
+        totalRequiredMem={totals.mem}
+        onApplyCredentials={(url) => setConfig(prev => ({
+          ...prev,
+          wizard: {
+            ...prev.wizard,
+            connectivity: {
+              ...(prev.wizard.connectivity || { apiServerUrl: '', token: '' }),
+              apiServerUrl: url
+            }
+          }
+        }))}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Left Column: Resource Review */}
