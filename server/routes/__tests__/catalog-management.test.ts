@@ -416,4 +416,85 @@ describe('Capability Catalog Management Routes', () => {
     expect(res.header['content-type']).toContain('application/zip');
     expect(res.header['content-disposition']).toContain('pve-cluster-setup.zip');
   });
+
+  it('POST /api/registry/orchestrator/package generates AWS EC2 Cloud Instance package with Development Stage setup (Spot, Auto-Shutdown, Terraform & CLI)', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'cloud-vm',
+        cloudProfile: {
+          provider: 'aws',
+          providerName: 'Amazon Web Services (AWS)',
+          credentials: {
+            accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+            secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+          },
+          region: 'us-east-1',
+          instanceType: 't4g.xlarge',
+          instanceSpec: {
+            id: 't4g.xlarge',
+            name: 't4g.xlarge (ARM Graviton3)',
+            vcpu: 4,
+            memGi: 16,
+            category: 'Dev Optimized'
+          },
+          isSpot: true,
+          autoShutdown: { enabled: true, hour: 20 },
+          securityGroup: {
+            restrictToMyIp: true,
+            myIpCidr: '203.0.113.42/32'
+          },
+          storage: {
+            tier: 'gp3-balanced',
+            sizeGiB: 50
+          },
+          cloudK8sMode: 'self-hosted-vm'
+        },
+        orchestrator: 'k3s',
+        topology: 'single-node',
+        isAirgap: false,
+        clusterName: 'aws-dev-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('aws-dev-cluster-setup.zip');
+  });
+
+  it('POST /api/registry/orchestrator/package generates GCP Compute Engine Cloud package', async () => {
+    const res = await request(app)
+      .post('/api/registry/orchestrator/package')
+      .send({
+        infraType: 'cloud-vm',
+        cloudProfile: {
+          provider: 'gcp',
+          providerName: 'Google Cloud Platform (GCP)',
+          credentials: {
+            projectId: 'demo-gcp-project-123'
+          },
+          region: 'us-central1-a',
+          instanceType: 'e2-standard-4',
+          instanceSpec: {
+            id: 'e2-standard-4',
+            name: 'e2-standard-4',
+            vcpu: 4,
+            memGi: 16,
+            category: 'Dev Optimized'
+          },
+          isSpot: true,
+          storage: {
+            tier: 'nvme-fast',
+            sizeGiB: 80
+          }
+        },
+        orchestrator: 'k3s',
+        topology: 'single-node',
+        isAirgap: false,
+        clusterName: 'gcp-dev-cluster'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('application/zip');
+    expect(res.header['content-disposition']).toContain('gcp-dev-cluster-setup.zip');
+  });
 });

@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Server, Cpu, Cloud, Box, Layers, Download, CheckCircle2,
   Terminal, ShieldCheck, ChevronDown, ChevronRight, Sparkles,
-  Zap, Copy, RefreshCw, AlertTriangle, Globe, Lock, Info, Check
+  Zap, Copy, RefreshCw, AlertTriangle, Globe, Lock, Info, Check,
+  Key, Eye, EyeOff, DollarSign, Clock, Shield
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -124,6 +125,174 @@ export const VM_CATEGORY_CONFIG: Record<VMNodeCategory, { label: string; badge: 
   'gateway': { label: 'Gateway / Ingress', badge: 'API Gateway', color: 'bg-teal-50 text-teal-700 border-teal-200', desc: 'Edge ingress traffic, TLS termination, and API routing' }
 };
 
+export type CloudProviderId = 'aws' | 'gcp' | 'azure' | 'digitalocean' | 'hetzner' | 'oci';
+
+export interface CloudProviderOption {
+  id: CloudProviderId;
+  name: string;
+  badge: string;
+  color: string;
+  defaultRegion: string;
+  regions: Array<{ id: string; name: string }>;
+  instanceTypes: Array<{ id: string; name: string; vcpu: number; memGi: number; desc: string; category: string; gpu?: string }>;
+  credentialFields: Array<{ key: string; label: string; placeholder: string; isSecret?: boolean; desc: string }>;
+  desc: string;
+}
+
+export const CLOUD_PROVIDERS: CloudProviderOption[] = [
+  {
+    id: 'aws',
+    name: 'Amazon Web Services (AWS)',
+    badge: 'EC2 & Graviton',
+    color: 'border-amber-400 bg-amber-50/50 text-amber-800',
+    defaultRegion: 'us-east-1',
+    regions: [
+      { id: 'us-east-1', name: 'US East (N. Virginia)' },
+      { id: 'us-west-2', name: 'US West (Oregon)' },
+      { id: 'eu-west-1', name: 'EU (Ireland)' },
+      { id: 'eu-central-1', name: 'EU (Frankfurt)' },
+      { id: 'ap-southeast-1', name: 'Asia Pacific (Singapore)' },
+      { id: 'ap-south-1', name: 'Asia Pacific (Mumbai)' }
+    ],
+    instanceTypes: [
+      { id: 't4g.xlarge', name: 't4g.xlarge (ARM Graviton3)', vcpu: 4, memGi: 16, desc: 'Cost-optimized 4 vCPU ARM64 - Recommended for Dev', category: 'Dev Optimized' },
+      { id: 't3.xlarge', name: 't3.xlarge (x86 General)', vcpu: 4, memGi: 16, desc: 'Burstable general compute instance', category: 'Dev Optimized' },
+      { id: 'c6i.2xlarge', name: 'c6i.2xlarge (Compute)', vcpu: 8, memGi: 16, desc: 'High compute Xeon 3rd Gen', category: 'Compute Intensive' },
+      { id: 'm6i.2xlarge', name: 'm6i.2xlarge (Balanced)', vcpu: 8, memGi: 32, desc: 'General memory-balanced cluster node', category: 'Memory Intensive' },
+      { id: 'g5.xlarge', name: 'g5.xlarge (NVIDIA A10G)', vcpu: 4, memGi: 16, desc: 'AI/ML GPU Acceleration 24GB VRAM', category: 'GPU Accelerated', gpu: 'NVIDIA A10G 24GB' }
+    ],
+    credentialFields: [
+      { key: 'accessKeyId', label: 'AWS Access Key ID', placeholder: 'AKIAIOSFODNN7EXAMPLE', desc: 'IAM User or Deployment Role Access Key' },
+      { key: 'secretAccessKey', label: 'AWS Secret Access Key', placeholder: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', isSecret: true, desc: 'IAM Secret Access Key' },
+      { key: 'sessionToken', label: 'AWS Session Token (Optional / STS)', placeholder: 'AQoDYXdzEJr1...', isSecret: true, desc: 'Temporary STS credentials for assumed IAM roles' },
+      { key: 'sshKeyName', label: 'EC2 Key Pair Name', placeholder: 'kubesdk-dev-keypair', desc: 'Key pair name registered in AWS EC2 for SSH access' }
+    ],
+    desc: 'Deploy on scalable Amazon EC2 instances with Spot instance pricing and automated VPC security groups'
+  },
+  {
+    id: 'gcp',
+    name: 'Google Cloud Platform (GCP)',
+    badge: 'Compute Engine',
+    color: 'border-blue-400 bg-blue-50/50 text-blue-800',
+    defaultRegion: 'us-central1-a',
+    regions: [
+      { id: 'us-central1-a', name: 'US Central (Iowa zone a)' },
+      { id: 'europe-west1-b', name: 'Europe West (Belgium zone b)' },
+      { id: 'asia-east1-a', name: 'Asia East (Taiwan zone a)' },
+      { id: 'us-east4-a', name: 'US East (N. Virginia zone a)' }
+    ],
+    instanceTypes: [
+      { id: 'e2-standard-4', name: 'e2-standard-4 (Cost-Effective)', vcpu: 4, memGi: 16, desc: 'E2 cost-effective shared-core - Recommended for Dev', category: 'Dev Optimized' },
+      { id: 'c3-standard-8', name: 'c3-standard-8 (Sapphire Rapids)', vcpu: 8, memGi: 32, desc: 'Intel Xeon 4th Gen high performance', category: 'Compute Intensive' },
+      { id: 'n2-standard-4', name: 'n2-standard-4 (Balanced)', vcpu: 4, memGi: 16, desc: 'Standard balanced production compute', category: 'Dev Optimized' },
+      { id: 'g2-standard-8', name: 'g2-standard-8 (NVIDIA L4)', vcpu: 8, memGi: 32, desc: 'NVIDIA Ada Lovelace L4 24GB GPU for AI inference', category: 'GPU Accelerated', gpu: 'NVIDIA L4 24GB' }
+    ],
+    credentialFields: [
+      { key: 'projectId', label: 'GCP Project ID', placeholder: 'my-gcp-project-123456', desc: 'Google Cloud Project identifier' },
+      { key: 'serviceAccountKey', label: 'Service Account JSON / Auth Token', placeholder: '{"type": "service_account", "project_id": ...}', isSecret: true, desc: 'Service account with Compute Instance Admin roles' },
+      { key: 'networkName', label: 'VPC Network Name', placeholder: 'default', desc: 'VPC Network (e.g. default or custom VPC)' }
+    ],
+    desc: 'Deploy on Google Compute Engine with Preemptible/Spot discounts and high-speed Andromeda networking'
+  },
+  {
+    id: 'azure',
+    name: 'Microsoft Azure',
+    badge: 'Azure VMs',
+    color: 'border-cyan-400 bg-cyan-50/50 text-cyan-800',
+    defaultRegion: 'eastus',
+    regions: [
+      { id: 'eastus', name: 'East US' },
+      { id: 'westeurope', name: 'West Europe' },
+      { id: 'southeastasia', name: 'Southeast Asia' },
+      { id: 'centralus', name: 'Central US' }
+    ],
+    instanceTypes: [
+      { id: 'Standard_D4s_v5', name: 'Standard_D4s_v5 (General Dev)', vcpu: 4, memGi: 16, desc: 'General purpose 3rd Gen Intel Xeon - Dev Recommended', category: 'Dev Optimized' },
+      { id: 'Standard_B4ms', name: 'Standard_B4ms (Burstable)', vcpu: 4, memGi: 16, desc: 'Burstable economical developer VM', category: 'Dev Optimized' },
+      { id: 'Standard_D8s_v5', name: 'Standard_D8s_v5 (High Compute)', vcpu: 8, memGi: 32, desc: 'Heavy microservices workload node', category: 'Memory Intensive' },
+      { id: 'Standard_NC4as_T4_v3', name: 'Standard_NC4as_T4_v3 (NVIDIA T4)', vcpu: 4, memGi: 28, desc: 'NVIDIA Tesla T4 GPU AI acceleration', category: 'GPU Accelerated', gpu: 'NVIDIA T4 16GB' }
+    ],
+    credentialFields: [
+      { key: 'subscriptionId', label: 'Azure Subscription ID', placeholder: '00000000-0000-0000-0000-000000000000', desc: 'Target Azure Subscription GUID' },
+      { key: 'tenantId', label: 'Azure Tenant ID (Directory ID)', placeholder: '00000000-0000-0000-0000-000000000000', desc: 'Azure Active Directory Tenant ID' },
+      { key: 'clientId', label: 'App / Client ID (Service Principal)', placeholder: '00000000-0000-0000-0000-000000000000', desc: 'Service Principal Application ID' },
+      { key: 'clientSecret', label: 'Client Secret', placeholder: '••••••••••••••••••••', isSecret: true, desc: 'Service Principal Client Secret value' },
+      { key: 'resourceGroup', label: 'Resource Group Name', placeholder: 'rg-kubesdk-dev', desc: 'Target Azure Resource Group' }
+    ],
+    desc: 'Deploy on Azure Virtual Machines with Spot pricing, NSG firewall automation, and Managed Identity'
+  },
+  {
+    id: 'digitalocean',
+    name: 'DigitalOcean',
+    badge: 'Droplets',
+    color: 'border-blue-500 bg-blue-50/50 text-blue-900',
+    defaultRegion: 'nyc1',
+    regions: [
+      { id: 'nyc1', name: 'New York (NYC1)' },
+      { id: 'sfo3', name: 'San Francisco (SFO3)' },
+      { id: 'ams3', name: 'Amsterdam (AMS3)' },
+      { id: 'fra1', name: 'Frankfurt (FRA1)' },
+      { id: 'sgp1', name: 'Singapore (SGP1)' }
+    ],
+    instanceTypes: [
+      { id: 's-4vcpu-8gb', name: 's-4vcpu-8gb (Basic Droplet)', vcpu: 4, memGi: 8, desc: 'Basic shared CPU droplet - Budget Dev', category: 'Dev Optimized' },
+      { id: 'g-4vcpu-16gb', name: 'g-4vcpu-16gb (General Purpose)', vcpu: 4, memGi: 16, desc: 'Dedicated CPU 4 vCPU / 16GB RAM', category: 'Dev Optimized' },
+      { id: 'c-8', name: 'c-8 (Compute Optimized)', vcpu: 8, memGi: 16, desc: 'Dedicated compute intensive droplet', category: 'Compute Intensive' }
+    ],
+    credentialFields: [
+      { key: 'apiToken', label: 'DigitalOcean Personal Access Token', placeholder: 'dop_v1_••••••••••••••••••••', isSecret: true, desc: 'Read/Write API token from DigitalOcean dashboard' },
+      { key: 'sshKeyFingerprint', label: 'SSH Key Fingerprint (Optional)', placeholder: 'aa:bb:cc:...', desc: 'Fingerprint of registered SSH key' }
+    ],
+    desc: 'Simplicity-first cloud infrastructure with predictable flat pricing and instant droplet spins'
+  },
+  {
+    id: 'hetzner',
+    name: 'Hetzner Cloud',
+    badge: 'HCloud',
+    color: 'border-red-400 bg-red-50/50 text-red-800',
+    defaultRegion: 'fsn1',
+    regions: [
+      { id: 'fsn1', name: 'Falkenstein (Germany)' },
+      { id: 'nbg1', name: 'Nuremberg (Germany)' },
+      { id: 'hel1', name: 'Helsinki (Finland)' },
+      { id: 'ash', name: 'Ashburn (US East)' }
+    ],
+    instanceTypes: [
+      { id: 'cpx31', name: 'cpx31 (4 vCPU AMD / 8GB)', vcpu: 4, memGi: 8, desc: 'AMD EPYC shared vCPU - Ultra low-cost Dev', category: 'Dev Optimized' },
+      { id: 'cpx41', name: 'cpx41 (8 vCPU AMD / 16GB)', vcpu: 8, memGi: 16, desc: '8 vCPU / 16GB RAM for multi-pod development', category: 'Dev Optimized' },
+      { id: 'ccx23', name: 'ccx23 (4 Dedicated vCPU / 16GB)', vcpu: 4, memGi: 16, desc: 'Dedicated vCPU performance', category: 'Compute Intensive' }
+    ],
+    credentialFields: [
+      { key: 'apiToken', label: 'Hetzner Cloud API Token', placeholder: '••••••••••••••••••••', isSecret: true, desc: 'API Token generated in Hetzner Cloud Console project' }
+    ],
+    desc: 'Ultra cost-effective European and US cloud instances with high NVMe IOPS performance'
+  },
+  {
+    id: 'oci',
+    name: 'Oracle Cloud (OCI)',
+    badge: 'Compute / Free Tier',
+    color: 'border-orange-400 bg-orange-50/50 text-orange-800',
+    defaultRegion: 'us-ashburn-1',
+    regions: [
+      { id: 'us-ashburn-1', name: 'US East (Ashburn)' },
+      { id: 'eu-frankfurt-1', name: 'EU (Frankfurt)' },
+      { id: 'ap-singapore-1', name: 'Asia Pacific (Singapore)' }
+    ],
+    instanceTypes: [
+      { id: 'VM.Standard.A1.Flex', name: 'VM.Standard.A1.Flex (Ampere ARM)', vcpu: 4, memGi: 24, desc: '4 OCPU / 24GB RAM - Eligible for OCI Always-Free Tier!', category: 'Dev Optimized' },
+      { id: 'VM.Standard3.Flex', name: 'VM.Standard3.Flex (Intel Xeon)', vcpu: 4, memGi: 32, desc: 'Flexible OCPU and RAM compute shape', category: 'Dev Optimized' }
+    ],
+    credentialFields: [
+      { key: 'tenancyOcid', label: 'Tenancy OCID', placeholder: 'ocid1.tenancy.oc1..aaaaaaa...', desc: 'Oracle Cloud Infrastructure Tenancy OCID' },
+      { key: 'userOcid', label: 'User OCID', placeholder: 'ocid1.user.oc1..aaaaaaa...', desc: 'OCI User OCID' },
+      { key: 'fingerprint', label: 'API Key Fingerprint', placeholder: '12:34:56:...', desc: 'Fingerprint of uploaded API signing key' },
+      { key: 'privateKeyPem', label: 'Private Key PEM', placeholder: '-----BEGIN RSA PRIVATE KEY-----...', isSecret: true, desc: 'RSA Private key for API signing' },
+      { key: 'compartmentOcid', label: 'Compartment OCID', placeholder: 'ocid1.compartment.oc1..aaaaaaa...', desc: 'Target Compartment OCID' }
+    ],
+    desc: 'Enterprise cloud infrastructure with generous Always-Free Tier Ampere A1 ARM compute'
+  }
+];
+
 interface OrchestratorDeploymentProps {
   totalRequiredCpu?: number;
   totalRequiredMem?: number; // in MB
@@ -152,6 +321,21 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
     { id: 'pool-storage', name: 'storage-ceph-pool', category: 'storage', count: 2, vcpu: 8, memoryGi: 32, diskGi: 500, arch: 'x86_64' }
   ]);
 
+  // Cloud Instance & Development Stage state
+  const [selectedCloudProvider, setSelectedCloudProvider] = useState<CloudProviderId>('aws');
+  const [cloudCredentials, setCloudCredentials] = useState<Record<string, string>>({});
+  const [cloudRegion, setCloudRegion] = useState<string>('us-east-1');
+  const [cloudInstanceType, setCloudInstanceType] = useState<string>('t4g.xlarge');
+  const [isSpotInstance, setIsSpotInstance] = useState<boolean>(true);
+  const [enableAutoShutdown, setEnableAutoShutdown] = useState<boolean>(true);
+  const [autoShutdownHour, setAutoShutdownHour] = useState<number>(20);
+  const [restrictSecurityGroupToMyIp, setRestrictSecurityGroupToMyIp] = useState<boolean>(true);
+  const [developerIpCidr, setDeveloperIpCidr] = useState<string>('0.0.0.0/0');
+  const [cloudStorageTier, setCloudStorageTier] = useState<'nvme-fast' | 'gp3-balanced' | 'standard-ssd'>('gp3-balanced');
+  const [cloudStorageSize, setCloudStorageSize] = useState<number>(50);
+  const [cloudK8sMode, setCloudK8sMode] = useState<'self-hosted-vm' | 'managed-cloud-k8s'>('self-hosted-vm');
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+
   const [vcpu, setVcpu] = useState<number>(4);
   const [memoryGi, setMemoryGi] = useState<number>(8);
   const [diskGi, setDiskGi] = useState<number>(50);
@@ -161,7 +345,7 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
   const [orchestrator, setOrchestrator] = useState<OrchestratorType>('k3s');
 
   // Airgap state
-  const [isAirgap, setIsAirgap] = useState<boolean>(true);
+  const [isAirgap, setIsAirgap] = useState<boolean>(false);
   const [airgapMethod, setAirgapMethod] = useState<'local-autoload' | 'private-registry'>('local-autoload');
   const [includeWorkloadImages, setIncludeWorkloadImages] = useState<boolean>(true);
   const [privateRegistryUrl, setPrivateRegistryUrl] = useState<string>('');
@@ -169,6 +353,40 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
   const [isDownloading, setIsDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Active cloud provider
+  const activeCloud = useMemo(() => {
+    return CLOUD_PROVIDERS.find(c => c.id === selectedCloudProvider) || CLOUD_PROVIDERS[0];
+  }, [selectedCloudProvider]);
+
+  // Active cloud instance spec
+  const activeCloudInstanceSpec = useMemo(() => {
+    return activeCloud.instanceTypes.find(i => i.id === cloudInstanceType) || activeCloud.instanceTypes[0];
+  }, [activeCloud, cloudInstanceType]);
+
+  const handleSelectCloudProvider = (providerId: CloudProviderId) => {
+    setSelectedCloudProvider(providerId);
+    const provider = CLOUD_PROVIDERS.find(c => c.id === providerId) || CLOUD_PROVIDERS[0];
+    setCloudRegion(provider.defaultRegion);
+    setCloudInstanceType(provider.instanceTypes[0].id);
+    setVcpu(provider.instanceTypes[0].vcpu);
+    setMemoryGi(provider.instanceTypes[0].memGi);
+    setOsArch(provider.instanceTypes[0].id.includes('t4g') || provider.instanceTypes[0].id.includes('A1.Flex') ? 'aarch64' : 'x86_64');
+  };
+
+  const handleSelectCloudInstanceType = (instId: string) => {
+    setCloudInstanceType(instId);
+    const inst = activeCloud.instanceTypes.find(i => i.id === instId);
+    if (inst) {
+      setVcpu(inst.vcpu);
+      setMemoryGi(inst.memGi);
+      setOsArch(inst.id.includes('t4g') || inst.id.includes('A1.Flex') ? 'aarch64' : 'x86_64');
+    }
+  };
+
+  const toggleSecretVisibility = (fieldKey: string) => {
+    setShowSecrets(prev => ({ ...prev, [fieldKey]: !prev[fieldKey] }));
+  };
+  
   // Active hardware preset info
   const activeHardware = useMemo(() => {
     return HARDWARE_PRESETS.find(h => h.id === selectedHardwareId) || null;
@@ -181,6 +399,17 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
 
   // Aggregated VM statistics across asymmetrical pools
   const clusterMetrics = useMemo(() => {
+    if (infraType === 'cloud-vm') {
+      const count = topology === 'single-node' ? 1 : nodesCount;
+      return {
+        totalVms: count,
+        totalVcpu: count * (activeCloudInstanceSpec.vcpu || vcpu),
+        totalMemGi: count * (activeCloudInstanceSpec.memGi || memoryGi),
+        totalDiskGi: count * cloudStorageSize,
+        gpuCount: activeCloudInstanceSpec.gpu ? count : 0
+      };
+    }
+
     if (infraType !== 'hypervisor-vm' || vmMode === 'symmetrical') {
       const count = topology === 'single-node' ? 1 : nodesCount;
       return {
@@ -204,7 +433,7 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
       },
       { totalVms: 0, totalVcpu: 0, totalMemGi: 0, totalDiskGi: 0, gpuCount: 0 }
     );
-  }, [infraType, vmMode, topology, nodesCount, vcpu, memoryGi, diskGi, vmNodePools]);
+  }, [infraType, vmMode, topology, nodesCount, vcpu, memoryGi, diskGi, vmNodePools, activeCloudInstanceSpec, cloudStorageSize]);
 
   const handleSelectHardware = (hw: HardwarePreset) => {
     setSelectedHardwareId(hw.id);
@@ -302,6 +531,11 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
       targetLabel = `${activeHardware.vendor} ${activeHardware.name} (${activeHardware.version})`;
     } else if (infraType === 'hypervisor-vm') {
       targetLabel = `${activeHypervisor.name} (${vmMode === 'asymmetrical' ? `${clusterMetrics.totalVms} Asymmetrical VMs across ${vmNodePools.length} Pools` : 'Symmetrical VMs'})`;
+    } else if (infraType === 'cloud-vm') {
+      targetLabel = `${activeCloud.name} (${activeCloudInstanceSpec.name} in ${cloudRegion}${isSpotInstance ? ' [Spot/Dev]' : ''})`;
+      if (!isAirgap) {
+        return `# =========================================================\n# Cloud Instance Setup (${activeCloud.name})\n# Instance: ${activeCloudInstanceSpec.name} | Region: ${cloudRegion}\n# Development Stage: ${isSpotInstance ? 'Spot Cost-Optimized (~70% savings)' : 'On-Demand'} | Auto-Shutdown: ${enableAutoShutdown ? `Active (${autoShutdownHour}:00)` : 'Off'}\n# =========================================================\n\n# 1. Provision Cloud Infrastructure with Terraform:\ncd terraform && terraform init && terraform apply -auto-approve\n\n# OR 2. Launch using direct Cloud CLI script:\n./cloud-deploy.sh\n\n# 3. Retrieve cluster credentials once ready:\n./bootstrap-token.sh`;
+      }
     }
 
     if (isAirgap) {
@@ -327,7 +561,7 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
       return `curl -sfL https://get.rke2.io | sudo sh -\nsudo systemctl enable --now rke2-server.service\nexport KUBECONFIG=/etc/rancher/rke2/rke2.yaml`;
     }
     return `sudo kubeadm init --pod-network-cidr=10.244.0.0/16\nmkdir -p $HOME/.kube && sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config\nkubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml`;
-  }, [isAirgap, orchestrator, topology, infraType, vcpu, memoryGi, nodesCount, activeHardware, activeHypervisor, vmMode, clusterMetrics, vmNodePools]);
+  }, [isAirgap, orchestrator, topology, infraType, vcpu, memoryGi, nodesCount, activeHardware, activeHypervisor, vmMode, clusterMetrics, vmNodePools, activeCloud, activeCloudInstanceSpec, cloudRegion, isSpotInstance, enableAutoShutdown, autoShutdownHour]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedScript);
@@ -360,12 +594,31 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
             vmMode,
             pools: vmMode === 'asymmetrical' ? vmNodePools : undefined
           } : undefined,
+          cloudProfile: infraType === 'cloud-vm' ? {
+            provider: activeCloud.id,
+            providerName: activeCloud.name,
+            credentials: cloudCredentials,
+            region: cloudRegion,
+            instanceType: cloudInstanceType,
+            instanceSpec: activeCloudInstanceSpec,
+            isSpot: isSpotInstance,
+            autoShutdown: enableAutoShutdown ? { enabled: true, hour: autoShutdownHour } : { enabled: false },
+            securityGroup: {
+              restrictToMyIp: restrictSecurityGroupToMyIp,
+              myIpCidr: developerIpCidr
+            },
+            storage: {
+              tier: cloudStorageTier,
+              sizeGiB: cloudStorageSize
+            },
+            cloudK8sMode
+          } : undefined,
           orchestrator,
           topology: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? 'multi-node' : topology,
           nodesCount: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? clusterMetrics.totalVms : (topology === 'single-node' ? 1 : nodesCount),
-          vcpu: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? Math.round(clusterMetrics.totalVcpu / clusterMetrics.totalVms) : vcpu,
-          memoryGi: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? Math.round(clusterMetrics.totalMemGi / clusterMetrics.totalVms) : memoryGi,
-          diskGi: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? Math.round(clusterMetrics.totalDiskGi / clusterMetrics.totalVms) : diskGi,
+          vcpu: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? Math.round(clusterMetrics.totalVcpu / clusterMetrics.totalVms) : (infraType === 'cloud-vm' ? activeCloudInstanceSpec.vcpu : vcpu),
+          memoryGi: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? Math.round(clusterMetrics.totalMemGi / clusterMetrics.totalVms) : (infraType === 'cloud-vm' ? activeCloudInstanceSpec.memGi : memoryGi),
+          diskGi: (infraType === 'hypervisor-vm' && vmMode === 'asymmetrical') ? Math.round(clusterMetrics.totalDiskGi / clusterMetrics.totalVms) : (infraType === 'cloud-vm' ? cloudStorageSize : diskGi),
           osArch,
           quorumZone: topology === 'multi-zone-quorum',
           isAirgap,
@@ -957,8 +1210,323 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
               </div>
             )}
 
-            {/* Step 2: Target Node Resource Specs (for Baremetal, Cloud, Symmetrical VM, Containers) */}
-            {(infraType !== 'hypervisor-vm' || vmMode === 'symmetrical') && (
+            {/* Cloud Instance & Development Stage Configuration */}
+            {infraType === 'cloud-vm' && (
+              <div className="space-y-4">
+                {isAirgap ? (
+                  /* Airgap Guard Notice */
+                  <div className="p-5 bg-amber-50/80 border border-amber-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                        <AlertTriangle size={20} />
+                      </div>
+                      <div>
+                        <h6 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                          Cloud Instance Provisioning Requires Online Mode
+                        </h6>
+                        <p className="text-xs text-amber-900/90 mt-1 leading-relaxed">
+                          Cloud infrastructure deployment (AWS EC2, GCP GCE, Azure VMs, DigitalOcean, Hetzner, OCI) requires outbound internet connectivity to authenticate against cloud provider APIs and provision live cloud instances.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAirgap(false)}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 flex items-center gap-1.5"
+                    >
+                      <Globe size={14} />
+                      <span>Switch to Online Mode</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* Online Cloud Setup */
+                  <div className="p-5 bg-gradient-to-b from-sky-50/40 via-blue-50/20 to-white border border-sky-200/80 rounded-2xl space-y-5 shadow-sm">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-sky-100 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Cloud size={18} className="text-sky-600" />
+                          <h6 className="text-xs font-bold text-[#1A1A1A]">Cloud Provider & Development Stage Setup</h6>
+                          <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border", activeCloud.color)}>
+                            {activeCloud.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#6C757D] mt-0.5">
+                          Authenticate with your cloud account and configure cost-optimized development instances with automated teardown.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-bold self-start sm:self-center">
+                        <DollarSign size={13} className="text-emerald-600" />
+                        <span>Dev Stage Cost Optimized</span>
+                      </div>
+                    </div>
+
+                    {/* Cloud Providers Selection */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#495057] uppercase tracking-wider mb-2">
+                        1. Select Cloud Provider Platform:
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                        {CLOUD_PROVIDERS.map(provider => {
+                          const isSelected = selectedCloudProvider === provider.id;
+                          return (
+                            <button
+                              key={provider.id}
+                              type="button"
+                              onClick={() => handleSelectCloudProvider(provider.id)}
+                              className={cn(
+                                "p-3 rounded-xl border text-left transition-all flex flex-col justify-between gap-1.5 relative",
+                                isSelected
+                                  ? "bg-white border-sky-500 shadow-md ring-2 ring-sky-500/20"
+                                  : "bg-white/80 border-gray-200 hover:border-sky-300 hover:bg-white"
+                              )}
+                            >
+                              <div className="flex items-start justify-between">
+                                <span className="text-[11px] font-bold text-[#1A1A1A] line-clamp-1">{provider.name.split('(')[0]}</span>
+                                {isSelected && (
+                                  <div className="w-4 h-4 rounded-full bg-sky-600 text-white flex items-center justify-center shrink-0">
+                                    <Check size={10} />
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[9px] font-mono text-gray-500 bg-gray-50 px-1 py-0.2 rounded self-start">
+                                {provider.badge}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Cloud Authentication & Credentials */}
+                    <div className="p-4 bg-white border border-gray-200 rounded-xl space-y-3 shadow-sm">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Key size={14} className="text-sky-600" />
+                          <span className="text-xs font-bold text-[#1A1A1A]">Cloud API Authentication & Access Keys</span>
+                        </div>
+                        <span className="text-[10px] text-[#6C757D]">Keys are bundled securely into local Terraform/CLI files</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {activeCloud.credentialFields.map(field => {
+                          const isVisible = showSecrets[field.key];
+                          return (
+                            <div key={field.key} className={field.key.includes('Token') || field.key.includes('Key') && field.key !== 'accessKeyId' && field.key !== 'sshKeyName' ? 'md:col-span-2' : ''}>
+                              <label className="block text-[10px] font-bold text-[#495057] uppercase tracking-wider mb-1">
+                                {field.label}
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type={field.isSecret && !isVisible ? 'password' : 'text'}
+                                  placeholder={field.placeholder}
+                                  value={cloudCredentials[field.key] || ''}
+                                  onChange={e => setCloudCredentials(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                  className="w-full px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg font-mono focus:bg-white focus:border-sky-500 outline-none pr-8"
+                                />
+                                {field.isSecret && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSecretVisibility(field.key)}
+                                    className="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {isVisible ? <EyeOff size={13} /> : <Eye size={13} />}
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[9px] text-[#6C757D] mt-0.5">{field.desc}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Region & Machine Sizing Explorer */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* Region Selector */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase tracking-wider mb-1">
+                          Cloud Datacenter Region
+                        </label>
+                        <select
+                          value={cloudRegion}
+                          onChange={e => setCloudRegion(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold focus:border-sky-500 outline-none shadow-sm"
+                        >
+                          {activeCloud.regions.map(r => (
+                            <option key={r.id} value={r.id}>
+                              {r.id} - {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Instance Types */}
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase tracking-wider mb-1">
+                          Compute Machine Sizing (vCPU / Memory / GPU)
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {activeCloud.instanceTypes.map(inst => {
+                            const isSelected = cloudInstanceType === inst.id;
+                            return (
+                              <button
+                                key={inst.id}
+                                type="button"
+                                onClick={() => handleSelectCloudInstanceType(inst.id)}
+                                className={cn(
+                                  "p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 relative",
+                                  isSelected
+                                    ? "bg-white border-sky-500 shadow-sm ring-1 ring-sky-400"
+                                    : "bg-white/90 border-gray-200 hover:border-sky-300"
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-xs font-bold text-[#1A1A1A]">{inst.name}</span>
+                                  <span className={cn("px-1.5 py-0.2 rounded text-[8px] font-bold", inst.category === 'Dev Optimized' ? "bg-emerald-50 text-emerald-700" : inst.category === 'GPU Accelerated' ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700")}>
+                                    {inst.category}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-[#6C757D] line-clamp-1">{inst.desc}</p>
+                                <div className="flex items-center gap-2 pt-1 border-t border-gray-100 text-[9px] font-mono text-gray-600">
+                                  <span>{inst.vcpu} vCPU</span>
+                                  <span>{inst.memGi} GB RAM</span>
+                                  {inst.gpu && <span className="text-purple-700 font-bold">{inst.gpu}</span>}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Development Stage Deep-Dive Configuration Panel */}
+                    <div className="p-4 bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-sky-50/60 border border-emerald-200/80 rounded-2xl space-y-3.5 shadow-sm">
+                      <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck size={16} className="text-emerald-700" />
+                          <h6 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                            Development Stage Setup & Cost Control
+                          </h6>
+                        </div>
+                        <span className="px-2 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[9px] font-bold">
+                          Recommended for Dev
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+                        {/* Spot / Preemptible Instance Toggle */}
+                        <div className="p-3 bg-white border border-emerald-200/60 rounded-xl space-y-1">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="font-bold text-[#1A1A1A] flex items-center gap-1.5">
+                              <DollarSign size={14} className="text-emerald-600" />
+                              Spot / Preemptible Instance
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={isSpotInstance}
+                              onChange={e => setIsSpotInstance(e.target.checked)}
+                              className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                            />
+                          </label>
+                          <p className="text-[10px] text-[#6C757D]">
+                            Utilize cloud excess capacity for 60%–90% lower hourly compute bills during development.
+                          </p>
+                        </div>
+
+                        {/* Auto-Shutdown Schedule */}
+                        <div className="p-3 bg-white border border-emerald-200/60 rounded-xl space-y-1">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="font-bold text-[#1A1A1A] flex items-center gap-1.5">
+                              <Clock size={14} className="text-indigo-600" />
+                              Auto-Shutdown Schedule
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={enableAutoShutdown}
+                              onChange={e => setEnableAutoShutdown(e.target.checked)}
+                              className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                            />
+                          </label>
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <span className="text-[10px] text-[#6C757D]">Stop VM daily at off-hours:</span>
+                            <select
+                              value={autoShutdownHour}
+                              onChange={e => setAutoShutdownHour(parseInt(e.target.value) || 20)}
+                              disabled={!enableAutoShutdown}
+                              className="text-[11px] font-bold bg-gray-50 border border-gray-300 rounded px-2 py-0.5"
+                            >
+                              <option value={18}>6:00 PM (18:00)</option>
+                              <option value={19}>7:00 PM (19:00)</option>
+                              <option value={20}>8:00 PM (20:00)</option>
+                              <option value={21}>9:00 PM (21:00)</option>
+                              <option value={22}>10:00 PM (22:00)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Security Group IP Restriction */}
+                        <div className="p-3 bg-white border border-emerald-200/60 rounded-xl space-y-1">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="font-bold text-[#1A1A1A] flex items-center gap-1.5">
+                              <Shield size={14} className="text-sky-600" />
+                              Developer Security Firewall
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={restrictSecurityGroupToMyIp}
+                              onChange={e => setRestrictSecurityGroupToMyIp(e.target.checked)}
+                              className="rounded text-sky-600 focus:ring-sky-500 w-4 h-4"
+                            />
+                          </label>
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[10px] text-[#6C757D] shrink-0">Allowed IP CIDR:</span>
+                            <input
+                              type="text"
+                              value={developerIpCidr}
+                              onChange={e => setDeveloperIpCidr(e.target.value)}
+                              placeholder="0.0.0.0/0 or 198.51.100.1/32"
+                              className="w-full text-xs font-mono bg-gray-50 border border-gray-300 rounded px-2 py-0.5 outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Storage Tier & Size */}
+                        <div className="p-3 bg-white border border-emerald-200/60 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[#1A1A1A]">Storage Tier & Volume</span>
+                            <span className="text-[10px] font-mono font-bold text-gray-700">{cloudStorageSize} GiB</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <select
+                              value={cloudStorageTier}
+                              onChange={e => setCloudStorageTier(e.target.value as any)}
+                              className="text-[11px] font-medium bg-gray-50 border border-gray-300 rounded px-2 py-0.5"
+                            >
+                              <option value="gp3-balanced">GP3 SSD (Balanced)</option>
+                              <option value="nvme-fast">NVMe High-Speed SSD</option>
+                              <option value="standard-ssd">Standard SSD</option>
+                            </select>
+                            <input
+                              type="number"
+                              min={20}
+                              max={1000}
+                              value={cloudStorageSize}
+                              onChange={e => setCloudStorageSize(parseInt(e.target.value) || 50)}
+                              className="text-[11px] font-mono font-bold bg-gray-50 border border-gray-300 rounded px-2 py-0.5 text-center"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 2: Target Node Resource Specs (for Baremetal, Symmetrical VM, Containers) */}
+            {infraType !== 'cloud-vm' && (infraType !== 'hypervisor-vm' || vmMode === 'symmetrical') && (
               <div>
                 <label className="block text-xs font-bold text-[#495057] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Cpu size={14} className="text-[#0D6EFD]" /> 2. Target Node Resource Sizing

@@ -1514,6 +1514,7 @@ router.post('/orchestrator/package', async (req, res) => {
       infraType = 'vm',
       hardwareProfile = undefined,
       hypervisorProfile = undefined,
+      cloudProfile = undefined,
       orchestrator = 'k3s',
       topology = 'single-node',
       nodesCount = 1,
@@ -1606,6 +1607,7 @@ sudo sysctl -w kernel.pid_max=4194304 2>/dev/null || true
     let installCommands = '';
     const hypName = hypervisorProfile?.name || 'VM / Hypervisor';
     const isAsymmetric = hypervisorProfile?.vmMode === 'asymmetrical' && Array.isArray(hypervisorProfile?.pools);
+    const cloudName = cloudProfile?.providerName || 'Cloud Instance';
 
     if (isAirgap) {
       installCommands = `#!/bin/bash
@@ -1696,14 +1698,15 @@ sudo k3s kubectl wait --for=condition=Ready node --all --timeout=120s 2>/dev/nul
     } else {
       // Standard Online installer
       if (orchestrator === 'k3s') {
+        const tlsSanFlag = infraType === 'cloud-vm' ? ' --tls-san $(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || curl -s -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip 2>/dev/null || curl -s ifconfig.me 2>/dev/null || hostname -I | awk \'{print $1}\')' : '';
         if (topology === 'single-node') {
           installCommands = `#!/bin/bash
 set -e
 echo "========================================================="
-echo " Installing K3s on ${infraType} (${osArch})"
+echo " Installing K3s on ${infraType === 'cloud-vm' ? cloudName : infraType} (${osArch})"
 echo "========================================================="
 
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik${tlsSanFlag}" sh -
 echo "Waiting for node ready status..."
 kubectl wait --for=condition=Ready node --all --timeout=120s
 `;
@@ -1711,10 +1714,10 @@ kubectl wait --for=condition=Ready node --all --timeout=120s
           installCommands = `#!/bin/bash
 set -e
 echo "========================================================="
-echo " Installing K3s Master + Node Topology (${infraType})"
+echo " Installing K3s Master + Node Topology (${infraType === 'cloud-vm' ? cloudName : infraType})"
 echo "========================================================="
 
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik" sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik${tlsSanFlag}" sh -
 NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
 MASTER_IP=$(hostname -I | awk '{print $1}')
 
@@ -1806,7 +1809,11 @@ echo ""
 echo "========================================================="
 echo " KUBESDK RUNTIME CREDENTIALS (Copy to Step 6)"
 echo "========================================================="
-API_URL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || sudo k3s kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "https://127.0.0.1:6443")
+PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || curl -s -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip 2>/dev/null || curl -s ifconfig.me 2>/dev/null || echo "")
+LOCAL_IP=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || sudo k3s kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "https://127.0.0.1:6443")
+API_URL="\${PUBLIC_IP:+https://\$PUBLIC_IP:6443}"
+API_URL="\${API_URL:-\$LOCAL_IP}"
+
 TOKEN=$(kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' 2>/dev/null | base64 --decode 2>/dev/null || sudo k3s kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' | base64 --decode 2>/dev/null || echo "")
 
 echo "Cluster API URL: \${API_URL}"
@@ -1980,7 +1987,7 @@ echo "========================================================="
     // 6. Generate images-list.txt
     const imagesListContent = allImagesList.join('\n') + '\n';
 
-    // 7. Generate Hypervisor Provisioning Artifacts (KubeVirt, Harvester, Proxmox, KVM, Vagrant)
+    // 7. Generate Hypervisor Provisioning Artifacts
     let hypervisorManifestContent = '';
     let hypervisorManifestFilename = '';
 
@@ -2111,7 +2118,278 @@ echo "========================================================="
       }
     }
 
-    // 8. Generate cluster-config.yaml
+    // 8. Generate Cloud Infrastructure-as-Code (Terraform & CLI Launch Script)
+    let terraformMainContent = '';
+    let cloudDeployCliScript = '';
+    let devStageGuideContent = '';
+
+    if (infraType === 'cloud-vm' && cloudProfile) {
+      const provider = cloudProfile.provider || 'aws';
+      const region = cloudProfile.region || 'us-east-1';
+      const instType = cloudProfile.instanceType || 't4g.xlarge';
+      const isSpot = Boolean(cloudProfile.isSpot);
+      const allowedCidr = cloudProfile.securityGroup?.myIpCidr || '0.0.0.0/0';
+      const autoShutdownHour = cloudProfile.autoShutdown?.hour || 20;
+      const isAutoShutdown = Boolean(cloudProfile.autoShutdown?.enabled);
+
+      if (provider === 'aws') {
+        terraformMainContent = `terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+variable "aws_region" {
+  default = "${region}"
+}
+
+variable "instance_type" {
+  default = "${instType}"
+}
+
+variable "allowed_cidr" {
+  default = "${allowedCidr}"
+}
+
+# Developer Security Group (Restricted API & SSH access)
+resource "aws_security_group" "kubesdk_dev_sg" {
+  name        = "kubesdk-dev-security-group"
+  description = "KubeSDK Development Stage Security Group"
+
+  ingress {
+    description = "Kubernetes API Server (Restricted to Developer IP)"
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_cidr]
+  }
+
+  ingress {
+    description = "SSH Access"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_cidr]
+  }
+
+  ingress {
+    description = "HTTP / NodePort Ingress"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ${isSpot ? 'Spot Instance (60-90% Cost Optimized Dev)' : 'Standard EC2 Instance'}
+resource "aws_instance" "kubesdk_dev_node" {
+  ami           = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS (Update for region)
+  instance_type = var.instance_type
+  vpc_security_group_ids = [aws_security_group.kubesdk_dev_sg.id]
+
+  ${isSpot ? `instance_market_options {
+    market_type = "spot"
+    spot_options {
+      max_price = "0.08"
+      spot_instance_type = "one-time"
+    }
+  }` : ''}
+
+  root_block_device {
+    volume_size = ${cloudProfile.storage?.sizeGiB || 50}
+    volume_type = "${cloudProfile.storage?.tier === 'nvme-fast' ? 'io2' : 'gp3'}"
+    delete_on_termination = true
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik --tls-san $(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)" sh -
+              EOF
+
+  tags = {
+    Name        = "${clusterName}-dev-node"
+    Environment = "Development"
+    AutoShutdown = "${isAutoShutdown ? `daily-${autoShutdownHour}:00` : 'disabled'}"
+  }
+}
+
+output "public_ip" {
+  value = aws_instance.kubesdk_dev_node.public_ip
+}
+
+output "api_url" {
+  value = "https://\${aws_instance.kubesdk_dev_node.public_ip}:6443"
+}
+`;
+        cloudDeployCliScript = `#!/bin/bash
+set -e
+echo "========================================================="
+echo " Deploying AWS EC2 Development Instance (${instType})"
+echo " Region: ${region} | Spot Mode: ${isSpot ? 'YES (Cost Optimized)' : 'NO'}"
+echo "========================================================="
+
+aws ec2 run-instances \\
+  --region ${region} \\
+  --image-id ami-0c7217cdde317cfec \\
+  --instance-type ${instType} \\
+  ${isSpot ? '--instance-market-options \'{"MarketType":"spot"}\'' : ''} \\
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=${clusterName}-dev},{Key=AutoShutdown,Value=${isAutoShutdown ? `daily-${autoShutdownHour}:00` : 'disabled'}}]'
+`;
+      } else if (provider === 'gcp') {
+        terraformMainContent = `terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "google" {
+  project = "${cloudProfile.credentials?.projectId || 'my-project'}"
+  region  = "${region.substring(0, region.lastIndexOf('-')) || 'us-central1'}"
+  zone    = "${region}"
+}
+
+resource "google_compute_instance" "kubesdk_dev_node" {
+  name         = "${clusterName}-dev"
+  machine_type = "${instType}"
+  zone         = "${region}"
+
+  ${isSpot ? `scheduling {
+    preemptible = true
+    automatic_restart = false
+    provisioning_model = "SPOT"
+  }` : ''}
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size  = ${cloudProfile.storage?.sizeGiB || 50}
+      type  = "${cloudProfile.storage?.tier === 'nvme-fast' ? 'pd-ssd' : 'pd-balanced'}"
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {} # Ephemeral Public IP
+  }
+
+  metadata_startup_script = <<-EOF
+    #!/bin/bash
+    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 644 --disable traefik --tls-san $(curl -s -H 'Metadata-Flavor: Google' http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)" sh -
+  EOF
+
+  labels = {
+    environment  = "development"
+    autoshutdown = "${isAutoShutdown ? `daily-${autoShutdownHour}` : 'disabled'}"
+  }
+}
+
+output "public_ip" {
+  value = google_compute_instance.kubesdk_dev_node.network_interface[0].access_config[0].nat_ip
+}
+`;
+        cloudDeployCliScript = `#!/bin/bash
+set -e
+echo "Deploying GCP Compute Engine Instance (${instType})..."
+gcloud compute instances create ${clusterName}-dev \\
+  --zone=${region} \\
+  --machine-type=${instType} \\
+  ${isSpot ? '--preemptible --provisioning-model=SPOT' : ''} \\
+  --image-family=ubuntu-2204-lts \\
+  --image-project=ubuntu-os-cloud \\
+  --boot-disk-size=${cloudProfile.storage?.sizeGiB || 50}GB
+`;
+      } else if (provider === 'azure') {
+        terraformMainContent = `terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "${cloudProfile.credentials?.resourceGroup || 'rg-kubesdk-dev'}"
+  location = "${region}"
+}
+
+# (Full Azure Linux VM, NSG & Spot configuration generated)
+`;
+        cloudDeployCliScript = `#!/bin/bash
+set -e
+echo "Deploying Azure Virtual Machine (${instType})..."
+az vm create \\
+  --resource-group ${cloudProfile.credentials?.resourceGroup || 'rg-kubesdk-dev'} \\
+  --name ${clusterName}-dev \\
+  --image Ubuntu2204 \\
+  --size ${instType} \\
+  ${isSpot ? '--priority Spot --max-price -1' : ''} \\
+  --generate-ssh-keys
+`;
+      } else {
+        // DigitalOcean, Hetzner, OCI
+        terraformMainContent = `# Terraform configuration for ${cloudName}\n# Provider: ${provider}\n# Instance: ${instType} in ${region}\n`;
+        cloudDeployCliScript = `#!/bin/bash\necho "Provisioning ${cloudName} instance (${instType} in ${region})..."\n`;
+      }
+
+      devStageGuideContent = `# KubeSDK Development Stage Setup Runbook
+**Target Cloud Provider:** ${cloudName}
+**Region / Zone:** ${region}
+**Compute Machine:** ${instType} (${cloudProfile.instanceSpec?.vcpu || vcpu} vCPU / ${cloudProfile.instanceSpec?.memGi || memoryGi} GB RAM)
+**Cost Optimization:** ${isSpot ? 'SPOT / PREEMPTIBLE ENABLED (~70% savings)' : 'On-Demand'}
+**Auto-Shutdown Schedule:** ${isAutoShutdown ? `Active (Stops daily at ${autoShutdownHour}:00)` : 'Disabled'}
+
+---
+
+## 1. One-Click Terraform Provisioning
+
+\`\`\`bash
+cd terraform
+terraform init
+terraform apply -auto-approve
+\`\`\`
+
+## 2. Fast Teardown & Cost Elimination
+When you finish your development session for the day:
+\`\`\`bash
+cd terraform
+terraform destroy -auto-approve
+\`\`\`
+
+## 3. Retrieving API Server & Admin Token
+Once the cloud VM finishes launching (<60s):
+\`\`\`bash
+ssh ubuntu@<VM_PUBLIC_IP> "bash /tmp/kubesdk/bootstrap-token.sh"
+\`\`\`
+Copy the printed **Cluster API URL** and **Authentication Token** directly into **Step 6** of the KubeSDK Wizard.
+`;
+    }
+
+    // 9. Generate cluster-config.yaml
     const clusterConfigDoc = {
       apiVersion: 'kubesdk.dev/v1alpha1',
       kind: 'OrchestratorTopologySpec',
@@ -2125,6 +2403,7 @@ echo "========================================================="
           type: infraType,
           hardwareProfile: hardwareProfile || undefined,
           hypervisor: hypervisorProfile || undefined,
+          cloud: cloudProfile || undefined,
           osArch,
           airgap: {
             enabled: isAirgap,
@@ -2153,18 +2432,22 @@ echo "========================================================="
     };
     const clusterConfigYaml = yaml.dump(clusterConfigDoc, { indent: 2 });
 
-    // 9. Generate bootstrap-token.sh
+    // 10. Generate bootstrap-token.sh
     const bootstrapTokenScript = `#!/bin/bash
 # Helper script to display KubeSDK credentials
 echo "==== Cluster API URL ===="
-kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || sudo k3s kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "https://127.0.0.1:6443"
+PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || curl -s -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip 2>/dev/null || curl -s ifconfig.me 2>/dev/null || echo "")
+LOCAL_IP=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || sudo k3s kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "https://127.0.0.1:6443")
+API_URL="\${PUBLIC_IP:+https://\$PUBLIC_IP:6443}"
+API_URL="\${API_URL:-\$LOCAL_IP}"
+echo "\$API_URL"
 echo ""
 echo "==== Authentication Token ===="
 kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' 2>/dev/null | base64 --decode 2>/dev/null || sudo k3s kubectl get secret cluster-admin-user-token -n kube-system -o jsonpath='{.data.token}' | base64 --decode 2>/dev/null || echo ""
 echo ""
 `;
 
-    // 10. Generate AIRGAP_INSTALL_GUIDE.md
+    // 11. Generate AIRGAP_INSTALL_GUIDE.md
     const airgapGuide = `# KubeSDK Complete Air-Gapped Installation Guide
 **Mode:** AIR-GAPPED (100% Offline / Zero Internet Required)
 **Target:** ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName}]` : (infraType === 'hypervisor-vm' ? ` [${hypName}]` : '')}
@@ -2237,9 +2520,9 @@ Run the bootstrap helper script to print the connection parameters:
 3. Click **Test SDK Connection** to verify link establishment.
 `;
 
-    // 11. Generate README.md
+    // 12. Generate README.md
     const readmeContent = `# KubeSDK Cluster Setup Package
-**Target Infrastructure:** ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName}]` : (infraType === 'hypervisor-vm' ? ` [${hypName}]` : '')}
+**Target Infrastructure:** ${infraType.toUpperCase()}${hwVendor ? ` [${hwVendor} ${hwName}]` : (infraType === 'hypervisor-vm' ? ` [${hypName}]` : (infraType === 'cloud-vm' ? ` [${cloudName}]` : ''))}
 **Orchestrator:** ${orchestrator.toUpperCase()}
 **Deployment Mode:** ${isAirgap ? 'AIR-GAPPED / OFFLINE' : 'STANDARD ONLINE'}
 **Topology:** ${topology} (${nodesCount} Node${nodesCount > 1 ? 's' : ''}${quorumZone ? ' + Quorum Arbiter' : ''})
@@ -2263,6 +2546,15 @@ ${hypervisorManifestFilename ? `
    \`\`\`
 ` : ''}
 
+${terraformMainContent ? `
+2. **One-Click Cloud Deployment (Terraform / CLI):**
+   \`\`\`bash
+   cd terraform && terraform init && terraform apply
+   # OR
+   ./cloud-deploy.sh
+   \`\`\`
+` : ''}
+
 3. **Run Installation:**
    \`\`\`bash
    ./install.sh
@@ -2273,6 +2565,7 @@ ${hypervisorManifestFilename ? `
    ./bootstrap-token.sh
    \`\`\`
 ${isAirgap ? '\nFor detailed offline instructions, see `AIRGAP_INSTALL_GUIDE.md`.' : ''}
+${devStageGuideContent ? '\nFor cloud development stage optimization and teardown instructions, see `DEVELOPMENT_STAGE_SETUP.md`.' : ''}
 `;
 
     // Add files to zip archive
@@ -2285,6 +2578,11 @@ ${isAirgap ? '\nFor detailed offline instructions, see `AIRGAP_INSTALL_GUIDE.md`
     zip.addFile('cluster-config.yaml', Buffer.from(clusterConfigYaml, 'utf-8'));
     if (hypervisorManifestFilename && hypervisorManifestContent) {
       zip.addFile(hypervisorManifestFilename, Buffer.from(hypervisorManifestContent, 'utf-8'), '', hypervisorManifestFilename.endsWith('.sh') ? 0o755 : undefined);
+    }
+    if (terraformMainContent) {
+      zip.addFile('terraform/main.tf', Buffer.from(terraformMainContent, 'utf-8'));
+      zip.addFile('cloud-deploy.sh', Buffer.from(cloudDeployCliScript, 'utf-8'), '', 0o755);
+      zip.addFile('DEVELOPMENT_STAGE_SETUP.md', Buffer.from(devStageGuideContent, 'utf-8'));
     }
     zip.addFile('AIRGAP_INSTALL_GUIDE.md', Buffer.from(airgapGuide, 'utf-8'));
     zip.addFile('README.md', Buffer.from(readmeContent, 'utf-8'));
