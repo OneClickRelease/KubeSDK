@@ -1,0 +1,283 @@
+presets:
+  - id: rpi-5-8gb
+    vendor: Raspberry Pi
+    name: Raspberry Pi 5
+    version: 8GB v1.0
+    category: Edge & SBC
+    vcpu: 4
+    memoryGi: 8
+    diskGi: 64
+    arch: aarch64
+    desc: Broadcom BCM2712 Quad-core Cortex-A76 @ 2.4GHz with PCIe 2.0 & Gigabit LAN
+  - id: rpi-5-4gb
+    vendor: Raspberry Pi
+    name: Raspberry Pi 5
+    version: 4GB v1.0
+    category: Edge & SBC
+    vcpu: 4
+    memoryGi: 4
+    diskGi: 32
+    arch: aarch64
+    desc: Broadcom BCM2712 Quad-core Cortex-A76 @ 2.4GHz Edge Device
+  - id: rpi-4-8gb
+    vendor: Raspberry Pi
+    name: Raspberry Pi 4 Model B
+    version: 8GB Rev 1.4
+    category: Edge & SBC
+    vcpu: 4
+    memoryGi: 8
+    diskGi: 32
+    arch: aarch64
+    desc: Broadcom BCM2711 Quad-core Cortex-A72 @ 1.8GHz
+  - id: rpi-cm4-8gb
+    vendor: Raspberry Pi
+    name: Compute Module 4 (CM4)
+    version: 8GB eMMC v1.1
+    category: Edge & SBC
+    vcpu: 4
+    memoryGi: 8
+    diskGi: 32
+    arch: aarch64
+    desc: Industrial modular SBC for embedded edge carrier boards
+  - id: hpe-dl380-gen11
+    vendor: HPE
+    name: ProLiant DL380
+    version: Gen11 v2
+    category: Enterprise Rack
+    vcpu: 32
+    memoryGi: 128
+    diskGi: 500
+    arch: x86_64
+    desc: Dual-socket 4th/5th Gen Intel Xeon Scalable Enterprise Server with iLO 6
+  - id: hpe-dl360-gen10
+    vendor: HPE
+    name: ProLiant DL360
+    version: Gen10 Plus v2.1
+    category: Enterprise Rack
+    vcpu: 16
+    memoryGi: 64
+    diskGi: 250
+    arch: x86_64
+    desc: High-density 1U dual-processor rack server
+  - id: hpe-el8000
+    vendor: HPE
+    name: Edgeline EL8000
+    version: Converged Edge v1.2
+    category: Industrial Edge
+    vcpu: 16
+    memoryGi: 64
+    diskGi: 200
+    arch: x86_64
+    desc: Ruggedized modular edge compute system for harsh field sites
+  - id: hpe-microserver-gen10
+    vendor: HPE
+    name: ProLiant MicroServer
+    version: Gen10 Plus v2
+    category: Edge & SBC
+    vcpu: 4
+    memoryGi: 16
+    diskGi: 100
+    arch: x86_64
+    desc: Ultra-compact edge server with Intel Xeon E-2314
+  - id: dell-r760
+    vendor: Dell
+    name: PowerEdge R760
+    version: 2U Rack v1.1
+    category: Enterprise Rack
+    vcpu: 32
+    memoryGi: 128
+    diskGi: 500
+    arch: x86_64
+    desc: Flagship 2U dual-socket enterprise rack server with iDRAC9 telemetry
+  - id: dell-r650
+    vendor: Dell
+    name: PowerEdge R650
+    version: 1U Rack v2.0
+    category: Enterprise Rack
+    vcpu: 16
+    memoryGi: 64
+    diskGi: 250
+    arch: x86_64
+    desc: Dense 1U enterprise server optimized for high-density virtualization
+  - id: dell-xr4000
+    vendor: Dell
+    name: PowerEdge XR4000
+    version: Edge Rugged v1.0
+    category: Industrial Edge
+    vcpu: 16
+    memoryGi: 32
+    diskGi: 200
+    arch: x86_64
+    desc: Short-depth, multi-node ruggedized edge chassis for telecommunication & defense
+  - id: dell-precision
+    vendor: Dell
+    name: Precision 7960
+    version: Rack Workstation v1
+    category: Enterprise Rack
+    vcpu: 24
+    memoryGi: 64
+    diskGi: 500
+    arch: x86_64
+    desc: High-throughput Intel Xeon W workstation server
+  - id: cisco-c240-m7
+    vendor: Cisco
+    name: UCS C240 M7
+    version: M7 Rack v1.0
+    category: Enterprise Rack
+    vcpu: 32
+    memoryGi: 128
+    diskGi: 500
+    arch: x86_64
+    desc: Enterprise 2U server with Cisco Intersight cloud-driven telemetry
+  - id: cisco-c220-m6
+    vendor: Cisco
+    name: UCS C220 M6
+    version: M6 1U v2.1
+    category: Enterprise Rack
+    vcpu: 16
+    memoryGi: 64
+    diskGi: 250
+    arch: x86_64
+    desc: Compact high-density 1U server for cluster workloads
+  - id: cisco-ir8340
+    vendor: Cisco
+    name: Catalyst IR8340
+    version: Rugged Router Compute v1.0
+    category: Industrial Edge
+    vcpu: 4
+    memoryGi: 8
+    diskGi: 64
+    arch: aarch64
+    desc: Ruggedized utility edge compute for substations and smart grids
+  - id: advantech-mic770
+    vendor: Advantech
+    name: MIC-770 V3
+    version: Modular IPC v3.0
+    category: Industrial Edge
+    vcpu: 8
+    memoryGi: 32
+    diskGi: 250
+    arch: x86_64
+    desc: Fanless modular industrial PC with Intel 12th/13th Gen Core i processors
+  - id: advantech-uno2484
+    vendor: Advantech
+    name: UNO-2484G
+    version: Edge Gateway v2.0
+    category: Industrial Edge
+    vcpu: 4
+    memoryGi: 16
+    diskGi: 128
+    arch: x86_64
+    desc: DIN-rail ruggedized edge automation computer with dual-GbE and isolated COM
+  - id: advantech-rom5780
+    vendor: Advantech
+    name: ROM-5780
+    version: SMARC Module v1.1
+    category: Edge & SBC
+    vcpu: 8
+    memoryGi: 8
+    diskGi: 64
+    arch: aarch64
+    desc: Rockchip RK3588 Cortex-A76/A55 Edge AI SMARC module
+  - id: ibm-power-s1024
+    vendor: IBM
+    name: Power S1024
+    version: Power10 Enterprise v1
+    category: Mainframe / High Capacity
+    vcpu: 24
+    memoryGi: 128
+    diskGi: 500
+    arch: x86_64
+    desc: IBM Power10 enterprise-grade server for mission-critical core banking & data mesh
+  - id: ibm-linuxone-emp4
+    vendor: IBM
+    name: LinuxONE Emperor 4
+    version: Mainframe v1.0
+    category: Mainframe / High Capacity
+    vcpu: 32
+    memoryGi: 256
+    diskGi: 1000
+    arch: x86_64
+    desc: Ultra-high throughput enterprise Linux mainframe server
+  - id: ibm-baremetal-classic
+    vendor: IBM
+    name: Cloud Bare Metal
+    version: Dual Xeon Silver v2
+    category: Enterprise Rack
+    vcpu: 16
+    memoryGi: 64
+    diskGi: 250
+    arch: x86_64
+    desc: Dedicated baremetal high-performance compute instance
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787400596861
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787400732082
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787401048911
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787401362756
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787403834855
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787404029126
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1787404470820
+
+# Verified test comment

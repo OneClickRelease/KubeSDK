@@ -4,7 +4,7 @@ import { STORAGE_KEY, STEP_KEY, NS_KEY, MENU_KEY, INITIAL_CONFIG } from '../lib/
 import { generateYamlFromConfig } from '../lib/yaml-utils';
 
 export function useWizard() {
-  const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'registry' | 'history' | 'settings' | 'catalog' | 'create-application'>(() => {
+  const [activeMenu, setActiveMenu] = useState<'home' | 'define' | 'infra' | 'registry' | 'history' | 'settings' | 'catalog' | 'create-application'>(() => {
     try { return (localStorage.getItem(MENU_KEY) as any) || 'home'; } catch { return 'home'; }
   });
   
@@ -120,6 +120,23 @@ export function useWizard() {
     setCurrentStep(prev => Math.max(prev - 1, 0));
   }, []);
 
+  const resetWizardSession = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STEP_KEY);
+      localStorage.removeItem(NS_KEY);
+      localStorage.removeItem(MENU_KEY);
+    } catch (e) {
+      console.warn('Could not clear localStorage', e);
+    }
+    setConfig(INITIAL_CONFIG);
+    setCurrentStep(0);
+    setSelectedNamespace('');
+    setActiveMenu('home');
+    setValidationStatus({});
+    setIsModelYamlMode(false);
+  }, []);
+
   return {
     activeMenu, setActiveMenu,
     currentStep, setCurrentStep,
@@ -140,6 +157,7 @@ export function useWizard() {
     handleSourceChange,
     handleSnapshotImport,
     nextStep,
-    prevStep
+    prevStep,
+    resetWizardSession
   };
 }

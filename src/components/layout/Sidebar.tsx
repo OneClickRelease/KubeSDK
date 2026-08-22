@@ -9,7 +9,8 @@ import {
   Zap,
   Library,
   BookOpen,
-  AppWindow
+  AppWindow,
+  Server
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -76,6 +77,13 @@ export const Sidebar = ({ activeMenu, setActiveMenu, onResetSession }: SidebarPr
             onClick={() => setActiveMenu('define')}
             icon={<Settings size={18} />}
             label="Define Local Run"
+          />
+
+          <NavButton
+            active={activeMenu === 'infra'}
+            onClick={() => setActiveMenu('infra')}
+            icon={<Server size={18} />}
+            label="Define Kube Infra"
           />
 
           <NavButton

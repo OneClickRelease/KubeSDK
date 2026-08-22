@@ -1,0 +1,97 @@
+engines:
+  - id: docker-desktop
+    name: Docker Container Runtime
+    engineType: docker
+    category: Container Runtime
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Direct Docker engine container execution with low CPU & memory overhead.
+  - id: podman-rootless
+    name: Podman (Rootless)
+    engineType: podman
+    category: Rootless Container
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Daemonless, rootless container runtime compliant with OCI specifications.
+  - id: k3d-cluster
+    name: k3d (K3s in Docker)
+    engineType: k3d
+    category: Virtual K8s Cluster
+    defaultVcpu: 4
+    defaultMemoryGi: 8
+    defaultDiskGi: 30
+    desc: Lightweight wrapper to run K3s multi-node virtual clusters inside Docker containers.
+  - id: kind-cluster
+    name: KinD (Kubernetes in Docker)
+    engineType: kind
+    category: Virtual K8s Cluster
+    defaultVcpu: 4
+    defaultMemoryGi: 8
+    defaultDiskGi: 40
+    desc: Official CNCF tool for running local Kubernetes clusters using Docker container nodes.
+  - id: nerdctl-containerd
+    name: nerdctl + Containerd
+    engineType: nerdctl
+    category: Containerd Native
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Docker-compatible CLI for containerd with full support for rootless containers.
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787400596881
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787400732105
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787401048929
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787401362782
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787403834877
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787404029147
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 25
+    desc: Lightweight enterprise edge container runtime
+    id: microshift-sandbox-1787404470844

@@ -1,0 +1,97 @@
+platforms:
+  - id: harvester
+    name: Harvester HCI
+    version: v1.3+
+    engine: KubeVirt / Longhorn
+    category: Kubernetes-Native HCI
+    desc: Open-source hyperconverged infrastructure software built on Kubernetes, KubeVirt, and Longhorn.
+  - id: kubevirt
+    name: KubeVirt
+    version: v1.2+
+    engine: KVM on K8s CRDs
+    category: Cloud Native
+    desc: Kubernetes add-on that lets developers run virtual machines alongside containers on standard K8s worker nodes.
+  - id: vmware-esxi
+    name: VMware vSphere / ESXi
+    version: 7.0 / 8.0
+    engine: ESXi Hypervisor
+    category: Enterprise Commercial
+    desc: Industry-standard enterprise baremetal hypervisor with vCenter clustering and distributed virtual switches.
+  - id: proxmox-ve
+    name: Proxmox VE
+    version: 8.1+
+    engine: KVM / QEMU / LXC
+    category: Open-Source & Linux
+    desc: Complete open-source enterprise virtualization management platform combining KVM VMs and LXC containers.
+  - id: openshift-virt
+    name: OpenShift Virtualization
+    version: 4.14+
+    engine: KubeVirt / RHV
+    category: Enterprise Kubernetes
+    desc: Enterprise Kubernetes-native VM orchestrator powered by Red Hat OpenShift.
+  - id: nutanix-ahv
+    name: Nutanix AHV
+    version: AOS 6.5+
+    engine: Acropolis Hypervisor
+    category: Enterprise Commercial
+    desc: Enterprise-ready, license-free hypervisor embedded in Nutanix Enterprise Cloud Platform.
+  - id: kvm-libvirt
+    name: Linux KVM / libvirt
+    version: QEMU 8.0+
+    engine: Kernel KVM
+    category: Open-Source & Linux
+    desc: Standard Linux kernel-based virtual machine hypervisor managed via libvirt/virsh daemon.
+  - id: hyper-v
+    name: Microsoft Hyper-V
+    version: Server 2022
+    engine: Hyper-V Type-1
+    category: Enterprise Commercial
+    desc: Native Type-1 enterprise hypervisor integrated with Windows Server and Azure Stack HCI.
+  - id: virtualbox-vagrant
+    name: VirtualBox / Vagrant
+    version: 7.0+
+    engine: Local Type-2
+    category: Workstation Dev
+    desc: Local workstation developer hypervisor for isolated sandbox multi-VM clusters on laptops.
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787400596871
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787400732095
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787401048921
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787401362770
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787403834866
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787404029137
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1787404470834

@@ -7,6 +7,7 @@ import clusterRouter from "./server/routes/cluster";
 import exportRouter from "./server/routes/export";
 import historyRouter from "./server/routes/history";
 import registryRouter from "./server/routes/registry";
+import configRouter from "./server/routes/config";
 
 async function startServer() {
   const app = express();
@@ -21,6 +22,7 @@ async function startServer() {
   app.use("/api", exportRouter);
   app.use("/api/history", historyRouter);
   app.use("/api/registry", registryRouter);
+  app.use("/api/config", configRouter);
 
   // --- Vite Middleware ---
   if (process.env.NODE_ENV !== "production") {

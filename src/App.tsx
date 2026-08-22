@@ -13,6 +13,7 @@ import { HistoryView } from './components/layout/HistoryView';
 import { RegistryView } from './components/registry/RegistryView';
 import { CapabilityLayersBrowser } from './components/registry/CapabilityLayersBrowser';
 import { CreateApplicationView } from './components/layout/CreateApplicationView';
+import { DefineKubeInfraView } from './components/layout/DefineKubeInfraView';
 
 // Wizard Steps
 import { SourceStep } from './components/wizard/steps/SourceStep';
@@ -45,7 +46,8 @@ export default function App() {
     handleSourceChange,
     handleSnapshotImport,
     nextStep: baseNextStep,
-    prevStep
+    prevStep,
+    resetWizardSession
   } = useWizard();
 
   const [isTestingConnection, setIsTestingConnection] = React.useState(false);
@@ -419,7 +421,7 @@ export default function App() {
     }
   };
   const handleResetSession = async () => {
-    if (!confirm('This will delete ALL KubeSDK-deployed resources from the K3s cluster and reset the wizard. Continue?')) return;
+    if (!confirm('This will delete ALL KubeSDK-deployed resources from the K3s cluster and reset the wizard session. Continue?')) return;
     setIsResetting(true);
     setResetDone(false);
     setResetLog([{ text: '⏳ Connecting to K3s cluster...', ok: true }]);
@@ -444,14 +446,15 @@ export default function App() {
       entries.push({ text: `✔  ${data.summary || 'Cluster cleaned.'}`, ok: true });
       setResetLog(entries);
     } catch (e: any) {
-      setResetLog(prev => [...prev, { text: `⚠️  Cluster cleanup failed: ${e.message}. Resetting local state only.`, ok: false }]);
+      setResetLog(prev => [...prev, { text: `⚠️  Cluster cleanup note: ${e.message || 'No live cluster attached'}. Resetting local state.`, ok: false }]);
     }
 
     // Reset registry and local state
     try { await fetch('/api/registry/reset', { method: 'POST' }); } catch (_) {}
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STEP_KEY);
-    localStorage.removeItem(NS_KEY);
+    
+    // Purge in-memory state and localStorage
+    resetWizardSession();
+
     setResetLog(prev => [...prev, { text: '🔄 Session cleared. Ready to start fresh!', ok: true }]);
     setResetDone(true);
   };
@@ -469,8 +472,8 @@ export default function App() {
                 {resetDone ? <span className="text-2xl">✓</span> : <span className="animate-spin text-xl">⟳</span>}
               </div>
               <div>
-                <h3 className="text-white font-bold text-lg">{resetDone ? 'Cluster Cleaned!' : 'Cleaning K3s Cluster...'}</h3>
-                <p className="text-gray-400 text-xs">{resetDone ? 'All KubeSDK resources removed. Click below to start fresh.' : 'Removing all KubeSDK-deployed resources...'}</p>
+                <h3 className="text-white font-bold text-lg">{resetDone ? 'Session & Cluster Reset Complete!' : 'Cleaning K3s Cluster & Session...'}</h3>
+                <p className="text-gray-400 text-xs">{resetDone ? 'All state and deployed resources have been cleared. Ready for fresh session.' : 'Removing all KubeSDK-deployed resources...'}</p>
               </div>
             </div>
             <div className="flex-1 p-6 font-mono text-xs space-y-1.5 max-h-80 overflow-y-auto">
@@ -480,12 +483,17 @@ export default function App() {
               {!resetDone && <div className="text-gray-500 animate-pulse">_</div>}
             </div>
             {resetDone && (
-              <div className="px-8 py-6 border-t border-white/10">
+              <div className="px-8 py-6 border-t border-white/10 flex items-center gap-3">
                 <button
-                  onClick={() => window.location.reload()}
-                  className="w-full py-4 bg-[#0D6EFD] hover:bg-[#0B5ED7] text-white font-bold rounded-2xl transition-all shadow-lg shadow-[#0D6EFD]/30 text-sm"
+                  onClick={() => {
+                    setIsResetting(false);
+                    setActiveMenu('home');
+                    setCurrentStep(0);
+                    window.location.reload();
+                  }}
+                  className="w-full py-3.5 bg-[#0D6EFD] hover:bg-[#0B5ED7] text-white font-bold rounded-2xl transition-all shadow-lg shadow-[#0D6EFD]/30 text-sm flex items-center justify-center gap-2"
                 >
-                  🚀 Start New Session
+                  <span>🚀 Start New Session</span>
                 </button>
               </div>
             )}
@@ -629,6 +637,22 @@ export default function App() {
                   </button>
                 </div>
               </motion.div>
+            )}
+
+            {activeMenu === 'infra' && (
+              <DefineKubeInfraView
+                onApplyCredentials={(url) => {
+                  setConfig(prev => ({
+                    ...prev,
+                    wizard: {
+                      ...prev.wizard,
+                      connectivity: { ...prev.wizard.connectivity, apiServerUrl: url }
+                    }
+                  }));
+                  setActiveMenu('define');
+                }}
+                onNavigateToWizard={() => setActiveMenu('define')}
+              />
             )}
 
             {activeMenu === 'create-application' && (

@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Server, Cpu, Cloud, Box, Layers, Download, CheckCircle2,
   Terminal, ShieldCheck, ChevronDown, ChevronRight, Sparkles,
   Zap, Copy, RefreshCw, AlertTriangle, Globe, Lock, Info, Check,
-  Key, Eye, EyeOff, DollarSign, Clock, Shield
+  Key, Eye, EyeOff, DollarSign, Clock, Shield, Plus, Save, Trash2, Edit3
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -124,6 +124,8 @@ export const VM_CATEGORY_CONFIG: Record<VMNodeCategory, { label: string; badge: 
   'memory': { label: 'Memory Optimized Node', badge: 'In-Memory Cache', color: 'bg-pink-50 text-pink-700 border-pink-200', desc: 'Large RAM capacity for Redis, Spark, in-memory databases' },
   'gateway': { label: 'Gateway / Ingress', badge: 'API Gateway', color: 'bg-teal-50 text-teal-700 border-teal-200', desc: 'Edge ingress traffic, TLS termination, and API routing' }
 };
+
+export const VM_ROLE_BADGES = VM_CATEGORY_CONFIG;
 
 export type CloudProviderId = 'aws' | 'gcp' | 'azure' | 'digitalocean' | 'hetzner' | 'oci';
 
@@ -350,22 +352,48 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
   const [includeWorkloadImages, setIncludeWorkloadImages] = useState<boolean>(true);
   const [privateRegistryUrl, setPrivateRegistryUrl] = useState<string>('');
 
+  // Dynamic configuration presets loaded from config/*.yaml
+  const [hardwareList, setHardwareList] = useState<HardwarePreset[]>(HARDWARE_PRESETS);
+  const [hypervisorList, setHypervisorList] = useState<HypervisorPlatform[]>(HYPERVISOR_PLATFORMS);
+  const [cloudList, setCloudList] = useState<CloudProviderConfig[]>(CLOUD_PROVIDERS);
+
+  // Quick Inline Add Modal State
+  const [isInlineAddModalOpen, setIsInlineAddModalOpen] = useState(false);
+  const [inlineModalType, setInlineModalType] = useState<'baremetal' | 'hypervisor' | 'cloud' | 'container'>('baremetal');
+  const [inlineItemData, setInlineItemData] = useState<any>({});
+  const [inlineModalError, setInlineModalError] = useState<string | null>(null);
+  const [isInlineSaving, setIsInlineSaving] = useState(false);
+
+  // Load latest configs from backend on mount
+  useEffect(() => {
+    fetch('/api/config/infrastructure')
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (json?.data) {
+          if (json.data.baremetalPresets?.length) setHardwareList(json.data.baremetalPresets);
+          if (json.data.hypervisorPlatforms?.length) setHypervisorList(json.data.hypervisorPlatforms);
+          if (json.data.cloudProviders?.length) setCloudList(json.data.cloudProviders);
+        }
+      })
+      .catch(err => console.log('Using default local presets', err));
+  }, []);
+
   const [isDownloading, setIsDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Active cloud provider
   const activeCloud = useMemo(() => {
-    return CLOUD_PROVIDERS.find(c => c.id === selectedCloudProvider) || CLOUD_PROVIDERS[0];
-  }, [selectedCloudProvider]);
+    return cloudList.find(c => c.id === selectedCloudProvider) || cloudList[0] || CLOUD_PROVIDERS[0];
+  }, [cloudList, selectedCloudProvider]);
 
   // Active cloud instance spec
   const activeCloudInstanceSpec = useMemo(() => {
     return activeCloud.instanceTypes.find(i => i.id === cloudInstanceType) || activeCloud.instanceTypes[0];
   }, [activeCloud, cloudInstanceType]);
 
-  const handleSelectCloudProvider = (providerId: CloudProviderId) => {
-    setSelectedCloudProvider(providerId);
-    const provider = CLOUD_PROVIDERS.find(c => c.id === providerId) || CLOUD_PROVIDERS[0];
+  const handleSelectCloudProvider = (providerId: string) => {
+    setSelectedCloudProvider(providerId as any);
+    const provider = cloudList.find(c => c.id === providerId) || cloudList[0] || CLOUD_PROVIDERS[0];
     setCloudRegion(provider.defaultRegion);
     setCloudInstanceType(provider.instanceTypes[0].id);
     setVcpu(provider.instanceTypes[0].vcpu);
@@ -389,13 +417,140 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
   
   // Active hardware preset info
   const activeHardware = useMemo(() => {
-    return HARDWARE_PRESETS.find(h => h.id === selectedHardwareId) || null;
-  }, [selectedHardwareId]);
+    return hardwareList.find(h => h.id === selectedHardwareId) || hardwareList[0] || null;
+  }, [hardwareList, selectedHardwareId]);
 
   // Active hypervisor info
   const activeHypervisor = useMemo(() => {
-    return HYPERVISOR_PLATFORMS.find(h => h.id === selectedHypervisor) || HYPERVISOR_PLATFORMS[0];
-  }, [selectedHypervisor]);
+    return hypervisorList.find(h => h.id === selectedHypervisor) || hypervisorList[0] || HYPERVISOR_PLATFORMS[0];
+  }, [hypervisorList, selectedHypervisor]);
+
+  const handleOpenInlineModal = (target: 'baremetal' | 'hypervisor' | 'cloud' | 'container') => {
+    setInlineModalType(target);
+    setInlineModalError(null);
+    if (target === 'baremetal') {
+      setInlineItemData({
+        vendor: 'Custom',
+        name: '',
+        version: 'v1.0',
+        category: 'Edge & SBC',
+        vcpu: 4,
+        memoryGi: 8,
+        diskGi: 50,
+        arch: 'x86_64',
+        desc: ''
+      });
+    } else if (target === 'hypervisor') {
+      setInlineItemData({
+        name: '',
+        version: 'v1.0',
+        engine: 'KVM / QEMU',
+        category: 'Open-Source & Linux',
+        desc: ''
+      });
+    } else if (target === 'cloud') {
+      setInlineItemData({
+        name: '',
+        badge: 'Cloud VM',
+        defaultRegion: 'us-east-1',
+        regionsStr: 'us-east-1: US East, eu-west-1: Europe',
+        instanceTypesStr: 'dev-std: 4 vCPU / 16GB RAM',
+        credentialsStr: 'apiKey: API Token: secret'
+      });
+    } else {
+      setInlineItemData({
+        name: '',
+        engineType: 'docker',
+        category: 'Container Runtime',
+        defaultVcpu: 2,
+        defaultMemoryGi: 4,
+        defaultDiskGi: 20,
+        desc: ''
+      });
+    }
+    setIsInlineAddModalOpen(true);
+  };
+
+  const handleSaveInlineItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsInlineSaving(true);
+    setInlineModalError(null);
+
+    try {
+      let payload: any = { ...inlineItemData };
+
+      if (inlineModalType === 'baremetal') {
+        if (!payload.name || !payload.vendor) throw new Error('Vendor and Model Name required');
+        payload.vcpu = Number(payload.vcpu) || 2;
+        payload.memoryGi = Number(payload.memoryGi) || 4;
+        payload.diskGi = Number(payload.diskGi) || 50;
+      } else if (inlineModalType === 'hypervisor') {
+        if (!payload.name) throw new Error('Hypervisor name is required');
+      } else if (inlineModalType === 'cloud') {
+        if (!payload.name) throw new Error('Cloud provider name is required');
+        if (payload.regionsStr) {
+          payload.regions = payload.regionsStr.split(',').map((r: string) => {
+            const [id, name] = r.split(':').map((s: string) => s.trim());
+            return { id: id || 'us-east-1', name: name || id };
+          });
+        }
+        if (payload.instanceTypesStr) {
+          payload.instanceTypes = payload.instanceTypesStr.split(',').map((t: string) => {
+            const parts = t.split(':').map((s: string) => s.trim());
+            return { id: parts[0] || 'dev-std', name: parts[0] || 'dev-std', vcpu: 4, memGi: 16, desc: parts[1] || 'Dev Machine', category: 'Dev Optimized' };
+          });
+        }
+        if (payload.credentialsStr) {
+          payload.credentialFields = payload.credentialsStr.split(',').map((c: string) => {
+            const [key, label, type] = c.split(':').map((s: string) => s.trim());
+            return { key: key || 'apiKey', label: label || key, placeholder: `Enter ${label || key}...`, isSecret: type === 'secret', desc: `Authentication field` };
+          });
+        }
+      }
+
+      const res = await fetch(`/api/config/infrastructure/${inlineModalType}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to add preset');
+      }
+
+      const json = await res.json();
+      const addedItem = json.item;
+
+      // Update local state and auto-select
+      if (inlineModalType === 'baremetal') {
+        setHardwareList(prev => [...prev, addedItem]);
+        setSelectedHardwareId(addedItem.id);
+        setVcpu(addedItem.vcpu);
+        setMemoryGi(addedItem.memoryGi);
+        setDiskGi(addedItem.diskGi);
+        setOsArch(addedItem.arch);
+      } else if (inlineModalType === 'hypervisor') {
+        setHypervisorList(prev => [...prev, addedItem]);
+        setSelectedHypervisor(addedItem.id);
+      } else if (inlineModalType === 'cloud') {
+        setCloudList(prev => [...prev, addedItem]);
+        setSelectedCloudProvider(addedItem.id);
+        if (addedItem.defaultRegion) setCloudRegion(addedItem.defaultRegion);
+        if (addedItem.instanceTypes?.[0]) {
+          setCloudInstanceType(addedItem.instanceTypes[0].id);
+          setVcpu(addedItem.instanceTypes[0].vcpu);
+          setMemoryGi(addedItem.instanceTypes[0].memGi);
+        }
+      }
+
+      setIsInlineAddModalOpen(false);
+    } catch (err: any) {
+      setInlineModalError(err.message || 'Failed to save');
+    } finally {
+      setIsInlineSaving(false);
+    }
+  };
 
   // Aggregated VM statistics across asymmetrical pools
   const clusterMetrics = useMemo(() => {
@@ -839,33 +994,44 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
                     <Server size={15} className="text-indigo-600" />
                     <span className="text-xs font-bold text-[#1A1A1A]">Baremetal Hardware Model & Sizing Presets</span>
                     <span className="px-2 py-0.2 rounded-full text-[9px] font-extrabold bg-indigo-100 text-indigo-800">
-                      Auto-Configures Specs
+                      YAML Driven ({hardwareList.length})
                     </span>
                   </div>
 
-                  {/* Vendor Filters */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {['All', 'Raspberry Pi', 'HPE', 'Dell', 'Cisco', 'Advantech', 'IBM'].map(vendor => (
-                      <button
-                        key={vendor}
-                        type="button"
-                        onClick={() => setSelectedVendorFilter(vendor)}
-                        className={cn(
-                          "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-colors",
-                          selectedVendorFilter === vendor
-                            ? "bg-indigo-600 text-white shadow-sm"
-                            : "bg-white text-[#6C757D] border border-gray-200 hover:bg-gray-100"
-                        )}
-                      >
-                        {vendor}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Vendor Filters */}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {['All', ...Array.from(new Set(hardwareList.map(h => h.vendor)))].map(vendor => (
+                        <button
+                          key={vendor}
+                          type="button"
+                          onClick={() => setSelectedVendorFilter(vendor)}
+                          className={cn(
+                            "px-2 py-0.5 text-[10px] font-bold rounded-lg transition-colors",
+                            selectedVendorFilter === vendor
+                              ? "bg-indigo-600 text-white shadow-sm"
+                              : "bg-white text-[#6C757D] border border-gray-200 hover:bg-gray-100"
+                          )}
+                        >
+                          {vendor}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInlineModal('baremetal')}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm flex items-center gap-1 shrink-0"
+                    >
+                      <Plus size={12} />
+                      <span>Add Model</span>
+                    </button>
                   </div>
                 </div>
 
                 {/* Hardware Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
-                  {HARDWARE_PRESETS
+                  {hardwareList
                     .filter(hw => selectedVendorFilter === 'All' || hw.vendor === selectedVendorFilter)
                     .map(hw => {
                       const isSelected = selectedHardwareId === hw.id;
@@ -934,7 +1100,7 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
                       <Cpu size={16} className="text-indigo-600" />
                       <h6 className="text-xs font-bold text-[#1A1A1A]">Hypervisor Platform & Multi-VM Sizing</h6>
                       <span className="px-2 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800">
-                        {activeHypervisor.category}
+                        {activeHypervisor.category} ({hypervisorList.length} Engines)
                       </span>
                     </div>
                     <p className="text-[11px] text-[#6C757D] mt-0.5">
@@ -942,258 +1108,264 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
                     </p>
                   </div>
 
-                  {/* Symmetrical vs Asymmetrical Switch */}
-                  <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 shadow-sm shrink-0">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setVmMode('symmetrical')}
-                      className={cn(
-                        "px-3 py-1 text-xs font-bold rounded-lg transition-all",
-                        vmMode === 'symmetrical'
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "text-[#6C757D] hover:text-[#1A1A1A]"
-                      )}
+                      onClick={() => handleOpenInlineModal('hypervisor')}
+                      className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm flex items-center gap-1 shrink-0"
                     >
-                      Symmetrical
+                      <Plus size={12} />
+                      <span>Add Hypervisor</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setVmMode('asymmetrical')}
-                      className={cn(
-                        "px-3 py-1 text-xs font-bold rounded-lg transition-all",
-                        vmMode === 'asymmetrical'
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "text-[#6C757D] hover:text-[#1A1A1A]"
-                      )}
-                    >
-                      Asymmetrical Pools
-                    </button>
+
+                    {/* Symmetrical vs Asymmetrical Switch */}
+                    <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 shadow-sm shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setVmMode('symmetrical')}
+                        className={cn(
+                          "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all",
+                          vmMode === 'symmetrical' ? "bg-indigo-600 text-white shadow-sm" : "text-[#6C757D] hover:text-[#1A1A1A]"
+                        )}
+                      >
+                        Symmetrical VMs
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVmMode('asymmetrical')}
+                        className={cn(
+                          "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1",
+                          vmMode === 'asymmetrical' ? "bg-indigo-600 text-white shadow-sm" : "text-[#6C757D] hover:text-[#1A1A1A]"
+                        )}
+                      >
+                        <Layers size={12} />
+                        <span>Asymmetrical Pools</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Hypervisor Platforms Grid */}
+                {/* Hypervisor Platforms Selector */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#495057] uppercase tracking-wider mb-2">
-                    Select Hypervisor Engine:
+                    Select Target Hypervisor Engine:
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
-                    {HYPERVISOR_PLATFORMS.map(hyp => {
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {hypervisorList.map(hyp => {
                       const isSelected = selectedHypervisor === hyp.id;
                       return (
                         <button
                           key={hyp.id}
                           type="button"
-                          onClick={() => setSelectedHypervisor(hyp.id)}
+                          onClick={() => setSelectedHypervisor(hyp.id as any)}
                           className={cn(
-                            "p-3 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 relative",
+                            "p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 relative",
                             isSelected
-                              ? "bg-white border-indigo-600 shadow-sm ring-2 ring-indigo-500/20"
-                              : "bg-white/80 border-gray-200 hover:border-indigo-300 hover:bg-white"
+                              ? "bg-white border-indigo-500 shadow-sm ring-1 ring-indigo-400"
+                              : "bg-white/80 border-gray-200 hover:border-indigo-200 hover:bg-white"
                           )}
                         >
                           <div className="flex items-start justify-between gap-1">
-                            <div>
-                              <h6 className="text-xs font-bold text-[#1A1A1A]">{hyp.name}</h6>
-                              <span className="text-[10px] font-mono text-indigo-600 font-semibold">{hyp.version}</span>
-                            </div>
+                            <span className="text-xs font-bold text-[#1A1A1A] line-clamp-1">{hyp.name}</span>
                             {isSelected && (
-                              <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
                                 <Check size={10} />
                               </div>
                             )}
                           </div>
-                          <p className="text-[10px] text-[#6C757D] line-clamp-1 mt-0.5">{hyp.desc}</p>
-                          <span className="text-[9px] font-mono text-gray-500 bg-gray-50 px-1.5 py-0.2 rounded self-start mt-1">
-                            {hyp.engine}
-                          </span>
+                          <span className="text-[9px] text-gray-500 font-mono line-clamp-1">{hyp.engine}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Asymmetrical VM Node Pool Builder */}
+                {/* Asymmetrical Heterogeneous VM Node Pool Builder */}
                 {vmMode === 'asymmetrical' ? (
                   <div className="space-y-3 pt-2">
-                    {/* Aggregation Summary Bar */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-3 bg-indigo-900 text-white rounded-xl shadow-sm">
-                      <div className="text-center sm:text-left">
-                        <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">Total VMs</span>
-                        <span className="text-base font-extrabold font-mono">{clusterMetrics.totalVms} Nodes</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Layers size={15} className="text-indigo-600" />
+                          <span className="text-xs font-bold text-indigo-950">Heterogeneous VM Node Pools</span>
+                        </div>
+                        <p className="text-[11px] text-indigo-900/80">
+                          Define different VM types for Control Plane, Workers, GPU, Storage, and Edge nodes.
+                        </p>
                       </div>
-                      <div className="text-center sm:text-left">
-                        <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">Total vCPU</span>
-                        <span className="text-base font-extrabold font-mono">{clusterMetrics.totalVcpu} Cores</span>
+
+                      <button
+                        type="button"
+                        onClick={handleAddVMPool}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5 self-start sm:self-center"
+                      >
+                        <Plus size={13} />
+                        <span>Add VM Pool</span>
+                      </button>
+                    </div>
+
+                    {/* Aggregate Cluster Metrics Summary Bar */}
+                    <div className="p-3 bg-white border border-gray-200 rounded-xl shadow-xs grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase block">Total VMs</span>
+                        <span className="font-bold text-indigo-600 font-mono text-sm">{clusterMetrics.totalVms}</span>
                       </div>
-                      <div className="text-center sm:text-left">
-                        <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">Total RAM</span>
-                        <span className="text-base font-extrabold font-mono">{clusterMetrics.totalMemGi} GiB</span>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase block">Total vCPU</span>
+                        <span className="font-bold text-gray-800 font-mono text-sm">{clusterMetrics.totalVcpu} Cores</span>
                       </div>
-                      <div className="text-center sm:text-left">
-                        <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">Total Storage</span>
-                        <span className="text-base font-extrabold font-mono">{clusterMetrics.totalDiskGi} GiB</span>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase block">Total RAM</span>
+                        <span className="font-bold text-gray-800 font-mono text-sm">{clusterMetrics.totalMemGi} GiB</span>
                       </div>
-                      <div className="text-center sm:text-left col-span-2 sm:col-span-1">
-                        <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">GPU Acceleration</span>
-                        <span className="text-base font-extrabold font-mono text-purple-300">
-                          {clusterMetrics.gpuCount > 0 ? `${clusterMetrics.gpuCount} GPU Node(s)` : 'None'}
-                        </span>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase block">Total Storage</span>
+                        <span className="font-bold text-gray-800 font-mono text-sm">{clusterMetrics.totalDiskGi} GiB</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase block">GPU Accelerators</span>
+                        <span className="font-bold text-purple-700 font-mono text-sm">{clusterMetrics.gpuCount} Card{clusterMetrics.gpuCount !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
 
-                    {/* Node Pools List */}
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#495057]">Configured VM Node Pools ({vmNodePools.length})</span>
-                        <button
-                          type="button"
-                          onClick={handleAddVMPool}
-                          className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200"
-                        >
-                          <span>+ Add Node Pool</span>
-                        </button>
-                      </div>
-
-                      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-                        {vmNodePools.map((pool, idx) => {
-                          const catInfo = VM_CATEGORY_CONFIG[pool.category];
-                          return (
-                            <div
-                              key={pool.id}
-                              className="p-3.5 bg-white border border-gray-200 rounded-xl shadow-sm space-y-3 transition-all hover:border-indigo-300"
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-700 text-[10px] font-mono font-bold flex items-center justify-center">
-                                    {idx + 1}
-                                  </span>
-                                  <input
-                                    type="text"
-                                    value={pool.name}
-                                    onChange={e => handleUpdateVMPool(pool.id, { name: e.target.value })}
-                                    className="text-xs font-bold font-mono text-[#1A1A1A] bg-gray-50 border border-gray-200 rounded px-2 py-1 focus:bg-white focus:border-indigo-500 outline-none w-44"
-                                    placeholder="Pool Name"
-                                  />
-                                  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border", catInfo.color)}>
-                                    {catInfo.label}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-3 self-end sm:self-center">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] font-bold text-[#6C757D]">VM Count:</span>
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      max={50}
-                                      value={pool.count}
-                                      onChange={e => handleUpdateVMPool(pool.id, { count: parseInt(e.target.value) || 1 })}
-                                      className="w-14 px-2 py-1 text-xs font-mono font-bold bg-gray-50 border border-gray-300 rounded text-center focus:border-indigo-500 outline-none"
-                                    />
-                                  </div>
-
-                                  {vmNodePools.length > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveVMPool(pool.id)}
-                                      className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                                      title="Remove Pool"
-                                    >
-                                      <span className="text-xs font-bold">✕</span>
-                                    </button>
-                                  )}
-                                </div>
+                    {/* VM Pool Rows */}
+                    <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                      {vmNodePools.map((pool, idx) => {
+                        return (
+                          <div
+                            key={pool.id}
+                            className="p-3 bg-white rounded-xl border border-gray-200 hover:border-indigo-300 transition-all space-y-2 shadow-xs"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+                                  {idx + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={pool.name}
+                                  onChange={e => handleUpdateVMPool(pool.id, { name: e.target.value })}
+                                  placeholder="pool-name"
+                                  className="font-bold text-xs text-[#1A1A1A] bg-transparent border-b border-dashed border-gray-300 focus:border-indigo-500 outline-none px-1"
+                                />
+                                <span className={cn("px-2 py-0.2 rounded-full text-[9px] font-bold uppercase", VM_ROLE_BADGES[pool.category]?.color || "bg-gray-100 text-gray-700")}>
+                                  {VM_ROLE_BADGES[pool.category]?.label || pool.category}
+                                </span>
                               </div>
 
-                              {/* Pool Specifications Form */}
-                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 border-t border-gray-100 text-xs">
-                                <div>
-                                  <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">Role Category</label>
-                                  <select
-                                    value={pool.category}
-                                    onChange={e => handleUpdateVMPool(pool.id, { category: e.target.value as VMNodeCategory })}
-                                    className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded font-medium text-xs focus:border-indigo-500 outline-none"
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 text-xs">
+                                  <span className="text-[#6C757D] text-[11px] font-medium">VMs in Pool:</span>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={64}
+                                    value={pool.count}
+                                    onChange={e => handleUpdateVMPool(pool.id, { count: parseInt(e.target.value) || 1 })}
+                                    className="w-14 px-2 py-0.5 text-xs font-mono font-bold bg-gray-50 border border-gray-200 rounded text-center"
+                                  />
+                                </div>
+                                {vmNodePools.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveVMPool(pool.id)}
+                                    className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
+                                    title="Remove VM Pool"
                                   >
-                                    <option value="control-plane">Control Plane</option>
-                                    <option value="worker">Worker Node</option>
-                                    <option value="edge">Edge Node</option>
-                                    <option value="storage">Storage Node (Ceph)</option>
-                                    <option value="cpu">CPU Intensive Node</option>
-                                    <option value="gpu">GPU Node (AI/ML)</option>
-                                    <option value="memory">Memory Optimized</option>
-                                    <option value="gateway">Gateway / Ingress</option>
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">vCPU / VM</label>
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={128}
-                                    value={pool.vcpu}
-                                    onChange={e => handleUpdateVMPool(pool.id, { vcpu: parseInt(e.target.value) || 2 })}
-                                    className="w-full px-2 py-1 font-mono bg-gray-50 border border-gray-200 rounded text-xs focus:border-indigo-500 outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">RAM (GiB) / VM</label>
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={512}
-                                    value={pool.memoryGi}
-                                    onChange={e => handleUpdateVMPool(pool.id, { memoryGi: parseInt(e.target.value) || 4 })}
-                                    className="w-full px-2 py-1 font-mono bg-gray-50 border border-gray-200 rounded text-xs focus:border-indigo-500 outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">Disk (GiB) / VM</label>
-                                  <input
-                                    type="number"
-                                    min={10}
-                                    max={2000}
-                                    value={pool.diskGi}
-                                    onChange={e => handleUpdateVMPool(pool.id, { diskGi: parseInt(e.target.value) || 50 })}
-                                    className="w-full px-2 py-1 font-mono bg-gray-50 border border-gray-200 rounded text-xs focus:border-indigo-500 outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">
-                                    {pool.category === 'gpu' ? 'GPU Accelerator' : 'CPU Arch'}
-                                  </label>
-                                  {pool.category === 'gpu' ? (
-                                    <select
-                                      value={pool.gpuModel || 'NVIDIA L40S'}
-                                      onChange={e => handleUpdateVMPool(pool.id, { gpuModel: e.target.value })}
-                                      className="w-full px-2 py-1 bg-purple-50 text-purple-900 border border-purple-200 rounded font-bold text-[11px] focus:border-purple-500 outline-none"
-                                    >
-                                      <option value="NVIDIA H100 80GB">NVIDIA H100 80GB</option>
-                                      <option value="NVIDIA A100 80GB">NVIDIA A100 80GB</option>
-                                      <option value="NVIDIA L40S">NVIDIA L40S</option>
-                                      <option value="NVIDIA T4">NVIDIA T4</option>
-                                      <option value="NVIDIA RTX 4090">NVIDIA RTX 4090</option>
-                                      <option value="vGPU Virtual Slice">vGPU Virtual Slice</option>
-                                    </select>
-                                  ) : (
-                                    <select
-                                      value={pool.arch}
-                                      onChange={e => handleUpdateVMPool(pool.id, { arch: e.target.value as 'x86_64' | 'aarch64' })}
-                                      className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded font-medium text-xs focus:border-indigo-500 outline-none"
-                                    >
-                                      <option value="x86_64">Linux x86_64</option>
-                                      <option value="aarch64">Linux ARM64</option>
-                                    </select>
-                                  )}
-                                </div>
+                                    ✕
+                                  </button>
+                                )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
+
+                            {/* Pool Spec Inputs */}
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                              <div>
+                                <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">Role / Category</label>
+                                <select
+                                  value={pool.category}
+                                  onChange={e => handleUpdateVMPool(pool.id, { category: e.target.value as VMNodeCategory })}
+                                  className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded font-medium text-xs focus:border-indigo-500 outline-none"
+                                >
+                                  <option value="control-plane">Control Plane</option>
+                                  <option value="worker">Worker Node</option>
+                                  <option value="edge">Edge Micro Node</option>
+                                  <option value="storage">Storage Node (Ceph)</option>
+                                  <option value="cpu">CPU Intensive Node</option>
+                                  <option value="gpu">GPU Node (AI/ML)</option>
+                                  <option value="memory">Memory Optimized</option>
+                                  <option value="gateway">Gateway / Ingress</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">vCPU / VM</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={128}
+                                  value={pool.vcpu}
+                                  onChange={e => handleUpdateVMPool(pool.id, { vcpu: parseInt(e.target.value) || 2 })}
+                                  className="w-full px-2 py-1 font-mono bg-gray-50 border border-gray-200 rounded text-xs focus:border-indigo-500 outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">RAM (GiB) / VM</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={512}
+                                  value={pool.memoryGi}
+                                  onChange={e => handleUpdateVMPool(pool.id, { memoryGi: parseInt(e.target.value) || 4 })}
+                                  className="w-full px-2 py-1 font-mono bg-gray-50 border border-gray-200 rounded text-xs focus:border-indigo-500 outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">Disk (GiB) / VM</label>
+                                <input
+                                  type="number"
+                                  min={10}
+                                  max={2000}
+                                  value={pool.diskGi}
+                                  onChange={e => handleUpdateVMPool(pool.id, { diskGi: parseInt(e.target.value) || 50 })}
+                                  className="w-full px-2 py-1 font-mono bg-gray-50 border border-gray-200 rounded text-xs focus:border-indigo-500 outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold text-[#6C757D] uppercase mb-0.5">
+                                  {pool.category === 'gpu' ? 'GPU Accelerator' : 'CPU Arch'}
+                                </label>
+                                {pool.category === 'gpu' ? (
+                                  <select
+                                    value={pool.gpuModel || 'NVIDIA L40S'}
+                                    onChange={e => handleUpdateVMPool(pool.id, { gpuModel: e.target.value })}
+                                    className="w-full px-2 py-1 bg-purple-50 text-purple-900 border border-purple-200 rounded font-bold text-[11px] focus:border-purple-500 outline-none"
+                                  >
+                                    <option value="NVIDIA H100 80GB">NVIDIA H100 80GB</option>
+                                    <option value="NVIDIA A100 80GB">NVIDIA A100 80GB</option>
+                                    <option value="NVIDIA L40S">NVIDIA L40S</option>
+                                    <option value="NVIDIA T4">NVIDIA T4</option>
+                                    <option value="NVIDIA RTX 4090">NVIDIA RTX 4090</option>
+                                    <option value="vGPU Virtual Slice">vGPU Virtual Slice</option>
+                                  </select>
+                                ) : (
+                                  <select
+                                    value={pool.arch}
+                                    onChange={e => handleUpdateVMPool(pool.id, { arch: e.target.value as 'x86_64' | 'aarch64' })}
+                                    className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded font-medium text-xs focus:border-indigo-500 outline-none"
+                                  >
+                                    <option value="x86_64">Linux x86_64</option>
+                                    <option value="aarch64">Linux ARM64</option>
+                                  </select>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (
@@ -1256,9 +1428,19 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-bold self-start sm:self-center">
-                        <DollarSign size={13} className="text-emerald-600" />
-                        <span>Dev Stage Cost Optimized</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenInlineModal('cloud')}
+                          className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm flex items-center gap-1 shrink-0"
+                        >
+                          <Plus size={12} />
+                          <span>Add Cloud</span>
+                        </button>
+                        <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-bold self-start sm:self-center">
+                          <DollarSign size={13} className="text-emerald-600" />
+                          <span>Dev Stage Cost Optimized</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1268,7 +1450,7 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
                         1. Select Cloud Provider Platform:
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                        {CLOUD_PROVIDERS.map(provider => {
+                        {cloudList.map(provider => {
                           const isSelected = selectedCloudProvider === provider.id;
                           return (
                             <button
@@ -1793,6 +1975,232 @@ export const OrchestratorDeploymentCollapsible: React.FC<OrchestratorDeploymentP
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quick Add Custom Configuration Modal */}
+      <AnimatePresence>
+        {isInlineAddModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+            >
+              <div className="p-4 bg-gradient-to-r from-indigo-50 to-sky-50 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {inlineModalType === 'baremetal' && <Server size={18} className="text-indigo-600" />}
+                  {inlineModalType === 'hypervisor' && <Cpu size={18} className="text-purple-600" />}
+                  {inlineModalType === 'cloud' && <Cloud size={18} className="text-sky-600" />}
+                  {inlineModalType === 'container' && <Box size={18} className="text-emerald-600" />}
+                  <h4 className="font-bold text-xs text-[#1A1A1A]">
+                    Add New {inlineModalType === 'baremetal' ? 'Baremetal Preset' : inlineModalType === 'hypervisor' ? 'Hypervisor Engine' : inlineModalType === 'cloud' ? 'Cloud Provider' : 'Container Engine'}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInlineAddModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveInlineItem} className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+                {inlineModalError && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                    {inlineModalError}
+                  </div>
+                )}
+
+                {inlineModalType === 'baremetal' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Vendor</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.vendor || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, vendor: e.target.value })}
+                          placeholder="e.g. Supermicro, Lenovo"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Model Name</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.name || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, name: e.target.value })}
+                          placeholder="e.g. SuperServer 2U"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">vCPU</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={256}
+                          value={inlineItemData.vcpu}
+                          onChange={e => setInlineItemData({ ...inlineItemData, vcpu: e.target.value })}
+                          className="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">RAM (GB)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={1024}
+                          value={inlineItemData.memoryGi}
+                          onChange={e => setInlineItemData({ ...inlineItemData, memoryGi: e.target.value })}
+                          className="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Disk (GB)</label>
+                        <input
+                          type="number"
+                          min={10}
+                          max={4000}
+                          value={inlineItemData.diskGi}
+                          onChange={e => setInlineItemData({ ...inlineItemData, diskGi: e.target.value })}
+                          className="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Arch</label>
+                        <select
+                          value={inlineItemData.arch}
+                          onChange={e => setInlineItemData({ ...inlineItemData, arch: e.target.value })}
+                          className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-300 rounded"
+                        >
+                          <option value="x86_64">x86_64</option>
+                          <option value="aarch64">aarch64</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={inlineItemData.desc || ''}
+                        onChange={e => setInlineItemData({ ...inlineItemData, desc: e.target.value })}
+                        placeholder="Device specifications..."
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {inlineModalType === 'hypervisor' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Hypervisor Name</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.name || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, name: e.target.value })}
+                          placeholder="e.g. SmartOS, XCP-ng"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Version</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.version || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, version: e.target.value })}
+                          placeholder="e.g. v8.2"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Virtualization Engine</label>
+                      <input
+                        type="text"
+                        value={inlineItemData.engine || ''}
+                        onChange={e => setInlineItemData({ ...inlineItemData, engine: e.target.value })}
+                        placeholder="e.g. KVM, Xen, bhyve"
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {inlineModalType === 'cloud' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Cloud Provider Name</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.name || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, name: e.target.value })}
+                          placeholder="e.g. Linode / Akamai"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Badge Tag</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.badge || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, badge: e.target.value })}
+                          placeholder="e.g. Linode VMs"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">
+                        Datacenter Regions (<code className="font-mono text-sky-700">id: Name</code>, comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={inlineItemData.regionsStr || ''}
+                        onChange={e => setInlineItemData({ ...inlineItemData, regionsStr: e.target.value })}
+                        placeholder="us-east: Newark, eu-west: Frankfurt"
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg font-mono outline-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsInlineAddModalOpen(false)}
+                    className="px-3.5 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isInlineSaving}
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5"
+                  >
+                    {isInlineSaving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
+                    <span>Save to config/*.yaml</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </section>
