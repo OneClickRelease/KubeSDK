@@ -1,0 +1,31 @@
+{
+  "id": "default-infrastructure-profile-mt4fpqhp",
+  "name": "Default Infrastructure Profile",
+  "description": "Custom defined cluster & capability deployment",
+  "createdAt": "2026-08-22T13:49:17.533Z",
+  "updatedAt": "2026-08-22T13:49:17.535Z",
+  "activeVersion": "v1.0.0",
+  "versions": [
+    {
+      "version": "v1.0.0",
+      "savedAt": "2026-08-22T13:49:17.535Z",
+      "comment": "Updated cluster topology and platform capability layers",
+      "author": "Platform Architect",
+      "bytes": 2661,
+      "summary": {
+        "infraType": "baremetal",
+        "orchestrator": "k3s",
+        "nodes": 1,
+        "mode": "air-gapped",
+        "platformLayersCount": 4
+      }
+    }
+  ],
+  "latestSummary": {
+    "infraType": "baremetal",
+    "orchestrator": "k3s",
+    "nodes": 1,
+    "mode": "air-gapped",
+    "platformLayersCount": 4
+  }
+}

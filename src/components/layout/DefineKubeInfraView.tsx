@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import yaml from 'js-yaml';
 import {
   Server, Cpu, Cloud, Box, Layers, Download, CheckCircle2,
   Terminal, ShieldCheck, ChevronDown, ChevronRight, Sparkles,
   Zap, Copy, RefreshCw, AlertTriangle, Globe, Lock, Info, Check,
   Key, Eye, EyeOff, DollarSign, Clock, Shield, Plus, Save, Trash2,
-  ArrowRight, ArrowLeft, CheckCircle, Database, HelpCircle, HardDrive
+  ArrowRight, ArrowLeft, CheckCircle, Database, HelpCircle, HardDrive,
+  Activity, GitBranch, BarChart, Brain, Container, Settings, Edit2,
+  Sliders, History, Upload, FileCode, ExternalLink, Archive, FileText,
+  Bookmark, CheckSquare, RotateCcw
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -29,12 +33,156 @@ interface DefineKubeInfraViewProps {
   onNavigateToWizard?: () => void;
 }
 
+export interface PlatformComponent {
+  name: string;
+  version?: string;
+  namespace?: string;
+  image?: string;
+  port?: number;
+  replicas?: number;
+  description?: string;
+  isDefault?: boolean;
+  isRecommended?: boolean;
+  chart?: string;
+}
+
+export interface PlatformLayer {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  enabled: boolean;
+  selectedComponentIndex: number;
+  components: PlatformComponent[];
+}
+
+export interface SavedDeploymentProfile {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  activeVersion: string;
+  versions: Array<{
+    version: string;
+    savedAt: string;
+    comment?: string;
+    author?: string;
+    bytes?: number;
+    summary?: any;
+  }>;
+  latestSummary?: any;
+}
+
+const DEFAULT_PLATFORM_LAYERS: PlatformLayer[] = [
+  {
+    id: 'ingress',
+    name: 'Ingress & API Gateway',
+    description: 'Layer 7 HTTP/HTTPS traffic routing, SSL termination, and API ingress.',
+    enabled: true,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'Traefik Ingress', version: 'v3.0.0', namespace: 'kube-system', image: 'traefik:v3.0.0', port: 80, replicas: 1, isDefault: true, isRecommended: true, description: 'Default lightweight cloud-native edge router in K3s' },
+      { name: 'NGINX Ingress Controller', version: 'v1.10.0', namespace: 'ingress-nginx', image: 'registry.k8s.io/ingress-nginx/controller:v1.10.0', port: 80, replicas: 2, description: 'Industry-standard high-performance reverse proxy controller' },
+      { name: 'Envoy Gateway', version: 'v1.0.1', namespace: 'envoy-gateway-system', image: 'docker.io/envoyproxy/gateway:v1.0.1', port: 80, replicas: 2, description: 'Next-generation Gateway API compliant controller' },
+      { name: 'Cilium Ingress', version: 'v1.15.2', namespace: 'kube-system', image: 'quay.io/cilium/cilium:v1.15.2', port: 80, replicas: 1, description: 'eBPF-powered ultra-fast service mesh and ingress' }
+    ]
+  },
+  {
+    id: 'storage',
+    name: 'Storage & CSI Provisioner',
+    description: 'Dynamic block, file, and local persistent volume allocation drivers.',
+    enabled: true,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'Local Path Provisioner', version: 'v0.0.26', namespace: 'local-path-storage', image: 'rancher/local-path-provisioner:v0.0.26', replicas: 1, isDefault: true, description: 'Utilizes local node disk for rapid persistent volume claims' },
+      { name: 'Longhorn Distributed CSI', version: 'v1.6.0', namespace: 'longhorn-system', image: 'longhornio/longhorn-manager:v1.6.0', replicas: 3, isRecommended: true, description: 'Enterprise distributed block storage with snapshot replication' },
+      { name: 'Rook-Ceph Distributed Storage', version: 'v1.13.0', namespace: 'rook-ceph', image: 'rook/ceph:v1.13.0', replicas: 3, description: 'Cloud-native Ceph storage operator for multi-node clusters' },
+      { name: 'OpenEBS Local & Replicated', version: 'v3.10.0', namespace: 'openebs', image: 'openebs/openebs-operator:v3.10.0', replicas: 1, description: 'Container Attached Storage (CAS) for stateful applications' }
+    ]
+  },
+  {
+    id: 'monitoring',
+    name: 'Observability & Monitoring',
+    description: 'Real-time metrics, telemetry collection, alerts, and dashboards.',
+    enabled: true,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'Prometheus & Grafana Stack', version: 'v0.70.0', namespace: 'monitoring', image: 'quay.io/prometheus/prometheus:v2.50.0', port: 9090, replicas: 1, isDefault: true, isRecommended: true, description: 'Complete cluster metrics scraping and visualization system' },
+      { name: 'VictoriaMetrics Single', version: 'v1.98.0', namespace: 'monitoring', image: 'victoriametrics/victoria-metrics:v1.98.0', port: 8428, replicas: 1, description: 'High-efficiency, resource-saving time-series telemetry store' },
+      { name: 'OpenTelemetry Collector', version: 'v0.95.0', namespace: 'otel-system', image: 'otel/opentelemetry-collector-contrib:0.95.0', port: 4317, replicas: 1, description: 'Unified logs, traces, and metrics export pipeline' }
+    ]
+  },
+  {
+    id: 'security',
+    name: 'Security & Certificate Management',
+    description: 'Automatic TLS cert provisioning, secret injection, and policy compliance.',
+    enabled: true,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'Cert-Manager TLS', version: 'v1.14.4', namespace: 'cert-manager', image: 'quay.io/jetstack/cert-manager-controller:v1.14.4', replicas: 1, isDefault: true, isRecommended: true, description: 'Automated X.509 certificate issuance and Let\'s Encrypt renewals' },
+      { name: 'HashiCorp Vault Agent', version: 'v1.16.0', namespace: 'vault', image: 'hashicorp/vault:1.16.0', port: 8200, replicas: 1, description: 'Dynamic secrets management, transit encryption, and token brokering' },
+      { name: 'Kyverno Policy Engine', version: 'v1.11.4', namespace: 'kyverno', image: 'ghcr.io/kyverno/kyverno:v1.11.4', replicas: 2, description: 'Kubernetes-native policy management, mutation, and verification' },
+      { name: 'Falco Threat Detection', version: 'v0.37.0', namespace: 'falco', image: 'falcosecurity/falco:0.37.0', replicas: 1, description: 'Kernel-level runtime threat detection and anomaly alerting' }
+    ]
+  },
+  {
+    id: 'gitops',
+    name: 'CI/CD & GitOps Delivery',
+    description: 'Continuous deployment, Git reconciliation, and workflow orchestrators.',
+    enabled: false,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'ArgoCD GitOps Engine', version: 'v2.10.4', namespace: 'argocd', image: 'quay.io/argoproj/argocd:v2.10.4', port: 8080, replicas: 1, isDefault: true, isRecommended: true, description: 'Declarative GitOps continuous delivery tool for Kubernetes' },
+      { name: 'Flux v2 GitOps Controller', version: 'v2.2.3', namespace: 'flux-system', image: 'ghcr.io/fluxcd/source-controller:v2.2.3', replicas: 1, description: 'Open and extensible continuous delivery toolkit for Kubernetes' },
+      { name: 'Tekton Pipelines', version: 'v0.56.0', namespace: 'tekton-pipelines', image: 'gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller:v0.56.0', replicas: 1, description: 'Cloud-native CI/CD pipeline execution framework' }
+    ]
+  },
+  {
+    id: 'database',
+    name: 'Database & Stateful Operators',
+    description: 'Declarative SQL/NoSQL cluster operators with automated failover.',
+    enabled: false,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'CloudNativePG (PostgreSQL)', version: 'v1.22.2', namespace: 'cnpg-system', image: 'ghcr.io/cloudnative-pg/cloudnative-pg:v1.22.2', replicas: 1, isDefault: true, isRecommended: true, description: 'Enterprise PostgreSQL operator with streaming replication & backups' },
+      { name: 'Redis Operator (Spotahome)', version: 'v1.2.4', namespace: 'redis-operator', image: 'spotahome/redis-operator:v1.2.4', replicas: 1, description: 'High-availability Redis Sentinel & standalone cluster manager' },
+      { name: 'MongoDB Community Operator', version: 'v0.10.0', namespace: 'mongodb', image: 'quay.io/mongodb/mongodb-kubernetes-operator:0.10.0', replicas: 1, description: 'Automates deployment of MongoDB replica sets inside Kubernetes' }
+    ]
+  },
+  {
+    id: 'messaging',
+    name: 'Eventing & Streaming Brokers',
+    description: 'High-throughput event streaming, message queues, and pub/sub brokers.',
+    enabled: false,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'NATS JetStream Server', version: 'v2.10.12', namespace: 'nats-system', image: 'nats:2.10.12-alpine', port: 4222, replicas: 1, isDefault: true, isRecommended: true, description: 'Ultra-low-latency cloud native messaging & event streaming system' },
+      { name: 'Apache Kafka (Strimzi Operator)', version: 'v0.40.0', namespace: 'kafka', image: 'quay.io/strimzi/operator:0.40.0', port: 9092, replicas: 3, description: 'Enterprise distributed streaming platform and event bus' },
+      { name: 'RabbitMQ Cluster Operator', version: 'v2.7.0', namespace: 'rabbitmq-system', image: 'rabbitmq:3.13-management', port: 5672, replicas: 1, description: 'Robust AMQP message queue manager for asynchronous workloads' }
+    ]
+  },
+  {
+    id: 'aiml',
+    name: 'AI / ML Inference & Acceleration',
+    description: 'Local LLM execution, GPU drivers, and model serving frameworks.',
+    enabled: false,
+    selectedComponentIndex: 0,
+    components: [
+      { name: 'Ollama Local LLM Engine', version: 'v0.1.30', namespace: 'ai-system', image: 'ollama/ollama:latest', port: 11434, replicas: 1, isDefault: true, isRecommended: true, description: 'Local lightweight execution engine for Llama 3, Mistral, and Qwen' },
+      { name: 'vLLM High-Throughput Engine', version: 'v0.4.0', namespace: 'vllm-system', image: 'vllm/vllm-openai:latest', port: 8000, replicas: 1, description: 'PagedAttention inference server for production LLM serving' },
+      { name: 'NVIDIA GPU Operator', version: 'v23.9.2', namespace: 'gpu-operator', image: 'nvcr.io/nvidia/gpu-operator:v23.9.2', replicas: 1, description: 'Automates provisioning of NVIDIA GPU drivers, container toolkit & metrics' }
+    ]
+  }
+];
+
 const WIZARD_STEPS = [
   { id: 'target', title: 'Target & Mode', desc: 'Select Infrastructure Type & Airgap/Online Mode' },
   { id: 'config', title: 'Platform Specs', desc: 'Hardware, Hypervisors, Cloud & Node Pools' },
   { id: 'topology', title: 'Scale & Topology', desc: 'Node Count, Quorum Zones & Networking' },
   { id: 'orchestrator', title: 'Orchestrator', desc: 'K3s, RKE2, MicroK8s & Airgap Mirror' },
-  { id: 'provision', title: 'Review & Deploy', desc: 'Generate Scripts & Download .zip Package' }
+  { id: 'platform-layers', title: 'Platform Layers', desc: 'Configure Capability Components & Operators' },
+  { id: 'provision', title: 'Review & Versioning', desc: 'Persist YAML, Version Control & Download' }
 ];
 
 export const DefineKubeInfraView = ({
@@ -52,22 +200,11 @@ export const DefineKubeInfraView = ({
   const [hypervisorList, setHypervisorList] = useState<HypervisorPlatform[]>(HYPERVISOR_PLATFORMS);
   const [cloudList, setCloudList] = useState<CloudProviderConfig[]>(CLOUD_PROVIDERS);
 
-  // Load configs on mount
-  useEffect(() => {
-    fetch('/api/config/infrastructure')
-      .then(res => res.ok ? res.json() : null)
-      .then(json => {
-        if (json?.data) {
-          if (json.data.baremetalPresets?.length) setHardwareList(json.data.baremetalPresets);
-          if (json.data.hypervisorPlatforms?.length) setHypervisorList(json.data.hypervisorPlatforms);
-          if (json.data.cloudProviders?.length) setCloudList(json.data.cloudProviders);
-        }
-      })
-      .catch(err => console.log('Using default local presets', err));
-  }, []);
+  // --- Step 5: Platform Capability Layers State ---
+  const [platformLayers, setPlatformLayers] = useState<PlatformLayer[]>(DEFAULT_PLATFORM_LAYERS);
+  const [layerFilter, setLayerFilter] = useState<'all' | 'enabled' | 'recommended'>('all');
 
   // --- Step 2: Target-specific Configuration ---
-  // Baremetal
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>('All');
   const [selectedHardwareId, setSelectedHardwareId] = useState<string>('rpi-5-8gb');
 
@@ -85,7 +222,6 @@ export const DefineKubeInfraView = ({
   const [cloudRegion, setCloudRegion] = useState<string>('us-east-1');
   const [cloudInstanceType, setCloudInstanceType] = useState<string>('t4g.xlarge');
   const [cloudCredentials, setCloudCredentials] = useState<Record<string, string>>({});
-  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [cloudUseSpot, setCloudUseSpot] = useState<boolean>(true);
   const [cloudAutoShutdown, setCloudAutoShutdown] = useState<boolean>(true);
   const [cloudShutdownHour, setCloudShutdownHour] = useState<string>('20:00');
@@ -102,26 +238,92 @@ export const DefineKubeInfraView = ({
   // --- Step 3: Scale, Topology & HA ---
   const [topology, setTopology] = useState<TopologyType>('single-node');
   const [nodesCount, setNodesCount] = useState<number>(1);
-  const [storageTier, setStorageTier] = useState<'local' | 'ceph' | 'longhorn' | 'cloud'>('local');
   const [podCidr, setPodCidr] = useState<string>('10.42.0.0/16');
   const [serviceCidr, setServiceCidr] = useState<string>('10.43.0.0/16');
-  const [clusterDomain, setClusterDomain] = useState<string>('cluster.local');
 
   // --- Step 4: Orchestrator Engine ---
   const [orchestrator, setOrchestrator] = useState<OrchestratorType>('k3s');
   const [includeWorkloadImages, setIncludeWorkloadImages] = useState<boolean>(true);
   const [privateRegistryUrl, setPrivateRegistryUrl] = useState<string>('');
 
-  // --- Step 5: Provisioning Execution ---
+  // --- Step 6: Version Control & YAML Persistence State ---
+  const [savedProfiles, setSavedProfiles] = useState<SavedDeploymentProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string>('');
+  const [activeProfileName, setActiveProfileName] = useState<string>('Default Infrastructure Profile');
+  const [activeProfileDesc, setActiveProfileDesc] = useState<string>('Custom defined cluster & capability deployment');
+  const [activeVersionTag, setActiveVersionTag] = useState<string>('v1.0.0');
+
+  // Modals
+  const [isVersionHistoryModalOpen, setIsVersionHistoryModalOpen] = useState(false);
+  const [isSaveVersionModalOpen, setIsSaveVersionModalOpen] = useState(false);
+  const [isRawYamlModalOpen, setIsRawYamlModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Save Version Modal Inputs
+  const [versionBumpType, setVersionBumpType] = useState<'patch' | 'minor' | 'major'>('patch');
+  const [versionComment, setVersionComment] = useState('Updated cluster topology and platform capability layers');
+  const [versionAuthor, setVersionAuthor] = useState('Platform Architect');
+  const [isSavingVersion, setIsSavingVersion] = useState(false);
+
+  // Raw YAML Editor State
+  const [rawYamlDraft, setRawYamlDraft] = useState('');
+  const [rawYamlError, setRawYamlError] = useState<string | null>(null);
+
+  // Import State
+  const [importYamlInput, setImportYamlInput] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+
+  // Provisioning Execution
   const [isDownloading, setIsDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Quick Inline Add Modal
+  // Quick Inline Add Modal (Target Presets)
   const [isInlineAddModalOpen, setIsInlineAddModalOpen] = useState(false);
   const [inlineModalType, setInlineModalType] = useState<'baremetal' | 'hypervisor' | 'cloud' | 'container'>('baremetal');
   const [inlineItemData, setInlineItemData] = useState<any>({});
   const [inlineModalError, setInlineModalError] = useState<string | null>(null);
   const [isInlineSaving, setIsInlineSaving] = useState(false);
+
+  // Modal for adding a custom Platform Layer or Component
+  const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
+  const [platformModalMode, setPlatformModalMode] = useState<'layer' | 'component'>('component');
+  const [targetLayerId, setTargetLayerId] = useState<string>('ingress');
+  const [newLayerName, setNewLayerName] = useState('');
+  const [newLayerDesc, setNewLayerDesc] = useState('');
+  const [newCompName, setNewCompName] = useState('');
+  const [newCompVersion, setNewCompVersion] = useState('v1.0.0');
+  const [newCompNamespace, setNewCompNamespace] = useState('default');
+  const [newCompImage, setNewCompImage] = useState('');
+  const [newCompPort, setNewCompPort] = useState<number | undefined>(undefined);
+  const [newCompDesc, setNewCompDesc] = useState('');
+
+  // Fetch saved deployment profiles
+  const fetchProfiles = async () => {
+    try {
+      const res = await fetch('/api/config/infra-deployments');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.profiles) setSavedProfiles(data.profiles);
+      }
+    } catch (e) {
+      console.error('Failed to fetch deployment profiles', e);
+    }
+  };
+
+  useEffect(() => {
+    fetch('/api/config/infrastructure')
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (json?.data) {
+          if (json.data.baremetalPresets?.length) setHardwareList(json.data.baremetalPresets);
+          if (json.data.hypervisorPlatforms?.length) setHypervisorList(json.data.hypervisorPlatforms);
+          if (json.data.cloudProviders?.length) setCloudList(json.data.cloudProviders);
+        }
+      })
+      .catch(err => console.log('Using default local presets', err));
+
+    fetchProfiles();
+  }, []);
 
   // Helpers
   const activeCloud = useMemo(() => {
@@ -131,14 +333,6 @@ export const DefineKubeInfraView = ({
   const activeCloudInstanceSpec = useMemo(() => {
     return activeCloud.instanceTypes.find(i => i.id === cloudInstanceType) || activeCloud.instanceTypes[0];
   }, [activeCloud, cloudInstanceType]);
-
-  const activeHardware = useMemo(() => {
-    return hardwareList.find(h => h.id === selectedHardwareId) || hardwareList[0] || null;
-  }, [hardwareList, selectedHardwareId]);
-
-  const activeHypervisor = useMemo(() => {
-    return hypervisorList.find(h => h.id === selectedHypervisor) || hypervisorList[0] || HYPERVISOR_PLATFORMS[0];
-  }, [hypervisorList, selectedHypervisor]);
 
   const handleSelectHardware = (hw: HardwarePreset) => {
     setSelectedHardwareId(hw.id);
@@ -168,10 +362,6 @@ export const DefineKubeInfraView = ({
     }
   };
 
-  const toggleSecretVisibility = (fieldKey: string) => {
-    setShowSecrets(prev => ({ ...prev, [fieldKey]: !prev[fieldKey] }));
-  };
-
   const handleAddVMPool = () => {
     const newId = `pool-${Date.now()}`;
     setVmNodePools(prev => [
@@ -187,6 +377,90 @@ export const DefineKubeInfraView = ({
 
   const handleUpdateVMPool = (id: string, updates: Partial<VMNodePool>) => {
     setVmNodePools(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
+  // Platform Layer Handlers
+  const handleToggleLayer = (layerId: string) => {
+    setPlatformLayers(prev => prev.map(l => l.id === layerId ? { ...l, enabled: !l.enabled } : l));
+  };
+
+  const handleSelectComponent = (layerId: string, compIdx: number) => {
+    setPlatformLayers(prev => prev.map(l => l.id === layerId ? { ...l, selectedComponentIndex: compIdx } : l));
+  };
+
+  const handleDeleteLayer = (layerId: string) => {
+    if (confirm('Remove this platform capability layer?')) {
+      setPlatformLayers(prev => prev.filter(l => l.id !== layerId));
+    }
+  };
+
+  const handleDeleteComponent = (layerId: string, compIdx: number) => {
+    setPlatformLayers(prev => prev.map(l => {
+      if (l.id !== layerId) return l;
+      const newComps = l.components.filter((_, i) => i !== compIdx);
+      return {
+        ...l,
+        components: newComps,
+        selectedComponentIndex: Math.min(l.selectedComponentIndex, Math.max(0, newComps.length - 1))
+      };
+    }));
+  };
+
+  const handleOpenAddPlatformModal = (mode: 'layer' | 'component', defaultLayerId?: string) => {
+    setPlatformModalMode(mode);
+    if (defaultLayerId) setTargetLayerId(defaultLayerId);
+    setNewLayerName('');
+    setNewLayerDesc('');
+    setNewCompName('');
+    setNewCompVersion('v1.0.0');
+    setNewCompNamespace(defaultLayerId === 'monitoring' ? 'monitoring' : 'default');
+    setNewCompImage('');
+    setNewCompPort(undefined);
+    setNewCompDesc('');
+    setIsAddPlatformModalOpen(true);
+  };
+
+  const handleSavePlatformItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (platformModalMode === 'layer') {
+      if (!newLayerName.trim()) return;
+      const layerId = newLayerName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const newLayer: PlatformLayer = {
+        id: layerId,
+        name: newLayerName.trim(),
+        description: newLayerDesc.trim() || 'Custom platform capability layer',
+        enabled: true,
+        selectedComponentIndex: 0,
+        components: [{
+          name: `${newLayerName.trim()} Default`,
+          version: 'v1.0.0',
+          namespace: 'default',
+          isDefault: true,
+          description: 'Primary component'
+        }]
+      };
+      setPlatformLayers(prev => [...prev, newLayer]);
+    } else {
+      if (!newCompName.trim()) return;
+      const newComp: PlatformComponent = {
+        name: newCompName.trim(),
+        version: newCompVersion.trim() || 'latest',
+        namespace: newCompNamespace.trim() || 'default',
+        image: newCompImage.trim() || undefined,
+        port: newCompPort || undefined,
+        description: newCompDesc.trim() || 'Custom capability component',
+        replicas: 1
+      };
+      setPlatformLayers(prev => prev.map(l => {
+        if (l.id !== targetLayerId) return l;
+        return {
+          ...l,
+          components: [...l.components, newComp],
+          selectedComponentIndex: l.components.length
+        };
+      }));
+    }
+    setIsAddPlatformModalOpen(false);
   };
 
   const clusterMetrics = useMemo(() => {
@@ -235,8 +509,89 @@ export const DefineKubeInfraView = ({
     return 'k3s';
   }, [infraType, vcpu, memoryGi, topology]);
 
-  // Generate provisioning script
+  const enabledPlatformLayers = useMemo(() => {
+    return platformLayers.filter(l => l.enabled);
+  }, [platformLayers]);
+
+  // Dynamic YAML Schema Model
+  const fullClusterConfigYaml = useMemo(() => {
+    const doc = {
+      apiVersion: 'kubesdk.dev/v1alpha1',
+      kind: 'ClusterInfrastructureDefinition',
+      metadata: {
+        id: activeProfileId || undefined,
+        name: activeProfileName,
+        version: activeVersionTag,
+        environment: isAirgap ? 'air-gapped' : 'online',
+        updatedAt: new Date().toISOString()
+      },
+      spec: {
+        infrastructure: {
+          target: infraType,
+          topology,
+          nodes: topology === 'single-node' ? 1 : nodesCount,
+          totalCompute: {
+            vcpu: clusterMetrics.totalVcpu,
+            memoryGi: clusterMetrics.totalMemGi,
+            diskGi: clusterMetrics.totalDiskGi,
+            arch: osArch
+          },
+          hardwarePreset: infraType === 'baremetal' ? selectedHardwareId : undefined,
+          hypervisor: infraType === 'hypervisor-vm' ? {
+            platform: selectedHypervisor,
+            mode: vmMode,
+            pools: vmMode === 'asymmetrical' ? vmNodePools : undefined
+          } : undefined,
+          cloudProvider: infraType === 'cloud-vm' ? {
+            provider: selectedCloudProvider,
+            region: cloudRegion,
+            instanceType: cloudInstanceType,
+            spot: cloudUseSpot,
+            autoShutdown: cloudAutoShutdown,
+            shutdownHour: cloudShutdownHour,
+            allowedCidr: cloudAllowedCidr,
+            storageType: cloudStorageType,
+            storageSizeGi: cloudStorageSize
+          } : undefined
+        },
+        orchestrator: {
+          engine: orchestrator,
+          networking: { podCidr, serviceCidr }
+        },
+        platformComponents: platformLayers.map(l => ({
+          layerId: l.id,
+          layerName: l.name,
+          enabled: l.enabled,
+          component: l.components[l.selectedComponentIndex] ? {
+            name: l.components[l.selectedComponentIndex].name,
+            version: l.components[l.selectedComponentIndex].version,
+            namespace: l.components[l.selectedComponentIndex].namespace,
+            image: l.components[l.selectedComponentIndex].image,
+            replicas: l.components[l.selectedComponentIndex].replicas
+          } : undefined
+        }))
+      }
+    };
+    return yaml.dump(doc, { indent: 2, lineWidth: -1 });
+  }, [
+    activeProfileId, activeProfileName, activeVersionTag, isAirgap,
+    infraType, topology, nodesCount, clusterMetrics, osArch,
+    selectedHardwareId, selectedHypervisor, vmMode, vmNodePools,
+    selectedCloudProvider, cloudRegion, cloudInstanceType, cloudUseSpot,
+    cloudAutoShutdown, cloudShutdownHour, cloudAllowedCidr, cloudStorageType,
+    cloudStorageSize, orchestrator, podCidr, serviceCidr, platformLayers
+  ]);
+
+  // Generate provisioning script preview
   const generatedScript = useMemo(() => {
+    const activeComponentsList = enabledPlatformLayers
+      .map(l => {
+        const c = l.components[l.selectedComponentIndex];
+        return c ? `  -> Deploying ${l.name} (${c.name} - ns: ${c.namespace || 'default'})...` : '';
+      })
+      .filter(Boolean)
+      .join('\n');
+
     if (infraType === 'cloud-vm') {
       return `#!/usr/bin/env bash
 # ==============================================================================
@@ -249,7 +604,6 @@ set -euo pipefail
 echo "==> Authenticating against ${activeCloud.name} API..."
 export CLOUD_REGION="${cloudRegion}"
 export INSTANCE_TYPE="${cloudInstanceType}"
-export SPOT_ENABLED="${cloudUseSpot}"
 
 echo "==> Deploying Terraform Infrastructure Stage..."
 terraform init
@@ -258,6 +612,9 @@ terraform apply -auto-approve -var="region=${cloudRegion}" -var="instance_type=$
 echo "==> Provisioning ${orchestrator.toUpperCase()} Kubernetes Cluster on Cloud Host..."
 curl -sfL https://get.k3s.io | sh -s - --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}"
 
+echo "==> Applying Platform Capability Layer Manifests..."
+${activeComponentsList}
+
 echo "==> Setup Complete! API Server available at: https://\$(terraform output -raw public_ip):6443"
 `;
     }
@@ -265,7 +622,7 @@ echo "==> Setup Complete! API Server available at: https://\$(terraform output -
     if (isAirgap) {
       return `#!/usr/bin/env bash
 # ==============================================================================
-# KubeSDK Air-Gapped Offline Cluster Provisioner
+# KubeSDK Air-Gapped Offline Cluster & Platform Provisioner
 # Infrastructure: ${infraType.toUpperCase()} | Engine: ${orchestrator.toUpperCase()}
 # Topology: ${topology} | Total Sizing: ${clusterMetrics.totalVcpu} vCPU, ${clusterMetrics.totalMemGi} GB RAM
 # ==============================================================================
@@ -274,16 +631,19 @@ set -euo pipefail
 ARCH="${osArch}"
 INSTALL_DIR="/opt/kubesdk/offline"
 
-echo "==> Unpacking air-gapped artifacts into \${INSTALL_DIR}..."
-mkdir -p "\${INSTALL_DIR}/bin" "\${INSTALL_DIR}/images"
+echo "==> [1/4] Unpacking air-gapped artifacts into \${INSTALL_DIR}..."
+mkdir -p "\${INSTALL_DIR}/bin" "\${INSTALL_DIR}/images" "\${INSTALL_DIR}/manifests"
 
-echo "==> Pre-loading container images into local containerd image store..."
+echo "==> [2/4] Pre-loading container images into local containerd image store..."
 find "\${INSTALL_DIR}/images" -type f -name "*.tar" -exec ctr -n k8s.io images import {} +
 
-echo "==> Installing ${orchestrator.toUpperCase()} runtime offline without internet..."
+echo "==> [3/4] Installing ${orchestrator.toUpperCase()} runtime offline without internet..."
 INSTALL_${orchestrator.toUpperCase()}_SKIP_DOWNLOAD=true \${INSTALL_DIR}/bin/${orchestrator}-install.sh
 
-echo "==> Cluster is ONLINE! Exporting kubeconfig..."
+echo "==> [4/4] Deploying Platform Capability Components..."
+${activeComponentsList}
+
+echo "==> Cluster and Platform are ONLINE! Exporting kubeconfig..."
 cp /etc/rancher/k3s/k3s.yaml /root/.kube/config
 echo "==> API Server: https://127.0.0.1:6443"
 `;
@@ -291,19 +651,22 @@ echo "==> API Server: https://127.0.0.1:6443"
 
     return `#!/usr/bin/env bash
 # ==============================================================================
-# KubeSDK Online Cluster Provisioner
+# KubeSDK Online Cluster & Platform Provisioner
 # Target: ${infraType} | Engine: ${orchestrator} | Nodes: ${nodesCount}
 # ==============================================================================
 set -euo pipefail
 
-echo "==> Installing ${orchestrator.toUpperCase()} Kubernetes Engine..."
+echo "==> [1/3] Installing ${orchestrator.toUpperCase()} Kubernetes Engine..."
 curl -sfL https://get.k3s.io | sh -s - server --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}"
 
-echo "==> Verifying Cluster Nodes Status..."
+echo "==> [2/3] Deploying Platform Capability Layer Components..."
+${activeComponentsList}
+
+echo "==> [3/3] Verifying Cluster Nodes Status..."
 kubectl get nodes -o wide
 echo "==> Ready for KubeSDK runtime connection!"
 `;
-  }, [infraType, activeCloud, cloudRegion, cloudInstanceType, cloudUseSpot, cloudAutoShutdown, cloudShutdownHour, podCidr, serviceCidr, isAirgap, osArch, orchestrator, topology, clusterMetrics, nodesCount]);
+  }, [infraType, activeCloud, cloudRegion, cloudInstanceType, cloudUseSpot, cloudAutoShutdown, cloudShutdownHour, podCidr, serviceCidr, isAirgap, osArch, orchestrator, topology, clusterMetrics, nodesCount, enabledPlatformLayers]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedScript);
@@ -341,7 +704,13 @@ echo "==> Ready for KubeSDK runtime connection!"
         includeWorkloadImages,
         privateRegistryUrl: privateRegistryUrl.trim() || undefined,
         podCidr,
-        serviceCidr
+        serviceCidr,
+        platformLayers: platformLayers.map(l => ({
+          id: l.id,
+          name: l.name,
+          enabled: l.enabled,
+          selectedComponent: l.components[l.selectedComponentIndex] || l.components[0]
+        }))
       };
 
       const res = await fetch('/api/cluster/offline-package', {
@@ -370,7 +739,212 @@ echo "==> Ready for KubeSDK runtime connection!"
     }
   };
 
-  // Open inline add modal
+  // --- Version Control: Save Version to Backend ---
+  const handleSaveNewVersion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingVersion(true);
+    try {
+      const parsedConfig = yaml.load(fullClusterConfigYaml);
+      const payload = {
+        id: activeProfileId || undefined,
+        name: activeProfileName.trim() || 'Custom Cluster Profile',
+        description: activeProfileDesc.trim(),
+        bumpType: versionBumpType,
+        versionComment: versionComment.trim() || 'Configuration update',
+        author: versionAuthor.trim() || 'Platform Architect',
+        yamlContent: fullClusterConfigYaml,
+        config: parsedConfig
+      };
+
+      const res = await fetch('/api/config/infra-deployments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to save version');
+      }
+
+      const data = await res.json();
+      const savedProfile = data.profile;
+      setActiveProfileId(savedProfile.id);
+      setActiveVersionTag(savedProfile.activeVersion);
+      await fetchProfiles();
+      setIsSaveVersionModalOpen(false);
+      alert(`🎉 Successfully saved YAML configuration as version ${savedProfile.activeVersion}!`);
+    } catch (err: any) {
+      alert(`Failed to save configuration: ${err.message}`);
+    } finally {
+      setIsSavingVersion(false);
+    }
+  };
+
+  // --- Version Control: Restore / Load Profile Version ---
+  const handleLoadProfileVersion = async (profileId: string, versionTag?: string) => {
+    try {
+      const url = versionTag 
+        ? `/api/config/infra-deployments/${profileId}?version=${versionTag}`
+        : `/api/config/infra-deployments/${profileId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to load profile');
+      const data = await res.json();
+      const profile = data.profile;
+      const config = profile.config || (profile.yamlContent ? yaml.load(profile.yamlContent) : null);
+
+      if (config) {
+        applyParsedConfigToWizard(config);
+        setActiveProfileId(profile.id);
+        setActiveProfileName(profile.name);
+        setActiveProfileDesc(profile.description || '');
+        setActiveVersionTag(profile.activeVersion || versionTag || 'v1.0.0');
+        setIsVersionHistoryModalOpen(false);
+        alert(`Loaded configuration profile "${profile.name}" (${profile.activeVersion}) into the wizard!`);
+      }
+    } catch (e: any) {
+      alert(`Error loading profile: ${e.message}`);
+    }
+  };
+
+  // --- Version Control: Delete Profile / Version ---
+  const handleDeleteProfile = async (profileId: string, versionTag?: string) => {
+    const msg = versionTag 
+      ? `Delete version ${versionTag} of this profile?` 
+      : `Permanently delete profile ${profileId} and all its version history?`;
+    if (!confirm(msg)) return;
+
+    try {
+      const url = versionTag 
+        ? `/api/config/infra-deployments/${profileId}?version=${versionTag}`
+        : `/api/config/infra-deployments/${profileId}`;
+      const res = await fetch(url, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      await fetchProfiles();
+      if (!versionTag && activeProfileId === profileId) {
+        setActiveProfileId('');
+        setActiveVersionTag('v1.0.0');
+      }
+    } catch (e: any) {
+      alert(`Failed to delete: ${e.message}`);
+    }
+  };
+
+  // --- Helper to parse imported YAML and populate state ---
+  const applyParsedConfigToWizard = (parsed: any) => {
+    const spec = parsed?.spec || parsed;
+    const infra = spec?.infrastructure || spec;
+    const orch = spec?.orchestrator || spec;
+    const meta = parsed?.metadata || {};
+
+    if (meta.environment) setIsAirgap(meta.environment === 'air-gapped');
+    if (infra?.target) setInfraType(infra.target);
+    if (infra?.topology) setTopology(infra.topology);
+    if (infra?.nodes) setNodesCount(Number(infra.nodes) || 1);
+    if (infra?.totalCompute?.arch) setOsArch(infra.totalCompute.arch);
+    if (infra?.totalCompute?.vcpu) setVcpu(Number(infra.totalCompute.vcpu) || 4);
+    if (infra?.totalCompute?.memoryGi) setMemoryGi(Number(infra.totalCompute.memoryGi) || 8);
+    if (infra?.totalCompute?.diskGi) setDiskGi(Number(infra.totalCompute.diskGi) || 50);
+
+    if (infra?.hardwarePreset) setSelectedHardwareId(infra.hardwarePreset);
+    if (infra?.hypervisor?.platform) setSelectedHypervisor(infra.hypervisor.platform);
+    if (infra?.hypervisor?.mode) setVmMode(infra.hypervisor.mode);
+    if (infra?.hypervisor?.pools) setVmNodePools(infra.hypervisor.pools);
+
+    if (infra?.cloudProvider?.provider) setSelectedCloudProvider(infra.cloudProvider.provider);
+    if (infra?.cloudProvider?.region) setCloudRegion(infra.cloudProvider.region);
+    if (infra?.cloudProvider?.instanceType) setCloudInstanceType(infra.cloudProvider.instanceType);
+
+    if (orch?.engine) setOrchestrator(orch.engine);
+    if (orch?.networking?.podCidr) setPodCidr(orch.networking.podCidr);
+    if (orch?.networking?.serviceCidr) setServiceCidr(orch.networking.serviceCidr);
+
+    if (spec?.platformComponents && Array.isArray(spec.platformComponents)) {
+      setPlatformLayers(prev => prev.map(layer => {
+        const matching = spec.platformComponents.find((p: any) => p.layerId === layer.id || p.layerName === layer.name);
+        if (!matching) return layer;
+        const compIdx = matching.component?.name 
+          ? layer.components.findIndex(c => c.name.toLowerCase() === matching.component.name.toLowerCase())
+          : layer.selectedComponentIndex;
+        return {
+          ...layer,
+          enabled: matching.enabled !== undefined ? matching.enabled : layer.enabled,
+          selectedComponentIndex: compIdx >= 0 ? compIdx : layer.selectedComponentIndex
+        };
+      }));
+    }
+  };
+
+  // --- Import YAML Handler ---
+  const handleImportYaml = (e: React.FormEvent) => {
+    e.preventDefault();
+    setImportError(null);
+    try {
+      const parsed: any = yaml.load(importYamlInput);
+      if (!parsed || typeof parsed !== 'object') throw new Error('Invalid YAML structure');
+      applyParsedConfigToWizard(parsed);
+      if (parsed.metadata?.name) setActiveProfileName(parsed.metadata.name);
+      if (parsed.metadata?.version) setActiveVersionTag(parsed.metadata.version);
+      setIsImportModalOpen(false);
+      alert('YAML configuration successfully imported and applied to wizard!');
+    } catch (err: any) {
+      setImportError(err.message || 'YAML parse failed');
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setImportYamlInput(content);
+    };
+    reader.readAsText(file);
+  };
+
+  // --- Export Standalone YAML file ---
+  const handleExportYamlFile = () => {
+    const blob = new Blob([fullClusterConfigYaml], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(activeProfileName || 'cluster-config').toLowerCase().replace(/[^a-z0-9]/g, '-')}-${activeVersionTag}.yaml`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- Export Standalone JSON file ---
+  const handleExportJsonFile = () => {
+    const parsed = yaml.load(fullClusterConfigYaml);
+    const blob = new Blob([JSON.stringify(parsed, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(activeProfileName || 'cluster-config').toLowerCase().replace(/[^a-z0-9]/g, '-')}-${activeVersionTag}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- Edit Raw YAML Save ---
+  const handleSaveRawYaml = () => {
+    setRawYamlError(null);
+    try {
+      const parsed: any = yaml.load(rawYamlDraft);
+      if (!parsed || typeof parsed !== 'object') throw new Error('Invalid YAML');
+      applyParsedConfigToWizard(parsed);
+      setIsRawYamlModalOpen(false);
+      setIsSaveVersionModalOpen(true);
+    } catch (e: any) {
+      setRawYamlError(e.message || 'YAML error');
+    }
+  };
+
+  // Open inline add modal for infra target models
   const handleOpenInlineModal = (target: 'baremetal' | 'hypervisor' | 'cloud' | 'container') => {
     setInlineModalType(target);
     setInlineModalError(null);
@@ -510,29 +1084,45 @@ echo "==> Ready for KubeSDK runtime connection!"
                 <Sparkles size={13} />
                 Infrastructure Architecture Wizard
               </span>
+              {activeVersionTag && (
+                <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-mono font-bold">
+                  {activeVersionTag}
+                </span>
+              )}
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Define Kubernetes Infrastructure
             </h2>
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-              Step-by-step infrastructure target definition, hardware selection, node sizing, topology configuration, and self-contained installer packaging.
+              Step-by-step infrastructure target definition, node sizing, topology, Kubernetes engine, platform capability layers, version-controlled YAML persistence, and packaging.
             </p>
           </div>
 
-          {onNavigateToWizard && (
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={onNavigateToWizard}
-              className="px-5 py-3 bg-[#0D6EFD] hover:bg-[#0B5ED7] text-white text-xs sm:text-sm font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/25 flex items-center gap-2 shrink-0 self-start md:self-center"
+              onClick={() => setIsVersionHistoryModalOpen(true)}
+              className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-2xl transition-all shadow-sm flex items-center gap-2"
             >
-              <span>Go to Local Run Wizard</span>
-              <ArrowRight size={16} />
+              <History size={15} />
+              <span>Version History ({savedProfiles.length})</span>
             </button>
-          )}
+
+            {onNavigateToWizard && (
+              <button
+                type="button"
+                onClick={onNavigateToWizard}
+                className="px-5 py-2.5 bg-[#0D6EFD] hover:bg-[#0B5ED7] text-white text-xs sm:text-sm font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/25 flex items-center gap-2 shrink-0"
+              >
+                <span>Go to Local Run Wizard</span>
+                <ArrowRight size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Wizard Steps Navigation Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mt-6 pt-6 border-t border-slate-700/60">
+        {/* Wizard Steps Navigation Bar (6 Steps) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 mt-6 pt-6 border-t border-slate-700/60">
           {WIZARD_STEPS.map((s, idx) => {
             const isCompleted = idx < currentStep;
             const isCurrent = idx === currentStep;
@@ -670,7 +1260,7 @@ echo "==> Ready for KubeSDK runtime connection!"
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            {/* Target 1: Baremetal */}
+            {/* Baremetal */}
             {infraType === 'baremetal' && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
@@ -695,7 +1285,6 @@ echo "==> Ready for KubeSDK runtime connection!"
                   </div>
                 </div>
 
-                {/* Vendor Filters */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {['All', ...Array.from(new Set(hardwareList.map(h => h.vendor)))].map(vendor => (
                     <button
@@ -714,7 +1303,6 @@ echo "==> Ready for KubeSDK runtime connection!"
                   ))}
                 </div>
 
-                {/* Hardware Presets Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[380px] overflow-y-auto pr-1">
                   {hardwareList
                     .filter(hw => selectedVendorFilter === 'All' || hw.vendor === selectedVendorFilter)
@@ -760,7 +1348,7 @@ echo "==> Ready for KubeSDK runtime connection!"
               </div>
             )}
 
-            {/* Target 2: Hypervisor / VM */}
+            {/* Hypervisor */}
             {infraType === 'hypervisor-vm' && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
@@ -773,19 +1361,16 @@ echo "==> Ready for KubeSDK runtime connection!"
                       Configure KubeVirt, Harvester, VMware ESXi, Proxmox, OpenShift Virt, Nutanix, or Linux KVM.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenInlineModal('hypervisor')}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5"
-                    >
-                      <Plus size={13} />
-                      <span>Add Hypervisor Engine</span>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenInlineModal('hypervisor')}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5"
+                  >
+                    <Plus size={13} />
+                    <span>Add Hypervisor Engine</span>
+                  </button>
                 </div>
 
-                {/* Hypervisors Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                   {hypervisorList.map(hyp => {
                     const isSelected = selectedHypervisor === hyp.id;
@@ -811,7 +1396,6 @@ echo "==> Ready for KubeSDK runtime connection!"
                   })}
                 </div>
 
-                {/* Symmetrical vs Heterogeneous Switch */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-200">
                   <div>
                     <h4 className="text-xs font-bold text-[#1A1A1A]">VM Node Architecture Mode</h4>
@@ -885,7 +1469,7 @@ echo "==> Ready for KubeSDK runtime connection!"
               </div>
             )}
 
-            {/* Target 3: Cloud Instance */}
+            {/* Cloud */}
             {infraType === 'cloud-vm' && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-sky-50/50 p-4 rounded-2xl border border-sky-100">
@@ -908,7 +1492,6 @@ echo "==> Ready for KubeSDK runtime connection!"
                   </button>
                 </div>
 
-                {/* Cloud Providers Selection */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   {cloudList.map(provider => {
                     const isSelected = selectedCloudProvider === provider.id;
@@ -934,7 +1517,6 @@ echo "==> Ready for KubeSDK runtime connection!"
                   })}
                 </div>
 
-                {/* Region & Sizing */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 p-4 bg-gray-50 rounded-2xl border border-gray-200">
                   <div>
                     <label className="block text-xs font-bold text-[#495057] uppercase mb-1">Datacenter Region</label>
@@ -965,7 +1547,7 @@ echo "==> Ready for KubeSDK runtime connection!"
               </div>
             )}
 
-            {/* Target 4: Virtual Container */}
+            {/* Container */}
             {infraType === 'docker-cluster' && (
               <div className="space-y-4">
                 <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
@@ -996,7 +1578,6 @@ echo "==> Ready for KubeSDK runtime connection!"
               <p className="text-xs text-[#6C757D] mt-1">Specify node counts, quorum fault tolerance zones, and overlay network CIDRs.</p>
             </div>
 
-            {/* Topology Selection */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {[
                 { id: 'single-node' as TopologyType, label: 'Single Node Edge', desc: 'Combined control plane & worker for dev/edge SBCs', badge: '1 Node' },
@@ -1032,7 +1613,6 @@ echo "==> Ready for KubeSDK runtime connection!"
               })}
             </div>
 
-            {/* Node Sizing Count & Network CIDRs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 p-5 bg-gray-50 rounded-2xl border border-gray-200">
               <div>
                 <label className="block text-xs font-bold text-[#495057] uppercase mb-1">Total Node Count</label>
@@ -1083,7 +1663,6 @@ echo "==> Ready for KubeSDK runtime connection!"
               <p className="text-xs text-[#6C757D] mt-1">Choose the Kubernetes distribution matched against your compute resources and capability catalog.</p>
             </div>
 
-            {/* Orchestrator Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {[
                 { id: 'k3s' as OrchestratorType, name: 'K3s (Rancher)', badge: 'Lightweight', desc: '512MB RAM minimal footprint single-binary distribution' },
@@ -1120,7 +1699,6 @@ echo "==> Ready for KubeSDK runtime connection!"
               })}
             </div>
 
-            {/* Offline Image Bundler Settings */}
             {isAirgap && (
               <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2">
                 <div className="flex items-center gap-2">
@@ -1135,8 +1713,195 @@ echo "==> Ready for KubeSDK runtime connection!"
           </motion.div>
         )}
 
-        {/* Step 5: Review & Deploy */}
+        {/* Step 5: Platform Capability Layers */}
         {currentStep === 4 && (
+          <motion.div
+            key="step-platform-layers"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
+                  <Layers size={20} className="text-indigo-600" />
+                  5. Platform Capability Layers & Default Components
+                </h3>
+                <p className="text-xs text-[#6C757D] mt-0.5">
+                  Select and configure default / recommended platform components per capability layer. Customize providers, modify namespaces, or add custom components.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleOpenAddPlatformModal('layer')}
+                  className="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5"
+                >
+                  <Plus size={13} />
+                  <span>Add Custom Layer</span>
+                </button>
+
+                <div className="flex items-center bg-gray-100 p-1 rounded-xl text-xs font-bold text-gray-600">
+                  <button
+                    type="button"
+                    onClick={() => setLayerFilter('all')}
+                    className={cn("px-3 py-1 rounded-lg transition-all", layerFilter === 'all' && "bg-white text-indigo-600 shadow-xs")}
+                  >
+                    All ({platformLayers.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLayerFilter('enabled')}
+                    className={cn("px-3 py-1 rounded-lg transition-all", layerFilter === 'enabled' && "bg-white text-emerald-600 shadow-xs")}
+                  >
+                    Enabled ({platformLayers.filter(l => l.enabled).length})
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Layers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-1">
+              {platformLayers
+                .filter(layer => layerFilter === 'all' || (layerFilter === 'enabled' && layer.enabled))
+                .map((layer) => {
+                  const activeComp = layer.components[layer.selectedComponentIndex] || layer.components[0];
+                  return (
+                    <div
+                      key={layer.id}
+                      className={cn(
+                        "p-5 rounded-2xl border transition-all flex flex-col justify-between gap-4",
+                        layer.enabled 
+                          ? "bg-white border-indigo-200 shadow-sm ring-1 ring-indigo-500/10" 
+                          : "bg-gray-50/80 border-gray-200 opacity-75"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center font-bold",
+                            layer.enabled ? "bg-indigo-600 text-white shadow-xs" : "bg-gray-200 text-gray-500"
+                          )}>
+                            {layer.id === 'ingress' && <Globe size={20} />}
+                            {layer.id === 'storage' && <HardDrive size={20} />}
+                            {layer.id === 'monitoring' && <Activity size={20} />}
+                            {layer.id === 'security' && <Shield size={20} />}
+                            {layer.id === 'gitops' && <GitBranch size={20} />}
+                            {layer.id === 'database' && <Database size={20} />}
+                            {layer.id === 'messaging' && <Zap size={20} />}
+                            {layer.id === 'aiml' && <Brain size={20} />}
+                            {!['ingress','storage','monitoring','security','gitops','database','messaging','aiml'].includes(layer.id) && <Box size={20} />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-sm text-[#1A1A1A]">{layer.name}</h4>
+                              <span className={cn(
+                                "px-2 py-0.2 rounded-full text-[9px] font-bold uppercase",
+                                layer.enabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-600"
+                              )}>
+                                {layer.enabled ? 'Included' : 'Disabled'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#6C757D] mt-0.5 line-clamp-1">{layer.description}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLayer(layer.id)}
+                            className={cn(
+                              "w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer",
+                              layer.enabled ? "bg-indigo-600" : "bg-gray-300"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-5 h-5 rounded-full bg-white transition-transform shadow-xs",
+                              layer.enabled ? "translate-x-6" : "translate-x-0"
+                            )} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {layer.enabled && (
+                        <div className="space-y-3 pt-3 border-t border-gray-100">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-[#495057] uppercase tracking-wider">
+                              Selected Component Provider:
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddPlatformModal('component', layer.id)}
+                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                            >
+                              <Plus size={12} /> Add Component
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {layer.components.map((comp, cIdx) => {
+                              const isSelected = layer.selectedComponentIndex === cIdx;
+                              return (
+                                <button
+                                  key={comp.name}
+                                  type="button"
+                                  onClick={() => handleSelectComponent(layer.id, cIdx)}
+                                  className={cn(
+                                    "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 relative",
+                                    isSelected
+                                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                  )}
+                                >
+                                  <span>{comp.name}</span>
+                                  {comp.isRecommended && (
+                                    <span className={cn(
+                                      "text-[8px] font-black px-1.5 py-0.2 rounded-full",
+                                      isSelected ? "bg-indigo-400/40 text-white" : "bg-emerald-100 text-emerald-800"
+                                    )}>
+                                      ★ Rec
+                                    </span>
+                                  )}
+                                  {layer.components.length > 1 && !comp.isDefault && (
+                                    <span
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteComponent(layer.id, cIdx);
+                                      }}
+                                      className="ml-1 text-gray-400 hover:text-red-500 font-normal"
+                                    >
+                                      ✕
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {activeComp && (
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5">
+                              <p className="text-[11px] text-gray-600">{activeComp.description || 'Configured platform operator'}</p>
+                              <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 flex-wrap pt-1 border-t border-gray-200/60">
+                                <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold">Ver: {activeComp.version || 'latest'}</span>
+                                <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold text-indigo-600">Namespace: {activeComp.namespace || 'default'}</span>
+                                {activeComp.port && <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold">Port: {activeComp.port}</span>}
+                                {activeComp.replicas && <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold">Replicas: {activeComp.replicas}</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 6: Review, YAML Persistence & Version Control */}
+        {currentStep === 5 && (
           <motion.div
             key="step-provision"
             initial={{ opacity: 0, x: 20 }}
@@ -1144,30 +1909,85 @@ echo "==> Ready for KubeSDK runtime connection!"
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#1A1A1A]">5. Review Specifications & Download Setup Package</h3>
-                <p className="text-xs text-[#6C757D] mt-1">Review aggregated cluster metrics and download the complete self-contained deployment bundle.</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#1A1A1A]">6. Configuration Persistence, Version Control & Deployment</h3>
+                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-mono font-bold rounded-lg">
+                    {activeVersionTag}
+                  </span>
+                </div>
+                <p className="text-xs text-[#6C757D] mt-0.5">
+                  Save configurations to YAML, manage semantic version snapshots, edit manifests, import/export, and download self-contained `.zip` bundles.
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Version Control Action Toolbar */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={handleCopy}
-                  className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                  onClick={() => setIsSaveVersionModalOpen(true)}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5"
                 >
-                  {copied ? <CheckCircle2 size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                  <span>{copied ? 'Copied Script' : 'Copy Commands'}</span>
+                  <Save size={14} />
+                  <span>Save Version ({activeVersionTag})</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawYamlDraft(fullClusterConfigYaml);
+                    setRawYamlError(null);
+                    setIsRawYamlModalOpen(true);
+                  }}
+                  className="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  <Edit2 size={13} />
+                  <span>Edit Raw YAML</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportYamlInput('');
+                    setImportError(null);
+                    setIsImportModalOpen(true);
+                  }}
+                  className="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  <Upload size={13} />
+                  <span>Import YAML</span>
+                </button>
+
+                <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleExportYamlFile}
+                    className="px-2.5 py-1.5 hover:bg-white text-gray-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    title="Export cluster-config.yaml"
+                  >
+                    <FileCode size={13} className="text-indigo-600" />
+                    <span>.yaml</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportJsonFile}
+                    className="px-2.5 py-1.5 hover:bg-white text-gray-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    title="Export cluster-config.json"
+                  >
+                    <FileText size={13} className="text-emerald-600" />
+                    <span>.json</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   disabled={isDownloading}
                   onClick={handleDownloadPackage}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-                  <span>{isDownloading ? 'Bundling Archive...' : isAirgap ? 'Download Air-Gapped Package (.zip)' : 'Download Setup Package (.zip)'}</span>
+                  <span>{isDownloading ? 'Bundling...' : isAirgap ? 'Download Airgap Bundle (.zip)' : 'Download Setup Bundle (.zip)'}</span>
                 </button>
               </div>
             </div>
@@ -1191,16 +2011,56 @@ echo "==> Ready for KubeSDK runtime connection!"
                 <span className="text-sm font-bold font-mono text-sky-300">{orchestrator.toUpperCase()}</span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Network Mode</span>
-                <span className="text-sm font-bold font-mono text-amber-300">{isAirgap ? 'Airgap Offline' : 'Online Cloud'}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Platform Components</span>
+                <span className="text-sm font-bold font-mono text-emerald-300">{enabledPlatformLayers.length} Enabled</span>
               </div>
             </div>
 
-            {/* Generated Script Preview */}
-            <div className="relative">
-              <pre className="p-4 bg-slate-950 text-slate-200 rounded-2xl font-mono text-xs leading-relaxed overflow-x-auto border border-slate-800 max-h-[280px]">
-                {generatedScript}
-              </pre>
+            {/* Split View: Live Synchronized YAML & Provisioning Script */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Live Cluster YAML Manifest */}
+              <div className="bg-slate-950 text-slate-200 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+                <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileCode size={14} className="text-indigo-400" />
+                    <span className="text-xs font-bold text-slate-200 font-mono">cluster-config.yaml ({activeVersionTag})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(fullClusterConfigYaml);
+                      alert('Copied cluster-config.yaml to clipboard!');
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 font-mono"
+                  >
+                    <Copy size={12} /> Copy YAML
+                  </button>
+                </div>
+                <pre className="p-4 font-mono text-xs leading-relaxed overflow-x-auto flex-1 max-h-[300px] text-emerald-300">
+                  {fullClusterConfigYaml}
+                </pre>
+              </div>
+
+              {/* Live Bash Provisioning Script */}
+              <div className="bg-slate-950 text-slate-200 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+                <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Terminal size={14} className="text-sky-400" />
+                    <span className="text-xs font-bold text-slate-200 font-mono">install.sh (Automated Provisioner)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 font-mono"
+                  >
+                    {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    <span>{copied ? 'Copied' : 'Copy Script'}</span>
+                  </button>
+                </div>
+                <pre className="p-4 font-mono text-xs leading-relaxed overflow-x-auto flex-1 max-h-[300px] text-slate-300">
+                  {generatedScript}
+                </pre>
+              </div>
             </div>
 
             {/* Pre-fill credentials helper */}
@@ -1257,7 +2117,501 @@ echo "==> Ready for KubeSDK runtime connection!"
         </div>
       </div>
 
-      {/* Interactive Modal to Add New Target Config directly into YAML */}
+      {/* --- Modal 1: Version History & Profiles Explorer --- */}
+      <AnimatePresence>
+        {isVersionHistoryModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <History size={20} className="text-indigo-400" />
+                  <div>
+                    <h3 className="font-bold text-sm">Infrastructure Deployment Profiles & Version History</h3>
+                    <p className="text-xs text-slate-400">Manage saved cluster definitions, compare snapshots, and rollback to prior versions.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsVersionHistoryModalOpen(false)}
+                  className="text-gray-400 hover:text-white font-bold text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                {savedProfiles.length === 0 ? (
+                  <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 space-y-3">
+                    <Bookmark size={32} className="mx-auto text-gray-400" />
+                    <div>
+                      <h4 className="font-bold text-sm text-[#1A1A1A]">No Saved Deployment Profiles Yet</h4>
+                      <p className="text-xs text-[#6C757D] mt-1">Use the "Save Version" button in Step 6 to persist this infrastructure definition into config/.</p>
+                    </div>
+                  </div>
+                ) : (
+                  savedProfiles.map(prof => (
+                    <div key={prof.id} className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-sm text-[#1A1A1A]">{prof.name}</h4>
+                            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-mono font-bold rounded-md">
+                              Active: {prof.activeVersion}
+                            </span>
+                          </div>
+                          {prof.description && <p className="text-xs text-[#6C757D] mt-0.5">{prof.description}</p>}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleLoadProfileVersion(prof.id, prof.activeVersion)}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1"
+                          >
+                            <RotateCcw size={12} />
+                            <span>Load into Wizard</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProfile(prof.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                            title="Delete Profile"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Version Snapshots List */}
+                      <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Version History:</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {(prof.versions || []).map(v => (
+                            <div key={v.version} className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between text-xs">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-bold text-indigo-700">{v.version}</span>
+                                  <span className="text-[10px] text-gray-500">• {new Date(v.savedAt).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-[11px] text-gray-600 truncate max-w-[200px]">{v.comment || 'Saved configuration'}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleLoadProfileVersion(prof.id, v.version)}
+                                className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold"
+                              >
+                                Restore
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Modal 2: Save New Version Modal --- */}
+      <AnimatePresence>
+        {isSaveVersionModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden"
+            >
+              <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Save size={20} />
+                  <div>
+                    <h3 className="font-bold text-sm">Save Configuration Version</h3>
+                    <p className="text-xs text-emerald-100">Persist full YAML definition to backend config/ with version history.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSaveVersionModalOpen(false)}
+                  className="text-emerald-100 hover:text-white font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveNewVersion} className="p-5 space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Profile Name</label>
+                  <input
+                    type="text"
+                    value={activeProfileName}
+                    onChange={e => setActiveProfileName(e.target.value)}
+                    placeholder="e.g. Production Harvester HA Cluster"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none focus:border-emerald-500 font-medium"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={activeProfileDesc}
+                    onChange={e => setActiveProfileDesc(e.target.value)}
+                    placeholder="e.g. 5-node cluster with Ceph, Prometheus, and Ingress"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Semantic Version Bump</label>
+                    <select
+                      value={versionBumpType}
+                      onChange={e => setVersionBumpType(e.target.value as any)}
+                      className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none"
+                    >
+                      <option value="patch">Patch (vX.X.+1)</option>
+                      <option value="minor">Minor (vX.+1.0)</option>
+                      <option value="major">Major (v+1.0.0)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Author</label>
+                    <input
+                      type="text"
+                      value={versionAuthor}
+                      onChange={e => setVersionAuthor(e.target.value)}
+                      placeholder="e.g. Lead Architect"
+                      className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Changelog Comment</label>
+                  <textarea
+                    value={versionComment}
+                    onChange={e => setVersionComment(e.target.value)}
+                    placeholder="Describe what changed in this version..."
+                    rows={2}
+                    className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-xl outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsSaveVersionModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingVersion}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+                  >
+                    {isSavingVersion ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+                    <span>Confirm & Persist YAML</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Modal 3: Interactive Raw YAML Editor --- */}
+      <AnimatePresence>
+        {isRawYamlModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[88vh]"
+            >
+              <div className="p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <FileCode size={20} className="text-indigo-400" />
+                  <div>
+                    <h3 className="font-bold text-sm">Interactive Cluster YAML Editor</h3>
+                    <p className="text-xs text-slate-400">Directly modify the declarative infrastructure manifest.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRawYamlModalOpen(false)}
+                  className="text-gray-400 hover:text-white font-bold text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-5 flex-1 flex flex-col space-y-3 overflow-hidden">
+                {rawYamlError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    <span>{rawYamlError}</span>
+                  </div>
+                )}
+                <textarea
+                  value={rawYamlDraft}
+                  onChange={e => setRawYamlDraft(e.target.value)}
+                  className="w-full flex-1 p-4 font-mono text-xs leading-relaxed bg-slate-950 text-emerald-300 rounded-2xl border border-slate-800 outline-none resize-none min-h-[350px]"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-mono">Lines: {rawYamlDraft.split('\n').length}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsRawYamlModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-200 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveRawYaml}
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+                  >
+                    <Check size={14} />
+                    <span>Validate & Apply to Wizard</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Modal 4: Import YAML / Config --- */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="p-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Upload size={20} />
+                  <div>
+                    <h3 className="font-bold text-sm">Import Infrastructure YAML Configuration</h3>
+                    <p className="text-xs text-blue-100">Upload a cluster-config.yaml or paste manifest to populate wizard.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="text-blue-100 hover:text-white font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleImportYaml} className="p-5 space-y-4 flex-1 flex flex-col">
+                {importError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                    {importError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Upload YAML File</label>
+                  <input
+                    type="file"
+                    accept=".yaml,.yml,.json"
+                    onChange={handleFileUpload}
+                    className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                  />
+                </div>
+
+                <div className="flex-1 flex flex-col">
+                  <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1">Or Paste YAML Content</label>
+                  <textarea
+                    value={importYamlInput}
+                    onChange={e => setImportYamlInput(e.target.value)}
+                    placeholder="Paste cluster-config.yaml content here..."
+                    rows={8}
+                    className="w-full flex-1 p-3 font-mono text-xs bg-slate-950 text-emerald-300 rounded-xl border border-gray-300 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+                  >
+                    <Upload size={14} />
+                    <span>Import & Apply</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Modal 5: Add Custom Platform Layer or Component --- */}
+      <AnimatePresence>
+        {isAddPlatformModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+            >
+              <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers size={18} className="text-indigo-600" />
+                  <h4 className="font-bold text-xs text-[#1A1A1A]">
+                    {platformModalMode === 'layer' ? 'Add New Platform Capability Layer' : 'Add Component to Layer'}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddPlatformModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePlatformItem} className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+                {platformModalMode === 'layer' ? (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Layer Name</label>
+                      <input
+                        type="text"
+                        value={newLayerName}
+                        onChange={e => setNewLayerName(e.target.value)}
+                        placeholder="e.g. Service Mesh, Disaster Recovery"
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Description</label>
+                      <textarea
+                        value={newLayerDesc}
+                        onChange={e => setNewLayerDesc(e.target.value)}
+                        placeholder="Purpose of this platform capability layer..."
+                        rows={2}
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Target Layer</label>
+                      <select
+                        value={targetLayerId}
+                        onChange={e => setTargetLayerId(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                      >
+                        {platformLayers.map(l => (
+                          <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Component Name</label>
+                        <input
+                          type="text"
+                          value={newCompName}
+                          onChange={e => setNewCompName(e.target.value)}
+                          placeholder="e.g. Istio Service Mesh"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Version</label>
+                        <input
+                          type="text"
+                          value={newCompVersion}
+                          onChange={e => setNewCompVersion(e.target.value)}
+                          placeholder="e.g. v1.21.0"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Target Namespace</label>
+                        <input
+                          type="text"
+                          value={newCompNamespace}
+                          onChange={e => setNewCompNamespace(e.target.value)}
+                          placeholder="e.g. istio-system"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Container Image</label>
+                        <input
+                          type="text"
+                          value={newCompImage}
+                          onChange={e => setNewCompImage(e.target.value)}
+                          placeholder="e.g. istio/pilot:1.21.0"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddPlatformModalOpen(false)}
+                    className="px-3.5 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5"
+                  >
+                    <Save size={12} />
+                    <span>Add to Platform Wizard</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Modal 6: Add Custom Target Hardware/Cloud into config/*.yaml --- */}
       <AnimatePresence>
         {isInlineAddModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">

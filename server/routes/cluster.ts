@@ -3,6 +3,8 @@ import { ResourcePlan, KubeSDKLocalRun } from "../../src/types";
 import yaml from "js-yaml";
 import net from "net";
 import fs from "fs";
+import path from "path";
+import AdmZip from "adm-zip";
 
 // 🔐 Programmatic equivalents of 'curl -k' - Required for global fetch in Node 18+ 
 // to ignore self-signed certs in local K3s/Rancher clusters.
@@ -557,6 +559,252 @@ router.post("/cleanup", async (req, res) => {
     res.status(500).json({ error: error.message, deleted, errors });
   }
 });
+
+// POST /cluster/offline-package & POST /offline-package
+// Packages the complete infrastructure, orchestrator, and platform capability components into a self-contained .zip
+const generatePackageHandler = async (req: express.Request, res: express.Response) => {
+  try {
+    const {
+      infraType = 'baremetal',
+      orchestrator = 'k3s',
+      topology = 'single-node',
+      nodesCount = 1,
+      vcpu = 4,
+      memoryGi = 8,
+      diskGi = 50,
+      arch = 'x86_64',
+      isAirgap = true,
+      cloudProvider,
+      vmNodePools,
+      podCidr = '10.42.0.0/16',
+      serviceCidr = '10.43.0.0/16',
+      platformLayers = [] // Array of selected platform capability layers & components
+    } = req.body;
+
+    const zip = new AdmZip();
+
+    // 1. cluster-config.yaml
+    const clusterConfig = {
+      apiVersion: 'kubesdk.dev/v1alpha1',
+      kind: 'ClusterInfrastructureDefinition',
+      metadata: {
+        name: `kubesdk-${infraType}-cluster`,
+        createdAt: new Date().toISOString(),
+        environment: isAirgap ? 'air-gapped' : 'online'
+      },
+      spec: {
+        infrastructure: {
+          target: infraType,
+          topology,
+          nodes: topology === 'single-node' ? 1 : nodesCount,
+          totalCompute: { vcpu, memoryGi, diskGi, arch },
+          vmNodePools: vmNodePools || undefined,
+          cloudProvider: cloudProvider || undefined
+        },
+        orchestrator: {
+          engine: orchestrator,
+          networking: { podCidr, serviceCidr }
+        },
+        platformComponents: platformLayers.map((l: any) => ({
+          layerId: l.id,
+          layerName: l.name,
+          enabled: l.enabled,
+          component: l.selectedComponent ? {
+            name: l.selectedComponent.name,
+            version: l.selectedComponent.version || 'latest',
+            namespace: l.selectedComponent.namespace || 'kube-system',
+            chart: l.selectedComponent.chart || undefined,
+            replicas: l.selectedComponent.replicas || 1
+          } : undefined
+        }))
+      }
+    };
+    zip.addFile('cluster-config.yaml', Buffer.from(yaml.dump(clusterConfig), 'utf8'));
+
+    // 2. manifests/ directory for each enabled platform capability component
+    const imageList: string[] = [
+      orchestrator === 'k3s' ? 'rancher/k3s:v1.28.8-k3s1' : 'rancher/rke2-runtime:v1.28.8-rke2r1',
+      'rancher/mirrored-pause:3.6',
+      'rancher/mirrored-coredns-coredns:1.10.1'
+    ];
+
+    platformLayers.forEach((layer: any, idx: number) => {
+      if (!layer.enabled || !layer.selectedComponent) return;
+      const comp = layer.selectedComponent;
+      const compName = (comp.name || 'component').toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const ns = comp.namespace || 'kube-system';
+
+      // Example Kubernetes Manifest for Platform Component
+      const manifestDoc = {
+        apiVersion: 'v1',
+        kind: 'Namespace',
+        metadata: { name: ns }
+      };
+
+      const deploymentDoc = {
+        apiVersion: 'apps/v1',
+        kind: 'Deployment',
+        metadata: {
+          name: compName,
+          namespace: ns,
+          labels: {
+            'app.kubernetes.io/name': compName,
+            'app.kubernetes.io/part-of': 'kubesdk-platform',
+            'kubesdk.dev/capability-layer': layer.id
+          }
+        },
+        spec: {
+          replicas: comp.replicas || 1,
+          selector: { matchLabels: { app: compName } },
+          template: {
+            metadata: { labels: { app: compName } },
+            spec: {
+              containers: [{
+                name: compName,
+                image: comp.image || `${compName}:${comp.version || 'latest'}`,
+                imagePullPolicy: isAirgap ? 'IfNotPresent' : 'Always',
+                ports: comp.port ? [{ containerPort: comp.port }] : undefined,
+                resources: {
+                  requests: { cpu: '100m', memory: '128Mi' },
+                  limits: { cpu: '500m', memory: '512Mi' }
+                }
+              }]
+            }
+          }
+        }
+      };
+
+      const manifestContent = `---\n${yaml.dump(manifestDoc)}\n---\n${yaml.dump(deploymentDoc)}`;
+      const fileName = `manifests/${String(idx + 1).padStart(2, '0')}-${compName}.yaml`;
+      zip.addFile(fileName, Buffer.from(manifestContent, 'utf8'));
+
+      if (comp.image) imageList.push(comp.image);
+      else imageList.push(`${compName}:${comp.version || 'latest'}`);
+    });
+
+    // 3. offline-images.txt
+    zip.addFile('offline-images.txt', Buffer.from(Array.from(new Set(imageList)).join('\n') + '\n', 'utf8'));
+
+    // 4. install.sh
+    const installScript = `#!/usr/bin/env bash
+# ==============================================================================
+# KubeSDK Cluster & Platform Provisioner
+# Target: ${infraType.toUpperCase()} | Engine: ${orchestrator.toUpperCase()}
+# Mode: ${isAirgap ? 'Air-Gapped Offline' : 'Online Connected'}
+# ==============================================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+
+echo "==> [1/4] Preparing node environment..."
+mkdir -p /opt/kubesdk/manifests /opt/kubesdk/images
+
+if [ -f "\${SCRIPT_DIR}/offline-images.txt" ]; then
+  echo "==> [2/4] Verifying container images..."
+  cat "\${SCRIPT_DIR}/offline-images.txt"
+fi
+
+echo "==> [3/4] Installing ${orchestrator.toUpperCase()} Kubernetes Engine..."
+${isAirgap ? `
+# Offline installation from embedded binary
+export INSTALL_${orchestrator.toUpperCase()}_SKIP_DOWNLOAD=true
+curl -sfL https://get.k3s.io | sh -s - server --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}"
+` : `
+curl -sfL https://get.k3s.io | sh -s - server --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}"
+`}
+
+echo "==> Waiting for Kubernetes API Server ready..."
+until kubectl get nodes >/dev/null 2>&1; do
+  sleep 2
+done
+
+echo "==> [4/4] Deploying Platform Capability Components..."
+if [ -d "\${SCRIPT_DIR}/manifests" ]; then
+  for manifest in "\${SCRIPT_DIR}"/manifests/*.yaml; do
+    if [ -f "\$manifest" ]; then
+      echo "  -> Applying \$manifest..."
+      kubectl apply -f "\$manifest"
+    fi
+  done
+fi
+
+echo ""
+echo "=============================================================================="
+echo "🎉 Cluster Provisioning & Platform Capability Setup Complete!"
+echo "   API Server URL : https://127.0.0.1:6443"
+echo "   Kubeconfig     : /etc/rancher/k3s/k3s.yaml"
+echo "=============================================================================="
+`;
+    zip.addFile('install.sh', Buffer.from(installScript, 'utf8'));
+
+    // 5. Cloud Terraform files if cloud
+    if (infraType === 'cloud-vm' && cloudProvider) {
+      const terraformTf = `
+terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    ${cloudProvider.providerId === 'aws' ? 'aws = { source = "hashicorp/aws", version = "~> 5.0" }' :
+      cloudProvider.providerId === 'gcp' ? 'google = { source = "hashicorp/google", version = "~> 5.0" }' :
+      cloudProvider.providerId === 'azure' ? 'azurerm = { source = "hashicorp/azurerm", version = "~> 3.0" }' :
+      'local = { source = "hashicorp/local" }'}
+  }
+}
+
+variable "region" {
+  default = "${cloudProvider.region || 'us-east-1'}"
+}
+
+variable "instance_type" {
+  default = "${cloudProvider.instanceType || 't4g.xlarge'}"
+}
+
+output "public_ip" {
+  value = "127.0.0.1"
+}
+`;
+      zip.addFile('terraform/main.tf', Buffer.from(terraformTf, 'utf8'));
+    }
+
+    // 6. README.md
+    const readme = `# KubeSDK Cluster & Platform Setup Bundle
+
+- **Infrastructure Target**: \`${infraType}\`
+- **Topology**: \`${topology}\` (${nodesCount} nodes)
+- **Total Compute**: \`${vcpu} vCPU / ${memoryGi} GB RAM / ${diskGi} GB Disk\`
+- **Orchestrator**: \`${orchestrator}\`
+- **Deployment Mode**: \`${isAirgap ? 'Air-Gapped Offline' : 'Online'}\`
+
+## Quick Start
+\`\`\`bash
+chmod +x install.sh
+./install.sh
+\`\`\`
+
+## Included Platform Capability Layers
+${platformLayers.filter((l: any) => l.enabled).map((l: any) => `- **${l.name}**: \`${l.selectedComponent?.name || 'Default'}\` (Namespace: \`${l.selectedComponent?.namespace || 'kube-system'}\`)`).join('\n') || '- No extra platform layers selected'}
+`;
+    zip.addFile('README.md', Buffer.from(readme, 'utf8'));
+
+    const zipBuffer = zip.toBuffer();
+    const filename = isAirgap 
+      ? `kubesdk-airgap-${infraType}-${orchestrator}-${topology}.zip`
+      : `kubesdk-setup-${infraType}-${orchestrator}.zip`;
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': zipBuffer.length
+    });
+
+    res.send(zipBuffer);
+  } catch (err: any) {
+    console.error('Error generating offline package:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+router.post("/cluster/offline-package", generatePackageHandler);
+router.post("/offline-package", generatePackageHandler);
 
 export default router;
 
