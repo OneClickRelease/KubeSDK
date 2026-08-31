@@ -9,7 +9,7 @@ import {
   ArrowRight, ArrowLeft, CheckCircle, Database, HelpCircle, HardDrive,
   Activity, GitBranch, BarChart, Brain, Container, Settings, Edit2,
   Sliders, History, Upload, FileCode, ExternalLink, Archive, FileText,
-  Bookmark, CheckSquare, RotateCcw
+  Bookmark, CheckSquare, RotateCcw, Laptop, Monitor, FolderSync, Share2, Battery
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -25,7 +25,9 @@ import {
   VMNodeCategory,
   InfraType,
   OrchestratorType,
-  TopologyType
+  TopologyType,
+  VirtualContainerPreset,
+  VIRTUAL_CONTAINER_PRESETS
 } from '../wizard/steps/OrchestratorDeploymentCollapsible';
 
 interface DefineKubeInfraViewProps {
@@ -229,6 +231,15 @@ export const DefineKubeInfraView = ({
   const [cloudStorageType, setCloudStorageType] = useState<string>('gp3');
   const [cloudStorageSize, setCloudStorageSize] = useState<number>(50);
 
+  // Virtual Container & VDI Developer Workstation
+  const [containerList, setContainerList] = useState<VirtualContainerPreset[]>(VIRTUAL_CONTAINER_PRESETS);
+  const [selectedContainerId, setSelectedContainerId] = useState<string>('vdi-developer-laptop');
+  const [containerHostEnv, setContainerHostEnv] = useState<string>('laptop-mac');
+  const [containerNetworkMode, setContainerNetworkMode] = useState<'host-forward' | 'bridge-nat' | 'host-net'>('host-forward');
+  const [containerWorkspaceMount, setContainerWorkspaceMount] = useState<string>('~/workspace');
+  const [containerSocketSharing, setContainerSocketSharing] = useState<boolean>(true);
+  const [containerBatteryThrottling, setContainerBatteryThrottling] = useState<boolean>(false);
+
   // Common Hardware Specs
   const [vcpu, setVcpu] = useState<number>(4);
   const [memoryGi, setMemoryGi] = useState<number>(8);
@@ -318,6 +329,7 @@ export const DefineKubeInfraView = ({
           if (json.data.baremetalPresets?.length) setHardwareList(json.data.baremetalPresets);
           if (json.data.hypervisorPlatforms?.length) setHypervisorList(json.data.hypervisorPlatforms);
           if (json.data.cloudProviders?.length) setCloudList(json.data.cloudProviders);
+          if (json.data.virtualContainers?.length) setContainerList(json.data.virtualContainers);
         }
       })
       .catch(err => console.log('Using default local presets', err));
@@ -326,6 +338,17 @@ export const DefineKubeInfraView = ({
   }, []);
 
   // Helpers
+  const activeContainer = useMemo(() => {
+    return containerList.find(c => c.id === selectedContainerId) || containerList[0] || VIRTUAL_CONTAINER_PRESETS[0];
+  }, [containerList, selectedContainerId]);
+
+  const handleSelectContainer = (preset: VirtualContainerPreset) => {
+    setSelectedContainerId(preset.id);
+    setVcpu(preset.defaultVcpu || 4);
+    setMemoryGi(preset.defaultMemoryGi || 8);
+    setDiskGi(preset.defaultDiskGi || 40);
+  };
+
   const activeCloud = useMemo(() => {
     return cloudList.find(c => c.id === selectedCloudProvider) || cloudList[0] || CLOUD_PROVIDERS[0];
   }, [cloudList, selectedCloudProvider]);
@@ -552,6 +575,15 @@ export const DefineKubeInfraView = ({
             allowedCidr: cloudAllowedCidr,
             storageType: cloudStorageType,
             storageSizeGi: cloudStorageSize
+          } : undefined,
+          virtualContainer: infraType === 'docker-cluster' ? {
+            engine: selectedContainerId,
+            engineName: activeContainer.name,
+            hostEnvironment: containerHostEnv,
+            networking: containerNetworkMode,
+            workspaceMount: containerWorkspaceMount,
+            socketSharing: containerSocketSharing,
+            batteryThrottling: containerBatteryThrottling
           } : undefined
         },
         orchestrator: {
@@ -579,7 +611,9 @@ export const DefineKubeInfraView = ({
     selectedHardwareId, selectedHypervisor, vmMode, vmNodePools,
     selectedCloudProvider, cloudRegion, cloudInstanceType, cloudUseSpot,
     cloudAutoShutdown, cloudShutdownHour, cloudAllowedCidr, cloudStorageType,
-    cloudStorageSize, orchestrator, podCidr, serviceCidr, platformLayers
+    cloudStorageSize, selectedContainerId, activeContainer, containerHostEnv,
+    containerNetworkMode, containerWorkspaceMount, containerSocketSharing,
+    containerBatteryThrottling, orchestrator, podCidr, serviceCidr, platformLayers
   ]);
 
   // Generate provisioning script preview
@@ -616,6 +650,36 @@ echo "==> Applying Platform Capability Layer Manifests..."
 ${activeComponentsList}
 
 echo "==> Setup Complete! API Server available at: https://\$(terraform output -raw public_ip):6443"
+`;
+    }
+
+    if (infraType === 'docker-cluster') {
+      return `#!/usr/bin/env bash
+# ==============================================================================
+# KubeSDK Local Container Sandbox & Developer Workstation
+# Target Environment: ${containerHostEnv} | Engine: ${activeContainer.name}
+# Networking: ${containerNetworkMode} | Workspace: ${containerWorkspaceMount}
+# ==============================================================================
+set -euo pipefail
+
+echo "==> [1/4] Preparing Developer Host Environment (${containerHostEnv})..."
+mkdir -p "${containerWorkspaceMount}"
+${containerSocketSharing ? 'echo "==> Host Docker / Containerd socket shared (/var/run/docker.sock)"' : ''}
+${containerBatteryThrottling ? 'echo "==> Low-power battery governor active: throttling background iterations"' : ''}
+
+echo "==> [2/4] Bootstrapping ${activeContainer.name} sandbox (${clusterMetrics.totalVcpu} vCPU, ${clusterMetrics.totalMemGi}GB RAM)..."
+${selectedContainerId === 'k3d-cluster' 
+  ? `k3d cluster create kubesdk-dev --servers ${nodesCount} --port "8080:80@loadbalancer" --port "8443:443@loadbalancer" --port "6443:6443@loadbalancer" --volume "${containerWorkspaceMount}:/workspace@all"`
+  : selectedContainerId === 'kind-cluster'
+    ? `kind create cluster --name kubesdk-dev`
+    : `curl -sfL https://get.k3s.io | sh -s - server --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}" --write-kubeconfig-mode 644`}
+
+echo "==> [3/4] Deploying Platform Capability Layer Manifests..."
+${activeComponentsList}
+
+echo "==> [4/4] Workstation Container Cluster is Online & Ready!"
+echo "==> API Server: https://127.0.0.1:6443"
+echo "==> Ingress Forwarding: http://localhost:8080 | https://localhost:8443"
 `;
     }
 
@@ -666,7 +730,13 @@ echo "==> [3/3] Verifying Cluster Nodes Status..."
 kubectl get nodes -o wide
 echo "==> Ready for KubeSDK runtime connection!"
 `;
-  }, [infraType, activeCloud, cloudRegion, cloudInstanceType, cloudUseSpot, cloudAutoShutdown, cloudShutdownHour, podCidr, serviceCidr, isAirgap, osArch, orchestrator, topology, clusterMetrics, nodesCount, enabledPlatformLayers]);
+  }, [
+    infraType, activeCloud, cloudRegion, cloudInstanceType, cloudUseSpot,
+    cloudAutoShutdown, cloudShutdownHour, activeContainer, selectedContainerId,
+    containerHostEnv, containerNetworkMode, containerWorkspaceMount,
+    containerSocketSharing, containerBatteryThrottling, podCidr, serviceCidr,
+    isAirgap, osArch, orchestrator, topology, clusterMetrics, nodesCount, enabledPlatformLayers
+  ]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedScript);
@@ -855,6 +925,13 @@ echo "==> Ready for KubeSDK runtime connection!"
     if (infra?.cloudProvider?.region) setCloudRegion(infra.cloudProvider.region);
     if (infra?.cloudProvider?.instanceType) setCloudInstanceType(infra.cloudProvider.instanceType);
 
+    if (infra?.virtualContainer?.engine) setSelectedContainerId(infra.virtualContainer.engine);
+    if (infra?.virtualContainer?.hostEnvironment) setContainerHostEnv(infra.virtualContainer.hostEnvironment);
+    if (infra?.virtualContainer?.networking) setContainerNetworkMode(infra.virtualContainer.networking);
+    if (infra?.virtualContainer?.workspaceMount) setContainerWorkspaceMount(infra.virtualContainer.workspaceMount);
+    if (infra?.virtualContainer?.socketSharing !== undefined) setContainerSocketSharing(infra.virtualContainer.socketSharing);
+    if (infra?.virtualContainer?.batteryThrottling !== undefined) setContainerBatteryThrottling(infra.virtualContainer.batteryThrottling);
+
     if (orch?.engine) setOrchestrator(orch.engine);
     if (orch?.networking?.podCidr) setPodCidr(orch.networking.podCidr);
     if (orch?.networking?.serviceCidr) setServiceCidr(orch.networking.serviceCidr);
@@ -1026,6 +1103,11 @@ echo "==> Ready for KubeSDK runtime connection!"
             return { key: key || 'apiKey', label: label || key, placeholder: `Enter ${label || key}...`, isSecret: type === 'secret', desc: `Authentication field` };
           });
         }
+      } else if (inlineModalType === 'container') {
+        if (!payload.name) throw new Error('Container engine / VDI profile name is required');
+        payload.defaultVcpu = Number(payload.defaultVcpu) || 4;
+        payload.defaultMemoryGi = Number(payload.defaultMemoryGi) || 8;
+        payload.defaultDiskGi = Number(payload.defaultDiskGi) || 40;
       }
 
       const res = await fetch(`/api/config/infrastructure/${inlineModalType}`, {
@@ -1056,6 +1138,12 @@ echo "==> Ready for KubeSDK runtime connection!"
         setCloudList(prev => [...prev, addedItem]);
         setSelectedCloudProvider(addedItem.id);
         if (addedItem.defaultRegion) setCloudRegion(addedItem.defaultRegion);
+      } else if (inlineModalType === 'container') {
+        setContainerList(prev => [...prev, addedItem]);
+        setSelectedContainerId(addedItem.id);
+        setVcpu(addedItem.defaultVcpu || 4);
+        setMemoryGi(addedItem.defaultMemoryGi || 8);
+        setDiskGi(addedItem.defaultDiskGi || 40);
       }
 
       setIsInlineAddModalOpen(false);
@@ -1547,17 +1635,258 @@ echo "==> Ready for KubeSDK runtime connection!"
               </div>
             )}
 
-            {/* Container */}
+            {/* Virtual Container & Developer Workstation (VDI) */}
             {infraType === 'docker-cluster' && (
-              <div className="space-y-4">
-                <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
-                  <h3 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
-                    <Box size={18} className="text-emerald-600" />
-                    Local Container Sandbox Configuration
-                  </h3>
-                  <p className="text-xs text-emerald-900/80 mt-0.5">
-                    Spins up lightweight containerized nodes using Docker, Podman, k3d, or KinD with near-instant boot times.
-                  </p>
+              <div className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/80">
+                  <div>
+                    <h3 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+                      <Laptop size={18} className="text-emerald-600" />
+                      Container Sandbox & Developer Workstation (VDI)
+                    </h3>
+                    <p className="text-xs text-emerald-900/80 mt-0.5">
+                      Configure localized container runtimes, developer laptops (macOS Apple Silicon, Windows WSL2, Linux), or virtual desktop infrastructure (Citrix, VMware Horizon, Remote Workstations) with zero-cost fast iteration.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInlineModal('container')}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5"
+                    >
+                      <Plus size={13} />
+                      <span>Add Container / VDI Profile</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Container Engines & VDI Profiles Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {containerList.map((engine: any) => {
+                    const isSelected = selectedContainerId === engine.id;
+                    const isVdi = engine.id === 'vdi-developer-laptop' || engine.engineType === 'vdi-workstation' || engine.category === 'Developer Workstation';
+                    return (
+                      <button
+                        key={engine.id}
+                        type="button"
+                        onClick={() => handleSelectContainer(engine)}
+                        className={cn(
+                          "p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 relative cursor-pointer",
+                          isSelected
+                            ? "bg-white border-emerald-600 shadow-md ring-2 ring-emerald-500/20"
+                            : "bg-white border-gray-200 hover:border-emerald-300 hover:bg-gray-50/50"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className={cn(
+                              "p-2 rounded-xl border flex items-center justify-center",
+                              isVdi ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                            )}>
+                              {isVdi ? <Laptop size={18} /> : <Box size={18} />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn(
+                                  "text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md font-mono",
+                                  isVdi ? "bg-indigo-100 text-indigo-800" : "bg-emerald-100 text-emerald-800"
+                                )}>
+                                  {engine.category || 'Container'}
+                                </span>
+                              </div>
+                              <h4 className="text-xs font-bold text-[#1A1A1A] mt-0.5 line-clamp-1">{engine.name}</h4>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                              <Check size={12} />
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-[#6C757D] line-clamp-2">{engine.desc}</p>
+
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100 text-[10px] font-mono text-gray-600 flex-wrap">
+                          <span className="px-2 py-0.5 bg-gray-100 rounded font-bold">{engine.defaultVcpu || vcpu} vCPU</span>
+                          <span className="px-2 py-0.5 bg-gray-100 rounded font-bold">{engine.defaultMemoryGi || memoryGi} GB RAM</span>
+                          <span className="px-2 py-0.5 bg-gray-100 rounded font-bold">{engine.defaultDiskGi || diskGi} GB Disk</span>
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded font-bold">{engine.engineType || 'container'}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Workstation / VDI Specific Tuning Settings */}
+                <div className="p-5 bg-gray-50/80 rounded-2xl border border-gray-200 space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sliders size={16} className="text-emerald-600" />
+                      <h4 className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
+                        Developer Workstation & VDI Environment Configuration
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-mono">
+                      Active: {activeContainer.name}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Host OS / VDI Platform Selection */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#495057] uppercase mb-1.5 flex items-center gap-1.5">
+                        <Monitor size={14} className="text-gray-500" />
+                        Host Operating System / VDI Platform
+                      </label>
+                      <select
+                        value={containerHostEnv}
+                        onChange={e => setContainerHostEnv(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-xl outline-none font-medium text-gray-800"
+                      >
+                        <optgroup label="Developer Laptops & Local Machines">
+                          <option value="laptop-mac">Developer Laptop: macOS (Apple Silicon M1/M2/M3/M4 or Intel)</option>
+                          <option value="laptop-windows-wsl2">Developer Laptop: Windows 11 (WSL2 Ubuntu / Debian)</option>
+                          <option value="laptop-linux">Developer Laptop: Linux Workstation (Ubuntu / Fedora / Arch / RHEL)</option>
+                        </optgroup>
+                        <optgroup label="VDI & Hosted Virtual Desktops">
+                          <option value="vdi-citrix">VDI Hosted Desktop: Citrix Virtual Apps & Desktops (HDX)</option>
+                          <option value="vdi-horizon">VDI Hosted Desktop: VMware Horizon / Omnissa (Blast / PCoIP)</option>
+                          <option value="vdi-remote-sandbox">Remote Dev Sandbox: Cloud Workstation (Coder / Gitpod / Codespaces)</option>
+                        </optgroup>
+                      </select>
+                      <p className="text-[10px] text-gray-500 mt-1">Select your workstation type to apply host kernel file-sharing and network bridging parameters.</p>
+                    </div>
+
+                    {/* Developer Networking & Port Forwarding */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#495057] uppercase mb-1.5 flex items-center gap-1.5">
+                        <Globe size={14} className="text-gray-500" />
+                        Developer Networking & Port Forwarding
+                      </label>
+                      <select
+                        value={containerNetworkMode}
+                        onChange={e => setContainerNetworkMode(e.target.value as any)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-xl outline-none font-medium text-gray-800"
+                      >
+                        <option value="host-forward">Direct Host Port Forwarding (80:8080, 443:8443, 6443:6443)</option>
+                        <option value="bridge-nat">Isolated Bridge Network (NAT with Internal DNS Service Resolution)</option>
+                        <option value="host-net">Host Network Mode (Shared Linux Network Namespace - Zero NAT)</option>
+                      </select>
+                      <p className="text-[10px] text-gray-500 mt-1">Configures ingress traffic routing from your laptop or VDI browser directly into local pods.</p>
+                    </div>
+                  </div>
+
+                  {/* Resource Sliders / Compute Allocation */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="p-3 bg-white rounded-xl border border-gray-200 shadow-xs">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold text-gray-700">CPU Allocation:</span>
+                        <span className="font-mono font-bold text-emerald-600">{vcpu} vCPU Cores</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={16}
+                        step={1}
+                        value={vcpu}
+                        onChange={e => setVcpu(parseInt(e.target.value) || 2)}
+                        className="w-full accent-emerald-600 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-gray-400 font-mono mt-0.5">
+                        <span>1 Core</span>
+                        <span>8 Cores</span>
+                        <span>16 Cores</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-gray-200 shadow-xs">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold text-gray-700">Memory Allocation:</span>
+                        <span className="font-mono font-bold text-emerald-600">{memoryGi} GB RAM</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={2}
+                        max={32}
+                        step={2}
+                        value={memoryGi}
+                        onChange={e => setMemoryGi(parseInt(e.target.value) || 4)}
+                        className="w-full accent-emerald-600 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-gray-400 font-mono mt-0.5">
+                        <span>2 GB</span>
+                        <span>16 GB</span>
+                        <span>32 GB</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-gray-200 shadow-xs">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold text-gray-700">Disk Cache / Storage:</span>
+                        <span className="font-mono font-bold text-emerald-600">{diskGi} GB Disk</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={10}
+                        max={150}
+                        step={10}
+                        value={diskGi}
+                        onChange={e => setDiskGi(parseInt(e.target.value) || 20)}
+                        className="w-full accent-emerald-600 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-gray-400 font-mono mt-0.5">
+                        <span>10 GB</span>
+                        <span>80 GB</span>
+                        <span>150 GB</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Local Workspace Mount & Host Sharing */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-gray-200/80">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#495057] uppercase mb-1 flex items-center gap-1.5">
+                        <FolderSync size={13} className="text-gray-500" />
+                        Host Workspace Directory Mount
+                      </label>
+                      <input
+                        type="text"
+                        value={containerWorkspaceMount}
+                        onChange={e => setContainerWorkspaceMount(e.target.value)}
+                        placeholder="e.g. ~/workspace or /Users/name/code"
+                        className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-gray-300 rounded-xl outline-none"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-0.5">Two-way volume bind between developer host filesystem and container runtime.</p>
+                    </div>
+
+                    <div className="flex flex-col justify-center space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1A1A1A]">
+                        <input
+                          type="checkbox"
+                          checked={containerSocketSharing}
+                          onChange={e => setContainerSocketSharing(e.target.checked)}
+                          className="rounded accent-emerald-600"
+                        />
+                        <span className="flex items-center gap-1">
+                          <Share2 size={13} className="text-emerald-600" />
+                          Share Host Docker / Containerd Socket (/var/run/docker.sock)
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1A1A1A]">
+                        <input
+                          type="checkbox"
+                          checked={containerBatteryThrottling}
+                          onChange={e => setContainerBatteryThrottling(e.target.checked)}
+                          className="rounded accent-emerald-600"
+                        />
+                        <span className="flex items-center gap-1 text-gray-600 font-normal">
+                          <Battery size={13} className="text-amber-600" />
+                          Enable Laptop Battery Throttling Governor (reduces fan noise & power draw)
+                        </span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -2773,6 +3102,82 @@ echo "==> Ready for KubeSDK runtime connection!"
                       />
                     </div>
                   </div>
+                )}
+
+                {inlineModalType === 'container' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Engine / Profile Name</label>
+                        <input
+                          type="text"
+                          value={inlineItemData.name || ''}
+                          onChange={e => setInlineItemData({ ...inlineItemData, name: e.target.value })}
+                          placeholder="e.g. Rancher Desktop, Colima VDI"
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Category</label>
+                        <select
+                          value={inlineItemData.category || 'Container Runtime'}
+                          onChange={e => setInlineItemData({ ...inlineItemData, category: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                        >
+                          <option value="Developer Workstation">Developer Workstation / VDI</option>
+                          <option value="Container Runtime">Container Runtime</option>
+                          <option value="Virtual K8s Cluster">Virtual K8s Cluster</option>
+                          <option value="Rootless Container">Rootless Container</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Default vCPU</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={32}
+                          value={inlineItemData.defaultVcpu || 4}
+                          onChange={e => setInlineItemData({ ...inlineItemData, defaultVcpu: e.target.value })}
+                          className="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">RAM (GB)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={64}
+                          value={inlineItemData.defaultMemoryGi || 8}
+                          onChange={e => setInlineItemData({ ...inlineItemData, defaultMemoryGi: e.target.value })}
+                          className="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Disk (GB)</label>
+                        <input
+                          type="number"
+                          min={10}
+                          max={200}
+                          value={inlineItemData.defaultDiskGi || 40}
+                          onChange={e => setInlineItemData({ ...inlineItemData, defaultDiskGi: e.target.value })}
+                          className="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-300 rounded"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#495057] uppercase mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={inlineItemData.desc || ''}
+                        onChange={e => setInlineItemData({ ...inlineItemData, desc: e.target.value })}
+                        placeholder="Developer environment profile description..."
+                        className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg outline-none"
+                      />
+                    </div>
+                  </>
                 )}
 
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">

@@ -1,5 +1,50 @@
 [
   {
+    "version": "v111",
+    "versionNumber": 111,
+    "timestamp": "2026-08-31T16:16:44.010Z",
+    "action": "Deleted provider: VitestTestDB_1788193003978",
+    "author": "User",
+    "filename": "v111_2026-08-31T16-16-44-010Z.yaml",
+    "size": 3613
+  },
+  {
+    "version": "v110",
+    "versionNumber": 110,
+    "timestamp": "2026-08-31T16:16:44.005Z",
+    "action": "Deprecated provider: VitestTestDB_1788193003978 (Testing deprecation flow)",
+    "author": "User",
+    "filename": "v110_2026-08-31T16-16-44-005Z.yaml",
+    "size": 4328
+  },
+  {
+    "version": "v109",
+    "versionNumber": 109,
+    "timestamp": "2026-08-31T16:16:44.000Z",
+    "action": "Version bump for VitestTestDB_1788193003978 (1.0.1 -> 2.0.0)",
+    "author": "User",
+    "filename": "v109_2026-08-31T16-16-44-000Z.yaml",
+    "size": 4307
+  },
+  {
+    "version": "v108",
+    "versionNumber": 108,
+    "timestamp": "2026-08-31T16:16:43.993Z",
+    "action": "Updated provider: VitestTestDB_1788193003978",
+    "author": "User",
+    "filename": "v108_2026-08-31T16-16-43-993Z.yaml",
+    "size": 4113
+  },
+  {
+    "version": "v107",
+    "versionNumber": 107,
+    "timestamp": "2026-08-31T16:16:43.986Z",
+    "action": "Added new provider: VitestTestDB_1788193003978",
+    "author": "User",
+    "filename": "v107_2026-08-31T16-16-43-986Z.yaml",
+    "size": 4069
+  },
+  {
     "version": "v106",
     "versionNumber": 106,
     "timestamp": "2026-08-22T13:46:37.930Z",

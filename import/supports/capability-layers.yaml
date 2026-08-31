@@ -1,6 +1,6 @@
 capability-layers:
   version: v1
-  updated: '2026-08-22'
+  updated: '2026-08-31'
   layers:
     database:
       name: Database

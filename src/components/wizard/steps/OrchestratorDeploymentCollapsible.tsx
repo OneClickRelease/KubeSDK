@@ -295,6 +295,80 @@ export const CLOUD_PROVIDERS: CloudProviderOption[] = [
   }
 ];
 
+export interface VirtualContainerPreset {
+  id: string;
+  name: string;
+  engineType: string;
+  category: string;
+  defaultVcpu: number;
+  defaultMemoryGi: number;
+  defaultDiskGi: number;
+  desc: string;
+}
+
+export const VIRTUAL_CONTAINER_PRESETS: VirtualContainerPreset[] = [
+  {
+    id: 'vdi-developer-laptop',
+    name: 'VDI / Developer Laptop',
+    engineType: 'vdi-workstation',
+    category: 'Developer Workstation',
+    defaultVcpu: 4,
+    defaultMemoryGi: 8,
+    defaultDiskGi: 50,
+    desc: 'Local developer workstation (macOS Apple Silicon, Windows WSL2, Linux) or Citrix/Horizon VDI instance with direct host volume sharing and port mapping.'
+  },
+  {
+    id: 'docker-desktop',
+    name: 'Docker Desktop / Engine',
+    engineType: 'docker',
+    category: 'Container Runtime',
+    defaultVcpu: 4,
+    defaultMemoryGi: 8,
+    defaultDiskGi: 40,
+    desc: 'Standard Docker daemon execution with Docker socket access and compose networking.'
+  },
+  {
+    id: 'podman-rootless',
+    name: 'Podman (Rootless)',
+    engineType: 'podman',
+    category: 'Rootless Container',
+    defaultVcpu: 2,
+    defaultMemoryGi: 4,
+    defaultDiskGi: 20,
+    desc: 'Daemonless, rootless container runtime fully compliant with OCI specifications.'
+  },
+  {
+    id: 'k3d-cluster',
+    name: 'k3d (K3s in Docker)',
+    engineType: 'k3d',
+    category: 'Virtual K8s Cluster',
+    defaultVcpu: 4,
+    defaultMemoryGi: 8,
+    defaultDiskGi: 30,
+    desc: 'Lightweight wrapper to run K3s multi-node virtual clusters inside Docker containers.'
+  },
+  {
+    id: 'kind-cluster',
+    name: 'KinD (Kubernetes in Docker)',
+    engineType: 'kind',
+    category: 'Virtual K8s Cluster',
+    defaultVcpu: 4,
+    defaultMemoryGi: 8,
+    defaultDiskGi: 40,
+    desc: 'Official CNCF tool for running local Kubernetes clusters using Docker container nodes.'
+  },
+  {
+    id: 'colima-nerdctl',
+    name: 'Colima & nerdctl',
+    engineType: 'nerdctl',
+    category: 'Containerd Native',
+    defaultVcpu: 2,
+    defaultMemoryGi: 4,
+    defaultDiskGi: 20,
+    desc: 'Docker-compatible CLI for containerd with full support for rootless containers on macOS/Linux.'
+  }
+];
+
 interface OrchestratorDeploymentProps {
   totalRequiredCpu?: number;
   totalRequiredMem?: number; // in MB

@@ -113,3 +113,9 @@ platforms:
     category: Open-Source & Linux
     desc: Container and hypervisor virtualization on ZFS kernel
     id: smartos---bhyve-1787406397896
+  - name: SmartOS / bhyve
+    version: v8.4
+    engine: bhyve on illumos
+    category: Open-Source & Linux
+    desc: Container and hypervisor virtualization on ZFS kernel
+    id: smartos---bhyve-1788193003969
