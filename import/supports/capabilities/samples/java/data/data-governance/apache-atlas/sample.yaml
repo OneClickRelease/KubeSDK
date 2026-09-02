@@ -1,0 +1,17 @@
+dependencies:
+  Spring Boot:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>apache\
+      \ atlas-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:apache atlas-client:1.0.0'
+    ant: '<!-- Ant dependency for Apache Atlas -->
+
+      <ivy:dependency org="org.example" name="apache atlas-client" rev="1.0.0"/>'
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

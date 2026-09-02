@@ -1,0 +1,7 @@
+sql:
+  parent: Database
+  providers:
+    - name: ImportTestDB
+      description: Imported DB for testing
+      version: v1
+      latest_version: 1.0.0

@@ -1,0 +1,17 @@
+dependencies:
+  Spring Boot:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>rke1-client</artifactId>\n\
+      \    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:rke1-client:1.0.0'
+    ant: '<!-- Ant dependency for RKE1 -->
+
+      <ivy:dependency org="org.example" name="rke1-client" rev="1.0.0"/>'
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

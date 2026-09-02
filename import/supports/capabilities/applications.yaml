@@ -1,0 +1,154 @@
+applications:
+  parent: Capability
+  providers:
+
+    - name: REST API
+      description: RESTful services for internal and external communication using HTTP verbs.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/openapiinitiative.svg"
+      website_url: "https://www.w3.org/Protocols/"
+      repo_url: ""
+      documentation_url: "https://developer.mozilla.org/en-US/docs/Glossary/REST"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Open standard; frameworks under respective licenses."
+      protocols_supported: [HTTP, HTTPS]
+      default_ports: [80, 443]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "5Gi"
+      dependencies: ["Web server runtime (Nginx, Apache)", "Framework libraries"]
+      ha_recommendation: "Deploy behind load balancer with multiple API instances."
+      languages:
+        java:
+          frameworks: [Spring Boot, Micronaut]
+          sample_code: "samples/java/applications/rest-api/sample.yaml"
+          config_template: "samples/java/applications/rest-api/config.mustache"
+        python:
+          frameworks: [Flask, FastAPI, Django]
+          sample_code: "samples/python/applications/rest-api/sample.yaml"
+          config_template: "samples/python/applications/rest-api/config.mustache"
+        nodejs:
+          frameworks: [Express, NestJS]
+          sample_code: "samples/nodejs/applications/rest-api/sample.yaml"
+          config_template: "samples/nodejs/applications/rest-api/config.mustache"
+
+    - name: SOAP
+      description: XML-based protocol for structured messaging and legacy enterprise integration.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/w3c.svg"
+      website_url: "https://www.w3.org/TR/soap/"
+      repo_url: ""
+      documentation_url: "https://www.w3.org/TR/soap12/"
+      version: "v1"
+      latest_version: "1.2"
+      license_conditions: "Open standard; frameworks under respective licenses."
+      protocols_supported: [HTTP, HTTPS]
+      default_ports: [80, 443]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "10Gi"
+      dependencies: ["SOAP libraries", "WSDL definitions"]
+      ha_recommendation: "Deploy SOAP services with clustering and load balancing."
+      languages:
+        java:
+          frameworks: [JAX-WS, Apache CXF]
+          sample_code: "samples/java/applications/soap/sample.yaml"
+          config_template: "samples/java/applications/soap/config.mustache"
+        python:
+          frameworks: [zeep]
+          sample_code: "samples/python/applications/soap/sample.yaml"
+          config_template: "samples/python/applications/soap/config.mustache"
+
+    - name: gRPC
+      description: High-performance RPC framework using Protocol Buffers.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/grpc.svg"
+      website_url: "https://grpc.io"
+      repo_url: "https://github.com/grpc/grpc"
+      documentation_url: "https://grpc.io/docs/"
+      version: "v1"
+      latest_version: "1.64.0"
+      license_conditions: "Open-source Apache License 2.0."
+      protocols_supported: [HTTP/2]
+      default_ports: [50051]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "5Gi"
+      dependencies: ["Protobuf compiler", "gRPC libraries"]
+      ha_recommendation: "Deploy gRPC services with multiple replicas and service mesh integration."
+      languages:
+        java:
+          frameworks: [gRPC Java]
+          sample_code: "samples/java/applications/grpc/sample.yaml"
+          config_template: "samples/java/applications/grpc/config.mustache"
+        python:
+          frameworks: [grpcio]
+          sample_code: "samples/python/applications/grpc/sample.yaml"
+          config_template: "samples/python/applications/grpc/config.mustache"
+        nodejs:
+          frameworks: [grpc-node]
+          sample_code: "samples/nodejs/applications/grpc/sample.yaml"
+          config_template: "samples/nodejs/applications/grpc/config.mustache"
+        go:
+          frameworks: [grpc-go]
+          sample_code: "samples/go/applications/grpc/sample.yaml"
+          config_template: "samples/go/applications/grpc/config.mustache"
+
+    - name: CORBA
+      description: Common Object Request Broker Architecture for distributed object communication.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://www.omg.org/spec/CORBA/"
+      repo_url: ""
+      documentation_url: "https://www.omg.org/spec/CORBA/"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Open standard; implementations under respective licenses."
+      protocols_supported: [IIOP]
+      default_ports: [683, 684]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "10Gi"
+      dependencies: ["ORB runtime", "IDL compiler"]
+      ha_recommendation: "Deploy CORBA ORBs in clustered mode for HA."
+      languages:
+        java:
+          frameworks: [JacORB, OpenORB]
+          sample_code: "samples/java/applications/corba/sample.yaml"
+          config_template: "samples/java/applications/corba/config.mustache"
+        c++:
+          frameworks: [TAO, omniORB]
+          sample_code: "samples/cpp/applications/corba/sample.yaml"
+          config_template: "samples/cpp/applications/corba/config.mustache"
+
+    - name: GraphQL
+      description: Query language for APIs providing flexible data retrieval.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/graphql.svg"
+      website_url: "https://graphql.org"
+      repo_url: "https://github.com/graphql/graphql-spec"
+      documentation_url: "https://graphql.org/learn/"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Open-source MIT License."
+      protocols_supported: [HTTP, HTTPS]
+      default_ports: [4000]
+      resources:
+        vcpu: "2"
+        memory: "2Gi"
+        disk: "5Gi"
+      dependencies: ["GraphQL server libraries"]
+      ha_recommendation: "Deploy GraphQL servers behind load balancer with caching."
+      languages:
+        nodejs:
+          frameworks: [Apollo Server, Express GraphQL]
+          sample_code: "samples/nodejs/applications/graphql/sample.yaml"
+          config_template: "samples/nodejs/applications/graphql/config.mustache"
+        python:
+          frameworks: [Graphene, Ariadne]
+          sample_code: "samples/python/applications/graphql/sample.yaml"
+          config_template: "samples/python/applications/graphql/config.mustache"
+        java:
+          frameworks: [graphql-java]
+          sample_code: "samples/java/applications/graphql/sample.yaml"
+          config_template: "samples/java/applications/graphql/config.mustache"

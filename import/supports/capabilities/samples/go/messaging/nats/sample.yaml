@@ -1,0 +1,13 @@
+dependencies:
+  NATS Go Client:
+    go-build: github.com/nats-io/nats.go v1.31.0
+    go-mod: github.com/nats-io/nats.go v1.31.0
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

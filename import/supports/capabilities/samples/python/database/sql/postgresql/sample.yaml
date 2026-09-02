@@ -1,0 +1,28 @@
+dependencies:
+  Django ORM:
+    pip: psycopg2-binary>=2.9.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      psycopg2-binary = "^2.9.0"'
+    setuptools: psycopg2-binary>=2.9.0
+  SQLAlchemy:
+    pip: psycopg2-binary>=2.9.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      psycopg2-binary = "^2.9.0"'
+    setuptools: psycopg2-binary>=2.9.0
+envVars:
+- key: DB_HOST
+  value: '{{host}}'
+- key: DB_PORT
+  value: '{{port}}'
+- key: DB_NAME
+  value: '{{database}}'
+- key: DB_USER
+  value: '{{username}}'
+- key: DB_PASS
+  value: '{{password}}'

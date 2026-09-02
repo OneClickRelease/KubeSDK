@@ -1,0 +1,49 @@
+block-storage:
+  parent: Storage
+  providers:
+
+    - name: AWS EBS
+      description: Elastic Block Store for persistent block-level storage in AWS cloud.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/amazonwebservices.svg"
+      website_url: "https://aws.amazon.com/ebs/"
+      repo_url: ""
+      documentation_url: "https://docs.aws.amazon.com/ebs/"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary AWS service."
+      protocols_supported: [iSCSI]
+      default_ports: [3260]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["AWS EC2 instance", "AWS CLI configured"]
+      ha_recommendation: "Use multiple Availability Zones with EBS replication."
+      languages:
+        java:
+          frameworks: [Spring Boot, Hibernate]
+          sample_code: "samples/java/storage/block-storage/aws-ebs/sample.yaml"
+          config_template: "samples/java/storage/block-storage/aws-ebs/config.mustache"
+
+    - name: Ceph RBD
+      description: Open-source distributed block storage using RADOS Block Device.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/ceph.svg"
+      website_url: "https://ceph.io"
+      repo_url: "https://github.com/ceph/ceph"
+      documentation_url: "https://docs.ceph.com/"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Open-source LGPL."
+      protocols_supported: [RADOS, iSCSI]
+      default_ports: [6789, 3300]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "100Gi"
+      dependencies: ["Ceph cluster running", "Monitor + OSD daemons"]
+      ha_recommendation: "Deploy 3+ monitor nodes, multiple OSDs for replication."
+      languages:
+        python:
+          frameworks: [FastAPI]
+          sample_code: "samples/python/storage/block-storage/ceph-rbd/sample.yaml"
+          config_template: "samples/python/storage/block-storage/ceph-rbd/config.mustache"

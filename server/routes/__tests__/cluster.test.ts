@@ -11,7 +11,7 @@ describe('cluster routes', () => {
     app = express();
     app.use(express.json());
     app.use('/', clusterRouter);
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('POST /test-connection', async () => {
@@ -35,14 +35,21 @@ describe('cluster routes', () => {
     expect(res.status).toBe(200);
   });
 
-  it('POST /deploy handles existing Pods', async () => {
+  it('POST /deploy skips built-in namespaces', async () => {
+    // Pods in the 'default' namespace are skipped — no fetch calls should be made
     const yamlContent = 'apiVersion: v1\nkind: Pod\nmetadata:\n  name: p1\n  namespace: default';
-    (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ metadata: { name: 'p1' } }) }); // GET exists
-    (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({}) }); // DELETE pod
-    (fetch as any).mockResolvedValueOnce({ ok: false, status: 404 }); // GET (wait for delete)
+    const res = await request(app).post('/deploy').send({ apiServerUrl: 'h', token: 't', yamlContent });
+    expect(res.status).toBe(200);
+    expect(res.body.applied).toContain('Skipped built-in Pod/p1');
+  });
+
+  it('POST /deploy applies non-system namespace resources', async () => {
+    const yamlContent = 'apiVersion: v1\nkind: Pod\nmetadata:\n  name: myapp\n  namespace: services';
+    (fetch as any).mockResolvedValueOnce({ ok: false, status: 404, text: async () => 'not found' }); // GET → does not exist
     (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({}) }); // PATCH apply
     const res = await request(app).post('/deploy').send({ apiServerUrl: 'h', token: 't', yamlContent });
     expect(res.status).toBe(200);
+    expect(res.body.applied).toContain('myapp');
   });
 
   it('POST /logs', async () => {
@@ -62,5 +69,11 @@ describe('cluster routes', () => {
     const res = await request(app).post('/parse-snapshot').send({ yaml: yamlContent });
     expect(res.status).toBe(200);
     expect(res.body.components.length).toBe(2);
+  });
+
+  it('GET /cluster/credentials when no config exists', async () => {
+    const res = await request(app).get('/cluster/credentials');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('failed');
   });
 });

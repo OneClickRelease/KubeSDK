@@ -23,8 +23,8 @@ export const INITIAL_CONFIG: KubeSDKLocalRun = {
   wizard: {
     source: 'manual',
     runtime: {
-      type: 'rancher-desktop',
-      versionConstraint: '>=5.6',
+      type: 'inbuild-k3s',
+      versionConstraint: '>=1.0.0',
     },
     ignoredNamespaces: ['kube-system', 'kube-public', 'kube-node-lease', 'local-path-storage'],
     kindWhitelist: ['pod', 'service', 'ingress', 'configmap', 'secret', 'namespace'],
@@ -56,7 +56,7 @@ export const INITIAL_CONFIG: KubeSDKLocalRun = {
     },
   },
   runtimeExecution: {
-    type: 'rancher-desktop',
+    type: 'inbuild-k3s',
     cluster: {
       name: 'kubesdk-local',
       version: 'v1.29',
@@ -80,3 +80,5 @@ export const INFRA_CATEGORIES = ['namespace', 'config', 'service', 'ingress', 's
 export const STORAGE_KEY = 'kubesdksim_config_v1';
 export const STEP_KEY = 'kubesdksim_step';
 export const NS_KEY = 'kubesdksim_ns';
+export const MENU_KEY = 'kubesdksim_menu';
+export const REGISTRY_SOURCE_KEY = 'kubesdksim_registry_source';

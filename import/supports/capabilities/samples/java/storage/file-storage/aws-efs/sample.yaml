@@ -1,0 +1,17 @@
+dependencies:
+  Spring Boot:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>aws\
+      \ efs-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:aws efs-client:1.0.0'
+    ant: '<!-- Ant dependency for AWS EFS -->
+
+      <ivy:dependency org="org.example" name="aws efs-client" rev="1.0.0"/>'
+envVars:
+- key: STORAGE_ENDPOINT
+  value: http://{{host}}:{{port}}
+- key: STORAGE_BUCKET
+  value: '{{database}}'
+- key: ACCESS_KEY_ID
+  value: '{{username}}'
+- key: SECRET_ACCESS_KEY
+  value: '{{password}}'

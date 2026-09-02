@@ -1,0 +1,9 @@
+# Python boto3 S3 client connection
+import boto3
+
+s3 = boto3.client(
+    's3',
+    endpoint_url='http://{{host}}:{{port}}',
+    aws_access_key_id='{{username}}',
+    aws_secret_access_key='{{password}}'
+)

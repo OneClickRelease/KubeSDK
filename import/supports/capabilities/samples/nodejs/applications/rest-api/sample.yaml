@@ -1,0 +1,18 @@
+dependencies:
+  Express:
+    npm: "\"dependencies\": {\n  \"rest api-sdk\": \"^1.0.0\"\n}"
+    yarn: "\"dependencies\": {\n  \"rest api-sdk\": \"^1.0.0\"\n}"
+    pnpm: "\"dependencies\": {\n  \"rest api-sdk\": \"^1.0.0\"\n}"
+  NestJS:
+    npm: "\"dependencies\": {\n  \"rest api-sdk\": \"^1.0.0\"\n}"
+    yarn: "\"dependencies\": {\n  \"rest api-sdk\": \"^1.0.0\"\n}"
+    pnpm: "\"dependencies\": {\n  \"rest api-sdk\": \"^1.0.0\"\n}"
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

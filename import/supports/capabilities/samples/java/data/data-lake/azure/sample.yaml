@@ -1,0 +1,24 @@
+dependencies:
+  Hadoop:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>azure\
+      \ data lake storage-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:azure data lake storage-client:1.0.0'
+    ant: '<!-- Ant dependency for Azure Data Lake Storage -->
+
+      <ivy:dependency org="org.example" name="azure data lake storage-client" rev="1.0.0"/>'
+  Spark:
+    maven: "<dependency>\n    <groupId>org.example</groupId>\n    <artifactId>azure\
+      \ data lake storage-client</artifactId>\n    <version>1.0.0</version>\n</dependency>"
+    gradle: implementation 'org.example:azure data lake storage-client:1.0.0'
+    ant: '<!-- Ant dependency for Azure Data Lake Storage -->
+
+      <ivy:dependency org="org.example" name="azure data lake storage-client" rev="1.0.0"/>'
+envVars:
+- key: STORAGE_ENDPOINT
+  value: http://{{host}}:{{port}}
+- key: STORAGE_BUCKET
+  value: '{{database}}'
+- key: ACCESS_KEY_ID
+  value: '{{username}}'
+- key: SECRET_ACCESS_KEY
+  value: '{{password}}'

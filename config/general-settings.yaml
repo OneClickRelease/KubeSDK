@@ -1,0 +1,27 @@
+# ==============================================================================
+# KubeSDK Infrastructure Configuration: General Settings
+# Managed automatically via KubeSDK Configuration Manager
+# ==============================================================================
+
+compilation:
+  ignoredNamespaces:
+    - "kube-system"
+    - "kube-public"
+    - "kube-node-lease"
+    - "local-path-storage"
+  kindWhitelist:
+    - "pod"
+    - "service"
+    - "deployment"
+    - "statefulset"
+    - "daemonset"
+    - "configmap"
+    - "secret"
+    - "persistentvolumeclaim"
+    - "ingress"
+
+orchestratorDefaults:
+  defaultEngine: "k3s"
+  defaultTopology: "single-node"
+  defaultIsAirgap: false
+  defaultAirgapMethod: "local-autoload"

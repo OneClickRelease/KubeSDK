@@ -1,0 +1,10 @@
+# Python connection configuration for MySQL
+import MySQLdb
+
+db = MySQLdb.connect(
+    host="{{host}}",
+    port={{port}},
+    db="{{database}}",
+    user="{{username}}",
+    passwd="{{password}}"
+)

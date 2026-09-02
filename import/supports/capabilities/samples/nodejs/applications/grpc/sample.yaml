@@ -1,0 +1,14 @@
+dependencies:
+  grpc-node:
+    npm: "\"dependencies\": {\n  \"grpc-sdk\": \"^1.0.0\"\n}"
+    yarn: "\"dependencies\": {\n  \"grpc-sdk\": \"^1.0.0\"\n}"
+    pnpm: "\"dependencies\": {\n  \"grpc-sdk\": \"^1.0.0\"\n}"
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

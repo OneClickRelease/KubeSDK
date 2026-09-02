@@ -105,7 +105,7 @@ export const ReviewStep = ({ config, setConfig, onTestConnection, isTesting, con
     URL.revokeObjectURL(url);
   };
 // ... guidelines and other logic remains same ...
-  const rancherScript = `# Create ServiceAccount
+  const setupScript = `# Create ServiceAccount
 kubectl apply -f - << 'EOF'
 apiVersion: v1
 kind: ServiceAccount
@@ -158,36 +158,24 @@ echo "========================"
 
   const [copying, setCopying] = React.useState(false);
   const handleCopy = () => {
-    navigator.clipboard.writeText(rancherScript);
+    navigator.clipboard.writeText(setupScript);
     setCopying(true);
     setTimeout(() => setCopying(false), 2000);
   };
 
   const runtimeGuidelines: Record<string, { title: string, steps?: string[], script?: string }> = {
-    'rancher-desktop': {
-      title: 'Rancher Desktop Setup',
-      script: rancherScript
-    },
-    'k3d': {
-      title: 'K3d Cluster Setup',
+    'inbuild-k3s': {
+      title: 'In-built K3s Cluster Setup',
       steps: [
-        'Create a cluster: `k3d cluster create my-cluster -p "8080:80@loadbalancer"`',
-        'Extract kubeconfig: `k3d kubeconfig get my-cluster`.',
-        'API URL is typically `https://0.0.0.0:<port>`.'
-      ]
-    },
-    'kind': {
-      title: 'KinD (Kubernetes in Docker) Setup',
-      steps: [
-        'Install KinD via `brew install kind`.',
-        'Create cluster: `kind create cluster --name kubesdk`.',
-        'Get API Server: `kubectl cluster-info`.'
+        'KubeSDK runs in a combined mode with an in-built K3s cluster.',
+        'Zero manual intervention is required. The connection credentials (token and endpoint) are automatically shared and injected into the runtime environment.',
+        'Click the "Test SDK Connection" button to verify live connectivity.'
       ]
     }
   };
 
-  const selectedRuntime = config.wizard.runtime.type || 'rancher-desktop';
-  const guidelines = runtimeGuidelines[selectedRuntime];
+  const selectedRuntime = config.wizard.runtime.type || 'inbuild-k3s';
+  const guidelines = runtimeGuidelines[selectedRuntime] || runtimeGuidelines['inbuild-k3s'];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -333,16 +321,11 @@ echo "========================"
               <div>
                 <label className="block text-[10px] font-bold text-[#6C757D] uppercase tracking-wider mb-2">Target Local Runtime</label>
                 <select 
-                  value={selectedRuntime}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    wizard: { ...prev.wizard, runtime: { ...prev.wizard.runtime, type: e.target.value as any } }
-                  }))}
-                  className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] bg-[#F8F9FA] outline-none focus:ring-2 focus:ring-[#0D6EFD]/20 transition-all font-medium text-sm"
+                  value="inbuild-k3s"
+                  disabled
+                  className="w-full px-4 py-3 rounded-xl border border-[#DEE2E6] bg-[#F8F9FA] outline-none transition-all font-medium text-sm text-gray-500 cursor-not-allowed"
                 >
-                  <option value="rancher-desktop">Rancher Desktop (Default)</option>
-                  <option value="k3d">K3d Cluster</option>
-                  <option value="kind">KinD (Kubernetes in Docker)</option>
+                  <option value="inbuild-k3s">In-built K3s Cluster (Active)</option>
                 </select>
               </div>
 

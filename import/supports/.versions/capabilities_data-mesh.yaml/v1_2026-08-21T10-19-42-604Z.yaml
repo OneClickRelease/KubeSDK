@@ -1,0 +1,26 @@
+data-mesh:
+  parent: Data
+  providers:
+
+    - name: Data Mesh (Generic)
+      description: Decentralized approach to data ownership and sharing across domains.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://martinfowler.com/articles/data-monolith-to-mesh.html"
+      repo_url: ""
+      documentation_url: "https://datamesh-architecture.com"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Conceptual architecture; implementations vary."
+      protocols_supported: [HTTP, REST, gRPC]
+      default_ports: [443, 80]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Domain-specific data services", "Metadata catalog"]
+      ha_recommendation: "Deploy federated governance with multiple domain nodes."
+      languages:
+        java:
+          frameworks: [Spring Boot, Micronaut]
+          sample_code: "samples/java/data/data-mesh/generic/sample.yaml"
+          config_template: "samples/java/data/data-mesh/generic/config.mustache"

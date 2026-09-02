@@ -1,0 +1,57 @@
+data-mesh:
+  parent: Data
+  providers:
+
+    - name: DataHub
+      description: The open-source metadata platform for the modern data stack and federated data mesh.
+      image_url: "https://raw.githubusercontent.com/datahub-project/datahub/master/datahub-web-react/src/images/datahub-logo-color-light-border.svg"
+      website_url: "https://datahubproject.io"
+      repo_url: "https://github.com/datahub-project/datahub"
+      documentation_url: "https://datahubproject.io/docs/"
+      version: "v1"
+      latest_version: "0.13.2"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, REST, GraphQL, Kafka]
+      default_ports: [8080, 9002]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "40Gi"
+      dependencies: ["Elasticsearch", "Kafka", "MySQL or PostgreSQL"]
+      ha_recommendation: "Deploy with multi-replica DataHub GMS backend and clustered Kafka/Elasticsearch."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/data/data-mesh/generic/sample.yaml"
+          config_template: "samples/java/data/data-mesh/generic/config.mustache"
+        python:
+          frameworks: [FastAPI, acryl-datahub]
+          sample_code: "samples/python/data/data-mesh/generic/sample.yaml"
+          config_template: "samples/python/data/data-mesh/generic/config.mustache"
+
+    - name: OpenMetadata
+      description: Open-source metadata management and data governance platform designed for decentralized data domains.
+      image_url: "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/openmetadata-ui/src/main/resources/ui/src/assets/svg/openmetadata-logo.svg"
+      website_url: "https://open-metadata.org"
+      repo_url: "https://github.com/open-metadata/OpenMetadata"
+      documentation_url: "https://docs.open-metadata.org"
+      version: "v1"
+      latest_version: "1.4.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [HTTP, REST, WebSocket]
+      default_ports: [8585, 8586]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Elasticsearch or OpenSearch", "MySQL or PostgreSQL"]
+      ha_recommendation: "Deploy redundant OpenMetadata server pods behind an ingress load balancer."
+      languages:
+        java:
+          frameworks: [Dropwizard]
+          sample_code: "samples/java/data/data-mesh/generic/sample.yaml"
+          config_template: "samples/java/data/data-mesh/generic/config.mustache"
+        python:
+          frameworks: [openmetadata-ingestion]
+          sample_code: "samples/python/data/data-mesh/generic/sample.yaml"
+          config_template: "samples/python/data/data-mesh/generic/config.mustache"

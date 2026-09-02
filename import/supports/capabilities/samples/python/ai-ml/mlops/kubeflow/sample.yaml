@@ -1,0 +1,34 @@
+dependencies:
+  TensorFlow:
+    pip: kubeflow-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kubeflow-client = "^1.0.0"'
+    setuptools: kubeflow-client>=1.0.0
+  PyTorch:
+    pip: kubeflow-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kubeflow-client = "^1.0.0"'
+    setuptools: kubeflow-client>=1.0.0
+  Scikit-learn:
+    pip: kubeflow-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      kubeflow-client = "^1.0.0"'
+    setuptools: kubeflow-client>=1.0.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

@@ -1,0 +1,49 @@
+data-warehouse:
+  parent: Data
+  providers:
+
+    - name: Amazon Redshift
+      description: Cloud data warehouse optimized for analytics.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/amazonwebservices.svg"
+      website_url: "https://aws.amazon.com/redshift/"
+      repo_url: ""
+      documentation_url: "https://docs.aws.amazon.com/redshift/"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary AWS service."
+      protocols_supported: [JDBC, ODBC]
+      default_ports: [5439]
+      resources:
+        vcpu: "4"
+        memory: "16Gi"
+        disk: "200Gi"
+      dependencies: ["AWS account", "Redshift cluster provisioned"]
+      ha_recommendation: "Deploy multi-node clusters with replication."
+      languages:
+        python:
+          frameworks: [SQLAlchemy, Pandas]
+          sample_code: "samples/python/data/data-warehouse/redshift/sample.yaml"
+          config_template: "samples/python/data/data-warehouse/redshift/config.mustache"
+
+    - name: Google BigQuery
+      description: Serverless data warehouse for large-scale analytics.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/googlecloud.svg"
+      website_url: "https://cloud.google.com/bigquery"
+      repo_url: ""
+      documentation_url: "https://cloud.google.com/bigquery/docs"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Proprietary GCP service."
+      protocols_supported: [HTTP, REST]
+      default_ports: [443]
+      resources:
+        vcpu: "N/A (serverless)"
+        memory: "N/A (serverless)"
+        disk: "N/A (serverless)"
+      dependencies: ["Google Cloud account"]
+      ha_recommendation: "Serverless HA managed by GCP."
+      languages:
+        python:
+          frameworks: [google-cloud-bigquery]
+          sample_code: "samples/python/data/data-warehouse/bigquery/sample.yaml"
+          config_template: "samples/python/data/data-warehouse/bigquery/config.mustache"

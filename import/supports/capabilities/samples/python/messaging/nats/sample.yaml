@@ -1,0 +1,18 @@
+dependencies:
+  nats-py:
+    pip: nats-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      nats-client = "^1.0.0"'
+    setuptools: nats-client>=1.0.0
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

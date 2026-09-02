@@ -1,0 +1,209 @@
+[
+  {
+    "version": "v23",
+    "versionNumber": 23,
+    "timestamp": "2026-08-31T16:32:05.199Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v23_2026-08-31T16-32-05-199Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v22",
+    "versionNumber": 22,
+    "timestamp": "2026-08-31T16:28:16.832Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v22_2026-08-31T16-28-16-832Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v21",
+    "versionNumber": 21,
+    "timestamp": "2026-08-31T16:23:44.003Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v21_2026-08-31T16-23-44-003Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v20",
+    "versionNumber": 20,
+    "timestamp": "2026-08-31T16:16:44.093Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v20_2026-08-31T16-16-44-093Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v19",
+    "versionNumber": 19,
+    "timestamp": "2026-08-22T13:46:37.997Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v19_2026-08-22T13-46-37-997Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v18",
+    "versionNumber": 18,
+    "timestamp": "2026-08-22T13:46:18.374Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v18_2026-08-22T13-46-18-374Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v17",
+    "versionNumber": 17,
+    "timestamp": "2026-08-22T13:36:10.004Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v17_2026-08-22T13-36-10-004Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v16",
+    "versionNumber": 16,
+    "timestamp": "2026-08-22T13:14:31.186Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v16_2026-08-22T13-14-31-186Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v15",
+    "versionNumber": 15,
+    "timestamp": "2026-08-22T13:07:09.455Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v15_2026-08-22T13-07-09-455Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v14",
+    "versionNumber": 14,
+    "timestamp": "2026-08-22T13:03:55.141Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v14_2026-08-22T13-03-55-141Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v13",
+    "versionNumber": 13,
+    "timestamp": "2026-08-22T12:22:43.188Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v13_2026-08-22T12-22-43-188Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v12",
+    "versionNumber": 12,
+    "timestamp": "2026-08-22T12:17:29.280Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v12_2026-08-22T12-17-29-280Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v11",
+    "versionNumber": 11,
+    "timestamp": "2026-08-22T12:12:12.382Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v11_2026-08-22T12-12-12-382Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v10",
+    "versionNumber": 10,
+    "timestamp": "2026-08-22T12:09:57.141Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v10_2026-08-22T12-09-57-141Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v9",
+    "versionNumber": 9,
+    "timestamp": "2026-08-22T11:53:44.170Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v9_2026-08-22T11-53-44-170Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v8",
+    "versionNumber": 8,
+    "timestamp": "2026-08-22T11:39:54.589Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v8_2026-08-22T11-39-54-589Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v7",
+    "versionNumber": 7,
+    "timestamp": "2026-08-21T11:57:20.492Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v7_2026-08-21T11-57-20-492Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v6",
+    "versionNumber": 6,
+    "timestamp": "2026-08-21T11:48:15.513Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v6_2026-08-21T11-48-15-513Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v5",
+    "versionNumber": 5,
+    "timestamp": "2026-08-21T11:36:18.412Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v5_2026-08-21T11-36-18-412Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v4",
+    "versionNumber": 4,
+    "timestamp": "2026-08-21T10:34:21.487Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v4_2026-08-21T10-34-21-487Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v3",
+    "versionNumber": 3,
+    "timestamp": "2026-08-21T10:34:06.312Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v3_2026-08-21T10-34-06-312Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v2",
+    "versionNumber": 2,
+    "timestamp": "2026-08-21T10:28:21.254Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v2_2026-08-21T10-28-21-254Z.yaml",
+    "size": 151
+  },
+  {
+    "version": "v1",
+    "versionNumber": 1,
+    "timestamp": "2026-08-21T10:27:52.807Z",
+    "action": "Imported via UI: capabilities/import-test.yaml",
+    "author": "User",
+    "filename": "v1_2026-08-21T10-27-52-807Z.yaml",
+    "size": 151
+  }
+]

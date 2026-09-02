@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, CheckCircle2, ShieldCheck, Terminal, Layers, Globe, Activity, AlertCircle, 
-  ExternalLink, ChevronDown, ChevronUp, FileText, X, Loader2, Download
+  ExternalLink, ChevronDown, ChevronUp, FileText, X, Loader2, Download, Trash2, RefreshCcw
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { KubeSDKLocalRun } from '../../../types';
@@ -268,7 +268,7 @@ export const VerificationStep = ({
             </table>
           </div>
           
-          {/* Rancher Desktop Guidance Alert */}
+          {/* Endpoint Access Guidance Alert */}
           {workloads.some(w => healthStatus[w.id]?.endpointUrl && !healthStatus[w.id]?.isReachable) && (
             <div className="m-8 p-5 bg-amber-50/50 border border-amber-100 rounded-3xl flex items-start gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
               <div className="p-2 bg-amber-100 rounded-xl text-amber-600 shadow-sm shrink-0">
@@ -278,7 +278,7 @@ export const VerificationStep = ({
                 <h6 className="text-sm font-bold text-amber-900">Endpoint Access Required</h6>
                 <p className="text-[11px] text-amber-800/80 leading-relaxed font-medium">
                   Some services show <strong>'Requires Mapping'</strong> because their ports are not yet exposed to your host machine. 
-                  In <strong>Rancher Desktop</strong>, navigate to <strong>Kubernetes &gt; Port Forwarding</strong> and map the source port for these services to <code>localhost</code> to enable direct access.
+                  To access them directly, you can map the ports in the <code>docker-compose.yml</code> file or forward them using the K3s Admin UI (Headlamp) port forwarding options.
                 </p>
               </div>
             </div>
@@ -301,7 +301,10 @@ export const VerificationStep = ({
               <div className="space-y-3">
                 <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Exposed Gateways</h5>
                 <div className="space-y-2">
-                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group">
+                   <div 
+                      onClick={() => window.open('http://localhost:8080', '_blank')}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group"
+                   >
                       <div className="flex items-center gap-3">
                          <Globe size={18} className="text-gray-400 group-hover:text-[#0D6EFD]" />
                          <div>
@@ -311,7 +314,10 @@ export const VerificationStep = ({
                       </div>
                       <ExternalLink size={14} className="text-gray-300 group-hover:text-[#0D6EFD]" />
                    </div>
-                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group">
+                   <div 
+                      onClick={() => window.open('http://localhost:3000', '_blank')}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group"
+                   >
                       <div className="flex items-center gap-3">
                          <Activity size={18} className="text-gray-400 group-hover:text-[#0D6EFD]" />
                          <div>
@@ -321,17 +327,34 @@ export const VerificationStep = ({
                       </div>
                       <ExternalLink size={14} className="text-gray-300 group-hover:text-[#0D6EFD]" />
                    </div>
+                   <div 
+                      onClick={() => window.open('http://localhost:4466', '_blank')}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#0D6EFD]/30 transition-all cursor-pointer group"
+                   >
+                      <div className="flex items-center gap-3">
+                         <ShieldCheck size={18} className="text-gray-400 group-hover:text-[#0D6EFD]" />
+                         <div>
+                            <div className="text-sm font-bold text-gray-800">K3s Admin UI (Headlamp)</div>
+                            <div className="text-[10px] text-gray-500 font-mono">http://localhost:4466</div>
+                         </div>
+                      </div>
+                      <ExternalLink size={14} className="text-gray-300 group-hover:text-[#0D6EFD]" />
+                   </div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3 pt-8">
+              {/* Primary CTA — Reset cluster & start fresh */}
               <button 
                 onClick={onResetSession}
-                className="w-full py-4 bg-[#0D6EFD] text-white rounded-2xl text-sm font-bold hover:bg-[#0B5ED7] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#0D6EFD]/20 active:scale-[0.98]"
+                className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-2xl text-sm font-bold hover:from-red-700 hover:to-rose-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25 active:scale-[0.98]"
               >
-                <CheckCircle2 size={18} /> Finish and Exit Wizard
+                <Trash2 size={18} /> Reset Cluster &amp; Start Fresh
               </button>
+              <p className="text-center text-[10px] text-gray-400">
+                Removes all KubeSDK-deployed workloads from K3s and resets the wizard
+              </p>
               <button 
                 onClick={handleDownloadSnapshot}
                 className="w-full py-4 bg-white border-2 border-[#E9ECEF] text-gray-700 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:border-[#0D6EFD] hover:text-[#0D6EFD] transition-all"
@@ -342,7 +365,7 @@ export const VerificationStep = ({
                 onClick={onRerunHealthCheck}
                 className="w-full py-4 bg-white text-[#0D6EFD] border-2 border-[#0D6EFD] rounded-2xl text-sm font-bold hover:bg-[#E7F1FF] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
               >
-                <Zap size={18} /> Rerun Sanity Health Checks
+                <RefreshCcw size={18} /> Rerun Sanity Health Checks
               </button>
             </div>
           </div>

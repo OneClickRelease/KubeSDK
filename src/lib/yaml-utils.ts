@@ -1,4 +1,4 @@
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { KubeSDKLocalRun } from '../types';
 
 export function generateYamlFromConfig(config: KubeSDKLocalRun): string {

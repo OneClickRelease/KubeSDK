@@ -1,0 +1,14 @@
+dependencies:
+  kafkajs:
+    npm: "\"dependencies\": {\n  \"kafkajs\": \"^1.0.0\"\n}"
+    yarn: "\"dependencies\": {\n  \"kafkajs\": \"^1.0.0\"\n}"
+    pnpm: "\"dependencies\": {\n  \"kafkajs\": \"^1.0.0\"\n}"
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

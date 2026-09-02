@@ -1,0 +1,17 @@
+mytest:
+  parent: Testing
+  providers:
+    - name: Robot
+      description: ''
+      image_url: https://img.magnific.com/free-vector/graident-ai-robot-vectorart_78370-4114.jpg?semt=ais_hybrid&w=740&q=80
+      website_url: ''
+      repo_url: ''
+      documentation_url: ''
+      version: v1
+      deprecated: false
+      license_conditions: ''
+      protocols_supported: []
+      default_ports: []
+      dependencies: []
+      ha_recommendation: ''
+      languages: {}

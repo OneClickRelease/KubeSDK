@@ -1,0 +1,32 @@
+dependencies:
+  Spring Boot:
+    maven: "<dependency>\n    <groupId>com.mysql</groupId>\n    <artifactId>mysql-connector-j</artifactId>\n\
+      \    <scope>runtime</scope>\n</dependency>\n<dependency>\n    <groupId>org.springframework.boot</groupId>\n\
+      \    <artifactId>spring-boot-starter-data-jpa</artifactId>\n</dependency>"
+    gradle: 'runtimeOnly ''com.mysql:mysql-connector-j''
+
+      implementation ''org.springframework.boot:spring-boot-starter-data-jpa'''
+    ant: '<!-- Ant dependency for MySQL -->
+
+      <ivy:dependency org="org.example" name="mysql-client" rev="1.0.0"/>'
+  Hibernate:
+    maven: "<dependency>\n    <groupId>com.mysql</groupId>\n    <artifactId>mysql-connector-j</artifactId>\n\
+      \    <scope>runtime</scope>\n</dependency>\n<dependency>\n    <groupId>org.springframework.boot</groupId>\n\
+      \    <artifactId>spring-boot-starter-data-jpa</artifactId>\n</dependency>"
+    gradle: 'runtimeOnly ''com.mysql:mysql-connector-j''
+
+      implementation ''org.springframework.boot:spring-boot-starter-data-jpa'''
+    ant: '<!-- Ant dependency for MySQL -->
+
+      <ivy:dependency org="org.example" name="mysql-client" rev="1.0.0"/>'
+envVars:
+- key: DB_HOST
+  value: '{{host}}'
+- key: DB_PORT
+  value: '{{port}}'
+- key: DB_NAME
+  value: '{{database}}'
+- key: DB_USER
+  value: '{{username}}'
+- key: DB_PASS
+  value: '{{password}}'

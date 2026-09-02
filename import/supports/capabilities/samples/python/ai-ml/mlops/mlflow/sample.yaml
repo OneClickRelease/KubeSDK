@@ -1,0 +1,34 @@
+dependencies:
+  Scikit-learn:
+    pip: mlflow-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      mlflow-client = "^1.0.0"'
+    setuptools: mlflow-client>=1.0.0
+  TensorFlow:
+    pip: mlflow-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      mlflow-client = "^1.0.0"'
+    setuptools: mlflow-client>=1.0.0
+  PyTorch:
+    pip: mlflow-client>=1.0.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      mlflow-client = "^1.0.0"'
+    setuptools: mlflow-client>=1.0.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

@@ -1,0 +1,26 @@
+dependencies:
+  TensorFlow:
+    pip: tensorflow>=2.15.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      tensorflow = "^2.15.0"'
+    setuptools: tensorflow>=2.15.0
+  Keras:
+    pip: tensorflow>=2.15.0
+    poetry: '[tool.poetry.dependencies]
+
+      python = "^3.9"
+
+      tensorflow = "^2.15.0"'
+    setuptools: tensorflow>=2.15.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

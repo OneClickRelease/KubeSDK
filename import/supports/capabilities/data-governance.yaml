@@ -1,0 +1,49 @@
+data-governance:
+  parent: Data
+  providers:
+
+    - name: Apache Atlas
+      description: Open-source metadata management and governance framework.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/apache.svg"
+      website_url: "https://atlas.apache.org"
+      repo_url: "https://github.com/apache/atlas"
+      documentation_url: "https://atlas.apache.org/#/Overview"
+      version: "v1"
+      latest_version: "2.3.0"
+      license_conditions: "Apache License 2.0."
+      protocols_supported: [REST, HTTP]
+      default_ports: [21000]
+      resources:
+        vcpu: "2"
+        memory: "4Gi"
+        disk: "20Gi"
+      dependencies: ["Hadoop ecosystem", "Metadata store"]
+      ha_recommendation: "Deploy Atlas in HA mode with multiple metadata servers."
+      languages:
+        java:
+          frameworks: [Spring Boot]
+          sample_code: "samples/java/data/data-governance/apache-atlas/sample.yaml"
+          config_template: "samples/java/data/data-governance/apache-atlas/config.mustache"
+
+    - name: Collibra
+      description: Enterprise data governance and catalog platform.
+      image_url: "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cncf.svg"
+      website_url: "https://www.collibra.com"
+      repo_url: ""
+      documentation_url: "https://datacitizen.collibra.com/forum/hc/en-us"
+      version: "v1"
+      latest_version: "2026.1"
+      license_conditions: "Commercial subscription."
+      protocols_supported: [REST, HTTP]
+      default_ports: [443]
+      resources:
+        vcpu: "4"
+        memory: "8Gi"
+        disk: "50Gi"
+      dependencies: ["Collibra server", "Database backend"]
+      ha_recommendation: "Deploy Collibra cluster with multiple nodes."
+      languages:
+        python:
+          frameworks: [Collibra API SDK]
+          sample_code: "samples/python/data/data-governance/collibra/sample.yaml"
+          config_template: "samples/python/data/data-governance/collibra/config.mustache"

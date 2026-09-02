@@ -1,0 +1,7 @@
+# Spring Boot application.yaml for Oracle Database
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@{{host}}:{{port}}:{{database}}
+    username: {{username}}
+    password: {{password}}
+    driver-class-name: oracle.jdbc.OracleDriver

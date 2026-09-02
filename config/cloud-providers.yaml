@@ -1,0 +1,627 @@
+providers:
+  - id: aws
+    name: Amazon Web Services (AWS)
+    badge: EC2 & Graviton
+    color: border-amber-500 bg-amber-50/50 text-amber-700
+    defaultRegion: us-east-1
+    regions:
+      - id: us-east-1
+        name: US East (N. Virginia)
+      - id: us-west-2
+        name: US West (Oregon)
+      - id: eu-west-1
+        name: Europe (Ireland)
+      - id: eu-central-1
+        name: Europe (Frankfurt)
+      - id: ap-southeast-1
+        name: Asia Pacific (Singapore)
+      - id: ap-south-1
+        name: Asia Pacific (Mumbai)
+    instanceTypes:
+      - id: t4g.xlarge
+        name: t4g.xlarge (ARM Graviton3)
+        vcpu: 4
+        memGi: 16
+        desc: ARM64 Graviton3 compute - Lowest cost per vCPU for Dev workloads
+        category: Dev Optimized
+      - id: t3.xlarge
+        name: t3.xlarge (Intel x86)
+        vcpu: 4
+        memGi: 16
+        desc: Burstable x86 compute for general development
+        category: Dev Optimized
+      - id: c6i.2xlarge
+        name: c6i.2xlarge (Compute)
+        vcpu: 8
+        memGi: 16
+        desc: High compute throughput for CI/CD & microservice builds
+        category: Compute Intensive
+      - id: m6i.2xlarge
+        name: m6i.2xlarge (Balanced)
+        vcpu: 8
+        memGi: 32
+        desc: Balanced CPU/Memory ratio for multi-tenant microservices
+        category: General Purpose
+      - id: g5.xlarge
+        name: g5.xlarge (NVIDIA A10G)
+        vcpu: 4
+        memGi: 16
+        gpu: 1x NVIDIA A10G (24GB VRAM)
+        desc: GPU accelerated instance for AI inference & model evaluation
+        category: GPU Accelerated
+    credentialFields:
+      - key: accessKeyId
+        label: AWS Access Key ID
+        placeholder: AKIAIOSFODNN7EXAMPLE
+        desc: IAM User access key with EC2 / VPC provisioning permissions.
+      - key: secretAccessKey
+        label: AWS Secret Access Key
+        placeholder: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        isSecret: true
+        desc: IAM Secret access key.
+      - key: sessionToken
+        label: AWS Session Token (Optional / STS)
+        placeholder: AQoDYXdzEJr1k...
+        isSecret: true
+        desc: Temporary credentials session token if using SSO or STS AssumeRole.
+      - key: keyPairName
+        label: EC2 Key Pair Name (Optional)
+        placeholder: my-dev-ssh-key
+        desc: Existing EC2 Key Pair name for SSH console login.
+  - id: gcp
+    name: Google Cloud Platform (GCP)
+    badge: Compute Engine
+    color: border-blue-500 bg-blue-50/50 text-blue-700
+    defaultRegion: us-central1-a
+    regions:
+      - id: us-central1-a
+        name: US Central (Iowa - Zone A)
+      - id: us-east4-a
+        name: US East (N. Virginia)
+      - id: europe-west1-b
+        name: Europe West (Belgium)
+      - id: asia-east1-a
+        name: Asia East (Taiwan)
+    instanceTypes:
+      - id: e2-standard-4
+        name: e2-standard-4
+        vcpu: 4
+        memGi: 16
+        desc: Cost-optimized shared-core machine for development
+        category: Dev Optimized
+      - id: c3-standard-8
+        name: c3-standard-8
+        vcpu: 8
+        memGi: 32
+        desc: 4th Gen Intel Xeon Scalable Sapphire Rapids performance
+        category: Compute Intensive
+      - id: n2-standard-4
+        name: n2-standard-4
+        vcpu: 4
+        memGi: 16
+        desc: Balanced compute platform with flexible vCPU-to-memory ratios
+        category: General Purpose
+      - id: g2-standard-8
+        name: g2-standard-8 (NVIDIA L4)
+        vcpu: 8
+        memGi: 32
+        gpu: 1x NVIDIA L4 (24GB VRAM)
+        desc: Next-gen Ada Lovelace GPU for LLM inference & graphics
+        category: GPU Accelerated
+    credentialFields:
+      - key: projectId
+        label: GCP Project ID
+        placeholder: my-gcp-project-123456
+        desc: Google Cloud Project ID.
+      - key: serviceAccountJson
+        label: GCP Service Account Key (JSON / Base64)
+        placeholder: '{"type": "service_account", "project_id": ...}'
+        isSecret: true
+        desc: Service Account credentials key with Compute Admin role.
+      - key: network
+        label: VPC Network Name
+        placeholder: default
+        desc: VPC network name to attach compute instance.
+  - id: azure
+    name: Microsoft Azure
+    badge: Azure VMs
+    color: border-sky-500 bg-sky-50/50 text-sky-700
+    defaultRegion: eastus
+    regions:
+      - id: eastus
+        name: East US
+      - id: westeurope
+        name: West Europe
+      - id: southeastasia
+        name: Southeast Asia
+      - id: centralus
+        name: Central US
+    instanceTypes:
+      - id: Standard_D4s_v5
+        name: Standard_D4s_v5
+        vcpu: 4
+        memGi: 16
+        desc: General purpose 3rd Gen Intel Xeon Ice Lake
+        category: Dev Optimized
+      - id: Standard_B4ms
+        name: Standard_B4ms (Burstable)
+        vcpu: 4
+        memGi: 16
+        desc: Burstable economical VM for intermittent dev tasks
+        category: Dev Optimized
+      - id: Standard_D8s_v5
+        name: Standard_D8s_v5
+        vcpu: 8
+        memGi: 32
+        desc: High core density for compilation pipelines
+        category: General Purpose
+      - id: Standard_NC4as_T4_v3
+        name: Standard_NC4as_T4_v3 (NVIDIA T4)
+        vcpu: 4
+        memGi: 28
+        gpu: 1x NVIDIA Tesla T4 (16GB)
+        desc: NVIDIA T4 Tensor Core GPU instance
+        category: GPU Accelerated
+    credentialFields:
+      - key: subscriptionId
+        label: Azure Subscription ID
+        placeholder: 00000000-0000-0000-0000-000000000000
+        desc: Azure Subscription GUID.
+      - key: tenantId
+        label: Azure Tenant ID (Directory ID)
+        placeholder: 00000000-0000-0000-0000-000000000000
+        desc: Microsoft Entra ID Tenant GUID.
+      - key: clientId
+        label: Client ID (Application ID / Service Principal)
+        placeholder: 00000000-0000-0000-0000-000000000000
+        desc: Service Principal App ID with Contributor role.
+      - key: clientSecret
+        label: Client Secret
+        placeholder: w7Q8Q~...
+        isSecret: true
+        desc: Service Principal client secret password.
+      - key: resourceGroup
+        label: Target Resource Group
+        placeholder: rg-kubesdk-dev
+        desc: Azure Resource Group to create VM in.
+  - id: digitalocean
+    name: DigitalOcean
+    badge: Droplets
+    color: border-indigo-500 bg-indigo-50/50 text-indigo-700
+    defaultRegion: nyc1
+    regions:
+      - id: nyc1
+        name: New York 1
+      - id: sfo3
+        name: San Francisco 3
+      - id: ams3
+        name: Amsterdam 3
+      - id: fra1
+        name: Frankfurt 1
+      - id: sgp1
+        name: Singapore 1
+    instanceTypes:
+      - id: s-4vcpu-8gb
+        name: Basic Droplet (4 vCPU / 8GB)
+        vcpu: 4
+        memGi: 8
+        desc: Shared vCPU Droplet for fast bootstrapping
+        category: Dev Optimized
+      - id: g-4vcpu-16gb
+        name: General Purpose (4 vCPU / 16GB)
+        vcpu: 4
+        memGi: 16
+        desc: Dedicated vCPU for steady performance
+        category: General Purpose
+      - id: c-8
+        name: CPU-Optimized (8 vCPU / 16GB)
+        vcpu: 8
+        memGi: 16
+        desc: High compute CPU Droplet
+        category: Compute Intensive
+    credentialFields:
+      - key: apiToken
+        label: DigitalOcean Personal Access Token
+        placeholder: dop_v1_...
+        isSecret: true
+        desc: DigitalOcean API token with read/write scopes.
+      - key: sshKeyFingerprint
+        label: SSH Key Fingerprint (Optional)
+        placeholder: aa:bb:cc:dd:ee:ff:11:22...
+        desc: Fingerprint of SSH key registered in DigitalOcean account.
+  - id: hetzner
+    name: Hetzner Cloud
+    badge: HCloud
+    color: border-red-500 bg-red-50/50 text-red-700
+    defaultRegion: fsn1
+    regions:
+      - id: fsn1
+        name: Falkenstein (Germany)
+      - id: nbg1
+        name: Nuremberg (Germany)
+      - id: hel1
+        name: Helsinki (Finland)
+      - id: ash
+        name: Ashburn, VA (USA)
+    instanceTypes:
+      - id: cpx31
+        name: CPX31 (4 vCPU AMD / 8GB)
+        vcpu: 4
+        memGi: 8
+        desc: AMD EPYC shared vCPU - Highly economical
+        category: Dev Optimized
+      - id: cpx41
+        name: CPX41 (8 vCPU AMD / 16GB)
+        vcpu: 8
+        memGi: 16
+        desc: AMD EPYC 8 core machine
+        category: General Purpose
+      - id: ccx23
+        name: CCX23 (4 Dedicated vCPU / 16GB)
+        vcpu: 4
+        memGi: 16
+        desc: Dedicated AMD EPYC CPU threads
+        category: Compute Intensive
+    credentialFields:
+      - key: apiToken
+        label: Hetzner Cloud API Token
+        placeholder: AbCdEfGhIjKlMnOpQrStUvWxYz...
+        isSecret: true
+        desc: HCloud project API token with Read & Write permissions.
+  - id: oci
+    name: Oracle Cloud Infrastructure (OCI)
+    badge: Always Free Tier
+    color: border-orange-500 bg-orange-50/50 text-orange-700
+    defaultRegion: us-ashburn-1
+    regions:
+      - id: us-ashburn-1
+        name: US East (Ashburn)
+      - id: eu-frankfurt-1
+        name: EU (Frankfurt)
+      - id: ap-singapore-1
+        name: Asia Pacific (Singapore)
+    instanceTypes:
+      - id: VM.Standard.A1.Flex
+        name: A1.Flex (Ampere ARM 4 OCPU / 24GB)
+        vcpu: 4
+        memGi: 24
+        desc: Always-Free Tier eligible Ampere Altra ARM compute
+        category: Dev Optimized
+      - id: VM.Standard3.Flex
+        name: Standard3.Flex (Intel 4 OCPU / 16GB)
+        vcpu: 4
+        memGi: 16
+        desc: 3rd Gen Intel Xeon Scalable flexible shape
+        category: General Purpose
+    credentialFields:
+      - key: tenancyOcid
+        label: Tenancy OCID
+        placeholder: ocid1.tenancy.oc1..aaaaaaa...
+        desc: Oracle Cloud tenancy identifier.
+      - key: userOcid
+        label: User OCID
+        placeholder: ocid1.user.oc1..aaaaaaa...
+        desc: OCI User identifier.
+      - key: fingerprint
+        label: API Key Fingerprint
+        placeholder: 20:3b:97:13:55:1c:...
+        desc: Fingerprint of the uploaded RSA public key.
+      - key: privateKey
+        label: API Private Key (PEM)
+        placeholder: |-
+          -----BEGIN RSA PRIVATE KEY-----
+          ...
+        isSecret: true
+        desc: RSA Private key content matching the OCI user API key.
+      - key: compartmentOcid
+        label: Compartment OCID
+        placeholder: ocid1.compartment.oc1..aaaaaaa...
+        desc: Target compartment OCID.
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787400596874
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787400732098
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787401048925
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787401362776
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787403834871
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787404029141
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787404470838
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787405769849
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787406378233
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1787406397900
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193003972
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193423727
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193696540
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193924994
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token

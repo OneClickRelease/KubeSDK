@@ -1,0 +1,168 @@
+capability-layers:
+  version: v1
+  updated: '2026-08-31'
+  layers:
+    testlayer_1788193424007:
+      name: Test Layer 1788193424007 Updated
+      description: Updated description
+      image_url: images/test.png
+      sub_layers:
+        - name: Test SubLayer 1788193424007 Renamed
+          parent: Test Layer 1788193424007 Updated
+          description: Renamed sublayer description
+          image_url: images/test-sublayer-1788193424007.png
+          file: capabilities/test-sublayer-1788193424007.yaml
+    database:
+      name: Database
+      description: SQL, NoSQL, time-series, graph, and analytical databases.
+      image_url: images/database.png
+      sub_layers:
+        - name: NoSQL
+          parent: Database
+          description: Document, key-value, and wide-column stores.
+          image_url: images/nosql.png
+          file: capabilities/nosql.yaml
+        - name: SQL
+          parent: Database
+          description: Relational databases like MySQL, PostgreSQL, Oracle.
+          image_url: images/sql.png
+          file: capabilities/sql.yaml
+        - name: Graph
+          parent: Database
+          description: Graph databases for relationship-heavy data (Neo4j, JanusGraph).
+          image_url: images/graph.png
+          file: capabilities/graph.yaml
+        - name: Time-Series
+          parent: Database
+          description: Databases optimized for time-series data (InfluxDB, Timescale).
+          image_url: images/timeseries.png
+          file: capabilities/timeseries.yaml
+    messaging:
+      name: Messaging
+      description: Event streaming, message brokers, and pub/sub systems.
+      image_url: images/messaging.png
+      file: capabilities/messaging.yaml
+    storage:
+      name: Storage
+      description: Persistent storage systems including block, file, object, and distributed storage.
+      image_url: images/storage.png
+      sub_layers:
+        - name: Block Storage
+          parent: Storage
+          description: Traditional block-level storage systems for VMs and databases.
+          image_url: images/block-storage.png
+          file: capabilities/block-storage.yaml
+        - name: Object Storage
+          parent: Storage
+          description: S3-compatible object stores for unstructured data.
+          image_url: images/object-storage.png
+          file: capabilities/object-storage.yaml
+        - name: File Storage
+          parent: Storage
+          description: Network file systems like NFS, SMB, and distributed FS.
+          image_url: images/file-storage.png
+          file: capabilities/file-storage.yaml
+    orchestrator:
+      name: Orchestrator
+      description: Platforms for container orchestration, workflow scheduling, and service coordination.
+      image_url: images/orchestrator.png
+      sub_layers:
+        - name: Kubernetes
+          parent: Orchestrator
+          description: Container orchestration for modern cloud-native workloads.
+          image_url: images/kubernetes.png
+          file: capabilities/kubernetes.yaml
+        - name: Workflow Engines
+          parent: Orchestrator
+          description: Engines for workflow automation (Argo, Airflow, Prefect).
+          image_url: images/workflow-engines.png
+          file: capabilities/workflow-engines.yaml
+    applications:
+      name: Applications
+      description: Application runtimes, frameworks, APIs, and microservices.
+      image_url: images/applications.png
+      file: capabilities/applications.yaml
+      components:
+        - name: REST API
+          description: RESTful services for internal/external communication.
+          image_url: images/rest-api.png
+          file: capabilities/rest-api.yaml
+        - name: gRPC Service
+          description: High-performance RPC services using gRPC.
+          image_url: images/grpc.png
+          file: capabilities/grpc.yaml
+    data:
+      name: Data
+      description: Modern data capabilities including ingestion, processing, storage, and governance.
+      image_url: images/data.png
+      sub_layers:
+        - name: Data Lake
+          parent: Data
+          description: Centralized repository for raw structured and unstructured data.
+          image_url: images/data-lake.png
+          file: capabilities/data-lake.yaml
+        - name: Data Warehouse
+          parent: Data
+          description: Analytical databases optimized for BI and reporting.
+          image_url: images/data-warehouse.png
+          file: capabilities/data-warehouse.yaml
+        - name: Data Mesh
+          parent: Data
+          description: Decentralized approach to data ownership and sharing.
+          image_url: images/data-mesh.png
+          file: capabilities/data-mesh.yaml
+        - name: Data Governance
+          parent: Data
+          description: Policies, compliance, and metadata management.
+          image_url: images/data-governance.png
+          file: capabilities/data-governance.yaml
+    testing:
+      name: Testing
+      description: Platform layer for Testing
+      image_url: https://d8iqbmvu05s9c.cloudfront.net/ajprhqgqg1otf7d5sm7u3brf27gv
+      sub_layers:
+        - name: MyTest
+          parent: Testing
+          description: Sub-layer for MyTest
+          image_url: https://png.pngtree.com/png-clipart/20230804/original/pngtree-test-orange-icon-sign-test-testing-vector-picture-image_9551097.png
+          file: capabilities/mytest.yaml
+    ai-ml:
+      name: AI & ML
+      description: Artificial intelligence, machine learning, and deep learning platforms.
+      image_url: images/ai-ml.png
+      sub_layers:
+        - name: ML Frameworks
+          parent: AI & ML
+          description: TensorFlow, PyTorch, Scikit-learn.
+          image_url: images/ml-frameworks.png
+          file: capabilities/ml-frameworks.yaml
+        - name: Model Serving
+          parent: AI & ML
+          description: Platforms for deploying ML models (KFServing, Seldon).
+          image_url: images/model-serving.png
+          file: capabilities/model-serving.yaml
+        - name: MLOps
+          parent: AI & ML
+          description: End-to-end ML lifecycle management.
+          image_url: images/mlops.png
+          file: capabilities/mlops.yaml
+    security:
+      name: Security
+      description: Identity, access control, encryption, compliance, and observability.
+      image_url: images/security.png
+      sub_layers:
+        - name: Identity & Access
+          parent: Security
+          description: Authentication, authorization, and IAM systems.
+          image_url: images/identity-access.png
+          file: capabilities/identity-access.yaml
+        - name: Secrets Management
+          parent: Security
+          description: Secure storage of credentials and keys.
+          image_url: images/secrets.png
+          file: capabilities/secrets.yaml
+        - name: Zero Trust
+          parent: Security
+          description: Security model enforcing least privilege and continuous verification.
+          image_url: images/zero-trust.png
+          file: capabilities/zero-trust.yaml

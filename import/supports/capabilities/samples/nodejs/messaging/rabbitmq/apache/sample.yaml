@@ -1,0 +1,14 @@
+dependencies:
+  amqplib:
+    npm: "\"dependencies\": {\n  \"amqplib\": \"^1.0.0\"\n}"
+    yarn: "\"dependencies\": {\n  \"amqplib\": \"^1.0.0\"\n}"
+    pnpm: "\"dependencies\": {\n  \"amqplib\": \"^1.0.0\"\n}"
+envVars:
+- key: BROKER_HOST
+  value: '{{host}}'
+- key: BROKER_PORT
+  value: '{{port}}'
+- key: BROKER_USER
+  value: '{{username}}'
+- key: BROKER_PASS
+  value: '{{password}}'

@@ -1,0 +1,13 @@
+# Spring Boot application.yaml for PostgreSQL
+spring:
+  datasource:
+    url: jdbc:postgresql://{{host}}:{{port}}/{{database}}
+    username: {{username}}
+    password: {{password}}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

@@ -1,0 +1,31 @@
+{
+  "id": "developer-profile-mtjrk3pw",
+  "name": "Developer Profile",
+  "description": "Custom defined cluster & capability deployment",
+  "createdAt": "2026-09-02T07:17:22.772Z",
+  "updatedAt": "2026-09-02T07:17:22.774Z",
+  "activeVersion": "v1.0.0",
+  "versions": [
+    {
+      "version": "v1.0.0",
+      "savedAt": "2026-09-02T07:17:22.774Z",
+      "comment": "Updated cluster topology and platform capability layers",
+      "author": "Platform Architect",
+      "bytes": 2868,
+      "summary": {
+        "infraType": "docker-cluster",
+        "orchestrator": "k3s",
+        "nodes": 1,
+        "mode": "online",
+        "platformLayersCount": 3
+      }
+    }
+  ],
+  "latestSummary": {
+    "infraType": "docker-cluster",
+    "orchestrator": "k3s",
+    "nodes": 1,
+    "mode": "online",
+    "platformLayersCount": 3
+  }
+}

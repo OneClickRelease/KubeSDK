@@ -1,0 +1,14 @@
+// Go MinIO client connection configuration
+package main
+
+import (
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+)
+
+func initMinio() (*minio.Client, error) {
+	return minio.New("{{host}}:{{port}}", &minio.Options{
+		Creds:  credentials.NewStaticV4("{{username}}", "{{password}}", ""),
+		Secure: false,
+	})
+}

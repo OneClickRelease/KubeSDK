@@ -2,10 +2,29 @@ import express from "express";
 import { ResourcePlan, KubeSDKLocalRun } from "../../src/types";
 import yaml from "js-yaml";
 import net from "net";
+import fs from "fs";
+import path from "path";
+import AdmZip from "adm-zip";
 
 // 🔐 Programmatic equivalents of 'curl -k' - Required for global fetch in Node 18+ 
 // to ignore self-signed certs in local K3s/Rancher clusters.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Helper: Get local cluster credentials from env / files
+const getLocalClusterCredentials = () => {
+  const apiServerUrl = process.env.K8S_API_SERVER_URL;
+  const tokenFile = process.env.K8S_TOKEN_FILE;
+
+  if (apiServerUrl && tokenFile && fs.existsSync(tokenFile)) {
+    try {
+      const token = fs.readFileSync(tokenFile, "utf8").trim();
+      return { apiServerUrl, token };
+    } catch (e) {
+      console.error("Failed to read local cluster token:", e);
+    }
+  }
+  return null;
+};
 
 const router = express.Router();
 
@@ -170,8 +189,30 @@ const extractComponentFromResource = (res: any, namespaces: Set<string>): any | 
 
 // --- ROUTES ---
 
+router.get("/cluster/credentials", (req, res) => {
+  const creds = getLocalClusterCredentials();
+  if (creds) {
+    return res.json({
+      status: "success",
+      apiServerUrl: creds.apiServerUrl,
+      token: creds.token,
+    });
+  }
+  return res.json({
+    status: "failed",
+    message: "No local cluster credentials found",
+  });
+});
+
 router.post("/test-connection", async (req, res) => {
-  const { apiServerUrl, token } = req.body;
+  let { apiServerUrl, token } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
   if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl.replace(/\/+$/, "");
   try {
@@ -191,7 +232,15 @@ router.post("/test-connection", async (req, res) => {
 });
 
 router.post("/import", async (req, res) => {
-  const { apiServerUrl, token } = req.body;
+  let { apiServerUrl, token } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const components: any[] = [];
@@ -278,18 +327,34 @@ router.post("/parse-snapshot", async (req, res) => {
       }
     });
 
-    res.json({ components: final, dependencyGraph: { edges: Array.from(new Set(edges.map(e => JSON.stringify(e)))).map(s => JSON.parse(s)) }, wizard: lrd?.spec?.wizard || { source: 'snapshot_yaml', runtime: { type: 'rancher-desktop', versionConstraint: '>=1.0.0' } } });
+    res.json({ components: final, dependencyGraph: { edges: Array.from(new Set(edges.map(e => JSON.stringify(e)))).map(s => JSON.parse(s)) }, wizard: lrd?.spec?.wizard || { source: 'snapshot_yaml', runtime: { type: 'inbuild-k3s', versionConstraint: '>=1.0.0' } } });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
 router.post("/deploy", async (req, res) => {
-  const { apiServerUrl, token, yamlContent } = req.body;
+  let { apiServerUrl, token, yamlContent } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const docs = yaml.loadAll(yamlContent) as any[];
     const applied = [];
     for (const doc of docs) {
       if (!doc || !doc.kind || doc.kind === 'LocalRunDefinition') continue;
+
+      // Do not deploy the system and default namespaces/resources which are already part of K3s
+      const ns = doc.kind === 'Namespace' ? doc.metadata?.name : (doc.metadata?.namespace || 'default');
+      if (['kube-system', 'kube-public', 'kube-node-lease', 'local-path-storage', 'default'].includes(ns)) {
+        applied.push(`Skipped built-in ${doc.kind}/${doc.metadata?.name}`);
+        continue;
+      }
+
       const cleanDoc = sanitizeManifest(doc);
       const group = doc.apiVersion.includes('/') ? doc.apiVersion.split('/')[0] : '';
       const version = doc.apiVersion.includes('/') ? doc.apiVersion.split('/')[1] : doc.apiVersion;
@@ -312,7 +377,15 @@ router.post("/deploy", async (req, res) => {
 });
 
 router.post("/health-check", async (req, res) => {
-  const { apiServerUrl, token, namespaces } = req.body;
+  let { apiServerUrl, token, namespaces } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const results: Record<string, any> = {};
@@ -350,7 +423,15 @@ router.post("/health-check", async (req, res) => {
 });
 
 router.post("/logs", async (req, res) => {
-  const { apiServerUrl, token, namespace, podName, containerName } = req.body;
+  let { apiServerUrl, token, namespace, podName, containerName } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) {
+      apiServerUrl = creds.apiServerUrl;
+      token = creds.token;
+    }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
   const targetUrl = apiServerUrl?.replace(/\/+$/, "");
   try {
     const logs = await k8sRequestRaw(`${targetUrl}/api/v1/namespaces/${namespace}/pods/${podName}/log${containerName ? `?container=${containerName}` : ''}`, token);
@@ -367,4 +448,363 @@ router.post("/fit", (req, res) => {
   res.json(plan);
 });
 
+// POST /cleanup - Remove all KubeSDK-managed resources from the cluster
+// Deletes Pods, Services, ConfigMaps, Secrets, Ingresses in user namespaces tagged
+// with infra.example.com/profile=sdk, then removes those namespaces themselves.
+const SYSTEM_NAMESPACES = ['kube-system', 'kube-public', 'kube-node-lease', 'local-path-storage', 'default'];
+
+router.post("/cleanup", async (req, res) => {
+  let { apiServerUrl, token } = req.body;
+  if (!apiServerUrl || !token) {
+    const creds = getLocalClusterCredentials();
+    if (creds) { apiServerUrl = creds.apiServerUrl; token = creds.token; }
+  }
+  if (!apiServerUrl || !token) return res.status(400).json({ error: "API Server URL and Token are required." });
+  const targetUrl = apiServerUrl.replace(/\/+$/, "");
+
+  const deleted: string[] = [];
+  const errors: string[] = [];
+
+  const safeDelete = async (url: string, label: string) => {
+    try {
+      const r = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (r.ok || r.status === 404) {
+        deleted.push(`Deleted ${label}`);
+      } else {
+        const t = await r.text();
+        errors.push(`Failed to delete ${label}: ${t.slice(0, 120)}`);
+      }
+    } catch (e: any) {
+      errors.push(`Error deleting ${label}: ${e.message}`);
+    }
+  };
+
+  try {
+    // 1. Discover all non-system namespaces
+    const nsData = await k8sRequest(`${targetUrl}/api/v1/namespaces`, token);
+    const userNamespaces: string[] = (nsData.items || [])
+      .map((n: any) => n.metadata.name)
+      .filter((n: string) => !SYSTEM_NAMESPACES.includes(n));
+
+    // 2. For each user namespace, delete SDK-labelled workloads
+    const resourceTypes = [
+      { path: 'pods', kind: 'Pod' },
+      { path: 'services', kind: 'Service' },
+      { path: 'configmaps', kind: 'ConfigMap' },
+      { path: 'secrets', kind: 'Secret' },
+    ];
+    const networkTypes = [
+      { path: 'ingresses', kind: 'Ingress', apiBase: '/apis/networking.k8s.io/v1' },
+    ];
+
+    for (const ns of userNamespaces) {
+      // Core resources
+      for (const rt of resourceTypes) {
+        try {
+          const data = await k8sRequest(
+            `${targetUrl}/api/v1/namespaces/${ns}/${rt.path}?labelSelector=infra.example.com%2Fprofile%3Dsdk`,
+            token
+          );
+          for (const item of (data.items || [])) {
+            const name = item.metadata.name;
+            if (rt.kind === 'Secret' && item.type === 'kubernetes.io/service-account-token') continue;
+            await safeDelete(`${targetUrl}/api/v1/namespaces/${ns}/${rt.path}/${name}?gracePeriodSeconds=0`, `${rt.kind}/${ns}/${name}`);
+          }
+        } catch (e) { /* namespace may have been already deleted */ }
+      }
+      // Networking resources
+      for (const rt of networkTypes) {
+        try {
+          const data = await k8sRequest(
+            `${targetUrl}${rt.apiBase}/namespaces/${ns}/${rt.path}?labelSelector=infra.example.com%2Fprofile%3Dsdk`,
+            token
+          );
+          for (const item of (data.items || [])) {
+            await safeDelete(`${targetUrl}${rt.apiBase}/namespaces/${ns}/${rt.path}/${item.metadata.name}`, `${rt.kind}/${ns}/${item.metadata.name}`);
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    // 3. Also delete all resources without label selector but check annotation
+    for (const ns of userNamespaces) {
+      try {
+        const data = await k8sRequest(`${targetUrl}/api/v1/namespaces/${ns}/pods`, token);
+        for (const item of (data.items || [])) {
+          if (item.metadata?.annotations?.['infra.example.com/id']) {
+            await safeDelete(`${targetUrl}/api/v1/namespaces/${ns}/pods/${item.metadata.name}?gracePeriodSeconds=0`, `Pod/${ns}/${item.metadata.name}`);
+          }
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // 4. Delete user namespaces themselves (they were created by KubeSDK)
+    for (const ns of userNamespaces) {
+      await safeDelete(`${targetUrl}/api/v1/namespaces/${ns}`, `Namespace/${ns}`);
+    }
+
+    // 5. Delete the LocalRunDefinition CRD entries if any
+    try {
+      const lrds = await k8sRequest(`${targetUrl}/apis/kubesdk.dev/v1alpha1/namespaces/default/localrundefinitions`, token);
+      for (const lrd of (lrds.items || [])) {
+        await safeDelete(`${targetUrl}/apis/kubesdk.dev/v1alpha1/namespaces/default/localrundefinitions/${lrd.metadata.name}`, `LocalRunDefinition/${lrd.metadata.name}`);
+      }
+    } catch (e) { /* CRD may not exist */ }
+
+    res.json({ status: 'success', deleted, errors, summary: `Removed ${deleted.length} resources from ${userNamespaces.length} namespace(s).` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, deleted, errors });
+  }
+});
+
+// POST /cluster/offline-package & POST /offline-package
+// Packages the complete infrastructure, orchestrator, and platform capability components into a self-contained .zip
+const generatePackageHandler = async (req: express.Request, res: express.Response) => {
+  try {
+    const {
+      infraType = 'baremetal',
+      orchestrator = 'k3s',
+      topology = 'single-node',
+      nodesCount = 1,
+      vcpu = 4,
+      memoryGi = 8,
+      diskGi = 50,
+      arch = 'x86_64',
+      isAirgap = true,
+      cloudProvider,
+      vmNodePools,
+      podCidr = '10.42.0.0/16',
+      serviceCidr = '10.43.0.0/16',
+      platformLayers = [] // Array of selected platform capability layers & components
+    } = req.body;
+
+    const zip = new AdmZip();
+
+    // 1. cluster-config.yaml
+    const clusterConfig = {
+      apiVersion: 'kubesdk.dev/v1alpha1',
+      kind: 'ClusterInfrastructureDefinition',
+      metadata: {
+        name: `kubesdk-${infraType}-cluster`,
+        createdAt: new Date().toISOString(),
+        environment: isAirgap ? 'air-gapped' : 'online'
+      },
+      spec: {
+        infrastructure: {
+          target: infraType,
+          topology,
+          nodes: topology === 'single-node' ? 1 : nodesCount,
+          totalCompute: { vcpu, memoryGi, diskGi, arch },
+          vmNodePools: vmNodePools || undefined,
+          cloudProvider: cloudProvider || undefined
+        },
+        orchestrator: {
+          engine: orchestrator,
+          networking: { podCidr, serviceCidr }
+        },
+        platformComponents: platformLayers.map((l: any) => ({
+          layerId: l.id,
+          layerName: l.name,
+          enabled: l.enabled,
+          component: l.selectedComponent ? {
+            name: l.selectedComponent.name,
+            version: l.selectedComponent.version || 'latest',
+            namespace: l.selectedComponent.namespace || 'kube-system',
+            chart: l.selectedComponent.chart || undefined,
+            replicas: l.selectedComponent.replicas || 1
+          } : undefined
+        }))
+      }
+    };
+    zip.addFile('cluster-config.yaml', Buffer.from(yaml.dump(clusterConfig), 'utf8'));
+
+    // 2. manifests/ directory for each enabled platform capability component
+    const imageList: string[] = [
+      orchestrator === 'k3s' ? 'rancher/k3s:v1.28.8-k3s1' : 'rancher/rke2-runtime:v1.28.8-rke2r1',
+      'rancher/mirrored-pause:3.6',
+      'rancher/mirrored-coredns-coredns:1.10.1'
+    ];
+
+    platformLayers.forEach((layer: any, idx: number) => {
+      if (!layer.enabled || !layer.selectedComponent) return;
+      const comp = layer.selectedComponent;
+      const compName = (comp.name || 'component').toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const ns = comp.namespace || 'kube-system';
+
+      // Example Kubernetes Manifest for Platform Component
+      const manifestDoc = {
+        apiVersion: 'v1',
+        kind: 'Namespace',
+        metadata: { name: ns }
+      };
+
+      const deploymentDoc = {
+        apiVersion: 'apps/v1',
+        kind: 'Deployment',
+        metadata: {
+          name: compName,
+          namespace: ns,
+          labels: {
+            'app.kubernetes.io/name': compName,
+            'app.kubernetes.io/part-of': 'kubesdk-platform',
+            'kubesdk.dev/capability-layer': layer.id
+          }
+        },
+        spec: {
+          replicas: comp.replicas || 1,
+          selector: { matchLabels: { app: compName } },
+          template: {
+            metadata: { labels: { app: compName } },
+            spec: {
+              containers: [{
+                name: compName,
+                image: comp.image || `${compName}:${comp.version || 'latest'}`,
+                imagePullPolicy: isAirgap ? 'IfNotPresent' : 'Always',
+                ports: comp.port ? [{ containerPort: comp.port }] : undefined,
+                resources: {
+                  requests: { cpu: '100m', memory: '128Mi' },
+                  limits: { cpu: '500m', memory: '512Mi' }
+                }
+              }]
+            }
+          }
+        }
+      };
+
+      const manifestContent = `---\n${yaml.dump(manifestDoc)}\n---\n${yaml.dump(deploymentDoc)}`;
+      const fileName = `manifests/${String(idx + 1).padStart(2, '0')}-${compName}.yaml`;
+      zip.addFile(fileName, Buffer.from(manifestContent, 'utf8'));
+
+      if (comp.image) imageList.push(comp.image);
+      else imageList.push(`${compName}:${comp.version || 'latest'}`);
+    });
+
+    // 3. offline-images.txt
+    zip.addFile('offline-images.txt', Buffer.from(Array.from(new Set(imageList)).join('\n') + '\n', 'utf8'));
+
+    // 4. install.sh
+    const installScript = `#!/usr/bin/env bash
+# ==============================================================================
+# KubeSDK Cluster & Platform Provisioner
+# Target: ${infraType.toUpperCase()} | Engine: ${orchestrator.toUpperCase()}
+# Mode: ${isAirgap ? 'Air-Gapped Offline' : 'Online Connected'}
+# ==============================================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+
+echo "==> [1/4] Preparing node environment..."
+mkdir -p /opt/kubesdk/manifests /opt/kubesdk/images
+
+if [ -f "\${SCRIPT_DIR}/offline-images.txt" ]; then
+  echo "==> [2/4] Verifying container images..."
+  cat "\${SCRIPT_DIR}/offline-images.txt"
+fi
+
+echo "==> [3/4] Installing ${orchestrator.toUpperCase()} Kubernetes Engine..."
+${isAirgap ? `
+# Offline installation from embedded binary
+export INSTALL_${orchestrator.toUpperCase()}_SKIP_DOWNLOAD=true
+curl -sfL https://get.k3s.io | sh -s - server --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}"
+` : `
+curl -sfL https://get.k3s.io | sh -s - server --cluster-cidr="${podCidr}" --service-cidr="${serviceCidr}"
+`}
+
+echo "==> Waiting for Kubernetes API Server ready..."
+until kubectl get nodes >/dev/null 2>&1; do
+  sleep 2
+done
+
+echo "==> [4/4] Deploying Platform Capability Components..."
+if [ -d "\${SCRIPT_DIR}/manifests" ]; then
+  for manifest in "\${SCRIPT_DIR}"/manifests/*.yaml; do
+    if [ -f "\$manifest" ]; then
+      echo "  -> Applying \$manifest..."
+      kubectl apply -f "\$manifest"
+    fi
+  done
+fi
+
+echo ""
+echo "=============================================================================="
+echo "🎉 Cluster Provisioning & Platform Capability Setup Complete!"
+echo "   API Server URL : https://127.0.0.1:6443"
+echo "   Kubeconfig     : /etc/rancher/k3s/k3s.yaml"
+echo "=============================================================================="
+`;
+    zip.addFile('install.sh', Buffer.from(installScript, 'utf8'));
+
+    // 5. Cloud Terraform files if cloud
+    if (infraType === 'cloud-vm' && cloudProvider) {
+      const terraformTf = `
+terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    ${cloudProvider.providerId === 'aws' ? 'aws = { source = "hashicorp/aws", version = "~> 5.0" }' :
+      cloudProvider.providerId === 'gcp' ? 'google = { source = "hashicorp/google", version = "~> 5.0" }' :
+      cloudProvider.providerId === 'azure' ? 'azurerm = { source = "hashicorp/azurerm", version = "~> 3.0" }' :
+      'local = { source = "hashicorp/local" }'}
+  }
+}
+
+variable "region" {
+  default = "${cloudProvider.region || 'us-east-1'}"
+}
+
+variable "instance_type" {
+  default = "${cloudProvider.instanceType || 't4g.xlarge'}"
+}
+
+output "public_ip" {
+  value = "127.0.0.1"
+}
+`;
+      zip.addFile('terraform/main.tf', Buffer.from(terraformTf, 'utf8'));
+    }
+
+    // 6. README.md
+    const readme = `# KubeSDK Cluster & Platform Setup Bundle
+
+- **Infrastructure Target**: \`${infraType}\`
+- **Topology**: \`${topology}\` (${nodesCount} nodes)
+- **Total Compute**: \`${vcpu} vCPU / ${memoryGi} GB RAM / ${diskGi} GB Disk\`
+- **Orchestrator**: \`${orchestrator}\`
+- **Deployment Mode**: \`${isAirgap ? 'Air-Gapped Offline' : 'Online'}\`
+
+## Quick Start
+\`\`\`bash
+chmod +x install.sh
+./install.sh
+\`\`\`
+
+## Included Platform Capability Layers
+${platformLayers.filter((l: any) => l.enabled).map((l: any) => `- **${l.name}**: \`${l.selectedComponent?.name || 'Default'}\` (Namespace: \`${l.selectedComponent?.namespace || 'kube-system'}\`)`).join('\n') || '- No extra platform layers selected'}
+`;
+    zip.addFile('README.md', Buffer.from(readme, 'utf8'));
+
+    const zipBuffer = zip.toBuffer();
+    const filename = isAirgap 
+      ? `kubesdk-airgap-${infraType}-${orchestrator}-${topology}.zip`
+      : `kubesdk-setup-${infraType}-${orchestrator}.zip`;
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': zipBuffer.length
+    });
+
+    res.send(zipBuffer);
+  } catch (err: any) {
+    console.error('Error generating offline package:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+router.post("/cluster/offline-package", generatePackageHandler);
+router.post("/offline-package", generatePackageHandler);
+
 export default router;
+

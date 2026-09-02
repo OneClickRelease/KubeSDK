@@ -1,0 +1,13 @@
+dependencies:
+  OPA Go SDK:
+    go-build: github.com/open-policy-agent/opa v0.59.0
+    go-mod: github.com/open-policy-agent/opa v0.59.0
+envVars:
+- key: SERVICE_HOST
+  value: '{{host}}'
+- key: SERVICE_PORT
+  value: '{{port}}'
+- key: SERVICE_USER
+  value: '{{username}}'
+- key: SERVICE_KEY
+  value: '{{password}}'

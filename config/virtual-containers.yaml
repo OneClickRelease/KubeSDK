@@ -1,0 +1,81 @@
+engines:
+  - id: vdi-developer-laptop
+    name: VDI / Developer Laptop
+    engineType: vdi-workstation
+    category: Developer Workstation
+    defaultVcpu: 4
+    defaultMemoryGi: 8
+    defaultDiskGi: 50
+    desc: Local developer workstation (macOS, Windows WSL2, Linux) or virtual desktop (Citrix / VMware Horizon) with direct host volume sharing and port mapping.
+  - id: docker-desktop
+    name: Docker Desktop / Engine
+    engineType: docker
+    category: Container Runtime
+    defaultVcpu: 4
+    defaultMemoryGi: 8
+    defaultDiskGi: 40
+    desc: Standard Docker daemon execution with Docker socket access and compose networking.
+  - id: podman-rootless
+    name: Podman (Rootless)
+    engineType: podman
+    category: Rootless Container
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Daemonless, rootless container runtime fully compliant with OCI specifications.
+  - id: k3d-cluster
+    name: k3d (K3s in Docker)
+    engineType: k3d
+    category: Virtual K8s Cluster
+    defaultVcpu: 4
+    defaultMemoryGi: 8
+    defaultDiskGi: 30
+    desc: Lightweight wrapper to run K3s multi-node virtual clusters inside Docker containers.
+  - id: kind-cluster
+    name: KinD (Kubernetes in Docker)
+    engineType: kind
+    category: Virtual K8s Cluster
+    defaultVcpu: 4
+    defaultMemoryGi: 8
+    defaultDiskGi: 40
+    desc: Official CNCF tool for running local Kubernetes clusters using Docker container nodes.
+  - id: colima-nerdctl
+    name: Colima & nerdctl
+    engineType: nerdctl
+    category: Containerd Native
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Docker-compatible CLI for containerd with full support for rootless containers on macOS/Linux.
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193003977
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193423735
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193696546
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193924999

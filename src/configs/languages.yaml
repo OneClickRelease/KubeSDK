@@ -1,0 +1,157 @@
+languages:
+  java:
+    frameworks:
+      - spring-boot
+      - micronaut
+      - quarkus
+      - jakarta-ee
+      - wildfly
+      - helidon
+      - dropwizard
+    build-tools:
+      - maven
+      - gradle
+      - ant
+
+  dotnet:
+    frameworks:
+      - aspnet-core
+      - orleans
+      - dapr-dotnet
+    build-tools:
+      - dotnet-cli
+      - msbuild
+
+  go:
+    frameworks:
+      - gin
+      - echo
+      - fiber
+      - buffalo
+      - go-kit
+    build-tools:
+      - go-build
+      - go-mod
+
+  nodejs:
+    frameworks:
+      - express
+      - nestjs
+      - fastify
+      - koa
+      - hapi
+    build-tools:
+      - npm
+      - yarn
+      - pnpm
+
+  python:
+    frameworks:
+      - fastapi
+      - flask
+      - django
+      - aiohttp
+      - tornado
+    build-tools:
+      - pip
+      - poetry
+      - setuptools
+
+  rust:
+    frameworks:
+      - actix
+      - axum
+      - rocket
+      - warp
+    build-tools:
+      - cargo
+
+  cpp:
+    frameworks:
+      - grpc-cpp
+      - poco
+      - restbed
+    build-tools:
+      - cmake
+      - bazel
+      - make
+
+  php:
+    frameworks:
+      - laravel
+      - symfony
+      - slim
+    build-tools:
+      - composer
+
+  ruby:
+    frameworks:
+      - rails
+      - sinatra
+      - grape
+    build-tools:
+      - bundler
+      - rake
+
+  scala:
+    frameworks:
+      - akka
+      - play
+    build-tools:
+      - sbt
+      - maven
+
+  kotlin:
+    frameworks:
+      - ktor
+      - spring-boot-kotlin
+    build-tools:
+      - gradle
+      - maven
+
+  elixir:
+    frameworks:
+      - phoenix
+    build-tools:
+      - mix
+
+  erlang:
+    frameworks:
+      - otp
+    build-tools:
+      - rebar3
+
+  dart:
+    frameworks:
+      - shelf
+      - aqueduct
+    build-tools:
+      - pub
+
+  haskell:
+    frameworks:
+      - servant
+      - yesod
+    build-tools:
+      - stack
+      - cabal
+
+  swift:
+    frameworks:
+      - vapor
+      - kitura
+    build-tools:
+      - swiftpm
+
+  r:
+    frameworks:
+      - plumber
+    build-tools:
+      - r-cmd-build
+
+  perl:
+    frameworks:
+      - mojolicious
+      - dancer
+    build-tools:
+      - cpanm
