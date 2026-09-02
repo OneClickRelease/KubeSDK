@@ -1,5 +1,545 @@
 [
   {
+    "version": "v457",
+    "versionNumber": 457,
+    "timestamp": "2026-08-31T16:32:05.324Z",
+    "action": "Catalog updated: Deleted layer: Test Layer 1788193925234 Updated (testlayer_1788193925234)",
+    "author": "System",
+    "filename": "v457_2026-08-31T16-32-05-324Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v456",
+    "versionNumber": 456,
+    "timestamp": "2026-08-31T16:32:05.322Z",
+    "action": "Deleted layer: Test Layer 1788193925234 Updated (testlayer_1788193925234)",
+    "author": "User",
+    "filename": "v456_2026-08-31T16-32-05-322Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v455",
+    "versionNumber": 455,
+    "timestamp": "2026-08-31T16:32:05.318Z",
+    "action": "Catalog updated: Deleted sub-layer Test SubLayer 1788193925234 Renamed from Test Layer 1788193925234 Updated",
+    "author": "System",
+    "filename": "v455_2026-08-31T16-32-05-318Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v454",
+    "versionNumber": 454,
+    "timestamp": "2026-08-31T16:32:05.316Z",
+    "action": "Deleted sub-layer Test SubLayer 1788193925234 Renamed from Test Layer 1788193925234 Updated",
+    "author": "User",
+    "filename": "v454_2026-08-31T16-32-05-316Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v453",
+    "versionNumber": 453,
+    "timestamp": "2026-08-31T16:32:05.312Z",
+    "action": "Catalog updated: Reordered capability layers and sublayers",
+    "author": "System",
+    "filename": "v453_2026-08-31T16-32-05-312Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v452",
+    "versionNumber": 452,
+    "timestamp": "2026-08-31T16:32:05.309Z",
+    "action": "Reordered capability layers and sublayers",
+    "author": "User",
+    "filename": "v452_2026-08-31T16-32-05-309Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v451",
+    "versionNumber": 451,
+    "timestamp": "2026-08-31T16:32:05.306Z",
+    "action": "Catalog updated: Updated sub-layer Test SubLayer 1788193925234 Renamed under Test Layer 1788193925234 Updated",
+    "author": "System",
+    "filename": "v451_2026-08-31T16-32-05-306Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v450",
+    "versionNumber": 450,
+    "timestamp": "2026-08-31T16:32:05.305Z",
+    "action": "Updated sub-layer Test SubLayer 1788193925234 Renamed under Test Layer 1788193925234 Updated",
+    "author": "User",
+    "filename": "v450_2026-08-31T16-32-05-305Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v449",
+    "versionNumber": 449,
+    "timestamp": "2026-08-31T16:32:05.298Z",
+    "action": "Catalog updated: Added sub-layer Test SubLayer 1788193925234 to Test Layer 1788193925234 Updated",
+    "author": "System",
+    "filename": "v449_2026-08-31T16-32-05-298Z.yaml",
+    "size": 7008
+  },
+  {
+    "version": "v448",
+    "versionNumber": 448,
+    "timestamp": "2026-08-31T16:32:05.292Z",
+    "action": "Added sub-layer Test SubLayer 1788193925234 to Test Layer 1788193925234 Updated",
+    "author": "User",
+    "filename": "v448_2026-08-31T16-32-05-292Z.yaml",
+    "size": 7008
+  },
+  {
+    "version": "v447",
+    "versionNumber": 447,
+    "timestamp": "2026-08-31T16:32:05.285Z",
+    "action": "Catalog updated: Updated layer: Test Layer 1788193925234 Updated",
+    "author": "System",
+    "filename": "v447_2026-08-31T16-32-05-285Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v446",
+    "versionNumber": 446,
+    "timestamp": "2026-08-31T16:32:05.275Z",
+    "action": "Updated layer: Test Layer 1788193925234 Updated",
+    "author": "User",
+    "filename": "v446_2026-08-31T16-32-05-275Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v445",
+    "versionNumber": 445,
+    "timestamp": "2026-08-31T16:32:05.267Z",
+    "action": "Catalog updated: Created new layer: Test Layer 1788193925234",
+    "author": "System",
+    "filename": "v445_2026-08-31T16-32-05-267Z.yaml",
+    "size": 6749
+  },
+  {
+    "version": "v444",
+    "versionNumber": 444,
+    "timestamp": "2026-08-31T16:32:05.266Z",
+    "action": "Created new layer: Test Layer 1788193925234",
+    "author": "User",
+    "filename": "v444_2026-08-31T16-32-05-266Z.yaml",
+    "size": 6749
+  },
+  {
+    "version": "v443",
+    "versionNumber": 443,
+    "timestamp": "2026-08-31T16:32:05.218Z",
+    "action": "Catalog updated: Imported capabilities/import-test.yaml",
+    "author": "System",
+    "filename": "v443_2026-08-31T16-32-05-218Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v442",
+    "versionNumber": 442,
+    "timestamp": "2026-08-31T16:32:05.046Z",
+    "action": "Catalog updated: Deleted provider: VitestTestDB_1788193925003",
+    "author": "System",
+    "filename": "v442_2026-08-31T16-32-05-046Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v441",
+    "versionNumber": 441,
+    "timestamp": "2026-08-31T16:32:05.036Z",
+    "action": "Catalog updated: Deprecated provider: VitestTestDB_1788193925003 (Testing deprecation flow)",
+    "author": "System",
+    "filename": "v441_2026-08-31T16-32-05-036Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v440",
+    "versionNumber": 440,
+    "timestamp": "2026-08-31T16:32:05.029Z",
+    "action": "Catalog updated: Version bump for VitestTestDB_1788193925003 (1.0.1 -> 2.0.0)",
+    "author": "System",
+    "filename": "v440_2026-08-31T16-32-05-029Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v439",
+    "versionNumber": 439,
+    "timestamp": "2026-08-31T16:32:05.023Z",
+    "action": "Catalog updated: Updated provider VitestTestDB_1788193925003",
+    "author": "System",
+    "filename": "v439_2026-08-31T16-32-05-023Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v438",
+    "versionNumber": 438,
+    "timestamp": "2026-08-31T16:32:05.017Z",
+    "action": "Catalog updated: Added provider VitestTestDB_1788193925003",
+    "author": "System",
+    "filename": "v438_2026-08-31T16-32-05-017Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v437",
+    "versionNumber": 437,
+    "timestamp": "2026-08-31T16:28:16.974Z",
+    "action": "Catalog updated: Deleted layer: Test Layer 1788193696852 Updated (testlayer_1788193696852)",
+    "author": "System",
+    "filename": "v437_2026-08-31T16-28-16-974Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v436",
+    "versionNumber": 436,
+    "timestamp": "2026-08-31T16:28:16.973Z",
+    "action": "Deleted layer: Test Layer 1788193696852 Updated (testlayer_1788193696852)",
+    "author": "User",
+    "filename": "v436_2026-08-31T16-28-16-973Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v435",
+    "versionNumber": 435,
+    "timestamp": "2026-08-31T16:28:16.970Z",
+    "action": "Catalog updated: Deleted sub-layer Test SubLayer 1788193696852 Renamed from Test Layer 1788193696852 Updated",
+    "author": "System",
+    "filename": "v435_2026-08-31T16-28-16-970Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v434",
+    "versionNumber": 434,
+    "timestamp": "2026-08-31T16:28:16.968Z",
+    "action": "Deleted sub-layer Test SubLayer 1788193696852 Renamed from Test Layer 1788193696852 Updated",
+    "author": "User",
+    "filename": "v434_2026-08-31T16-28-16-968Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v433",
+    "versionNumber": 433,
+    "timestamp": "2026-08-31T16:28:16.965Z",
+    "action": "Catalog updated: Reordered capability layers and sublayers",
+    "author": "System",
+    "filename": "v433_2026-08-31T16-28-16-965Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v432",
+    "versionNumber": 432,
+    "timestamp": "2026-08-31T16:28:16.959Z",
+    "action": "Reordered capability layers and sublayers",
+    "author": "User",
+    "filename": "v432_2026-08-31T16-28-16-959Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v431",
+    "versionNumber": 431,
+    "timestamp": "2026-08-31T16:28:16.948Z",
+    "action": "Catalog updated: Updated sub-layer Test SubLayer 1788193696852 Renamed under Test Layer 1788193696852 Updated",
+    "author": "System",
+    "filename": "v431_2026-08-31T16-28-16-948Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v430",
+    "versionNumber": 430,
+    "timestamp": "2026-08-31T16:28:16.946Z",
+    "action": "Updated sub-layer Test SubLayer 1788193696852 Renamed under Test Layer 1788193696852 Updated",
+    "author": "User",
+    "filename": "v430_2026-08-31T16-28-16-946Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v429",
+    "versionNumber": 429,
+    "timestamp": "2026-08-31T16:28:16.940Z",
+    "action": "Catalog updated: Added sub-layer Test SubLayer 1788193696852 to Test Layer 1788193696852 Updated",
+    "author": "System",
+    "filename": "v429_2026-08-31T16-28-16-940Z.yaml",
+    "size": 7008
+  },
+  {
+    "version": "v428",
+    "versionNumber": 428,
+    "timestamp": "2026-08-31T16:28:16.928Z",
+    "action": "Added sub-layer Test SubLayer 1788193696852 to Test Layer 1788193696852 Updated",
+    "author": "User",
+    "filename": "v428_2026-08-31T16-28-16-928Z.yaml",
+    "size": 7008
+  },
+  {
+    "version": "v427",
+    "versionNumber": 427,
+    "timestamp": "2026-08-31T16:28:16.918Z",
+    "action": "Catalog updated: Updated layer: Test Layer 1788193696852 Updated",
+    "author": "System",
+    "filename": "v427_2026-08-31T16-28-16-918Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v426",
+    "versionNumber": 426,
+    "timestamp": "2026-08-31T16:28:16.915Z",
+    "action": "Updated layer: Test Layer 1788193696852 Updated",
+    "author": "User",
+    "filename": "v426_2026-08-31T16-28-16-915Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v425",
+    "versionNumber": 425,
+    "timestamp": "2026-08-31T16:28:16.893Z",
+    "action": "Catalog updated: Created new layer: Test Layer 1788193696852",
+    "author": "System",
+    "filename": "v425_2026-08-31T16-28-16-893Z.yaml",
+    "size": 6749
+  },
+  {
+    "version": "v424",
+    "versionNumber": 424,
+    "timestamp": "2026-08-31T16:28:16.883Z",
+    "action": "Created new layer: Test Layer 1788193696852",
+    "author": "User",
+    "filename": "v424_2026-08-31T16-28-16-883Z.yaml",
+    "size": 6749
+  },
+  {
+    "version": "v423",
+    "versionNumber": 423,
+    "timestamp": "2026-08-31T16:28:16.850Z",
+    "action": "Catalog updated: Imported capabilities/import-test.yaml",
+    "author": "System",
+    "filename": "v423_2026-08-31T16-28-16-850Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v422",
+    "versionNumber": 422,
+    "timestamp": "2026-08-31T16:28:16.716Z",
+    "action": "Catalog updated: Deleted provider: VitestTestDB_1788193696579",
+    "author": "System",
+    "filename": "v422_2026-08-31T16-28-16-716Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v421",
+    "versionNumber": 421,
+    "timestamp": "2026-08-31T16:28:16.671Z",
+    "action": "Catalog updated: Deprecated provider: VitestTestDB_1788193696579 (Testing deprecation flow)",
+    "author": "System",
+    "filename": "v421_2026-08-31T16-28-16-671Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v420",
+    "versionNumber": 420,
+    "timestamp": "2026-08-31T16:28:16.656Z",
+    "action": "Catalog updated: Version bump for VitestTestDB_1788193696579 (1.0.1 -> 2.0.0)",
+    "author": "System",
+    "filename": "v420_2026-08-31T16-28-16-656Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v419",
+    "versionNumber": 419,
+    "timestamp": "2026-08-31T16:28:16.638Z",
+    "action": "Catalog updated: Updated provider VitestTestDB_1788193696579",
+    "author": "System",
+    "filename": "v419_2026-08-31T16-28-16-638Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v418",
+    "versionNumber": 418,
+    "timestamp": "2026-08-31T16:28:16.599Z",
+    "action": "Catalog updated: Added provider VitestTestDB_1788193696579",
+    "author": "System",
+    "filename": "v418_2026-08-31T16-28-16-599Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v417",
+    "versionNumber": 417,
+    "timestamp": "2026-08-31T16:23:44.057Z",
+    "action": "Catalog updated: Deleted layer: Test Layer 1788193424007 Updated (testlayer_1788193424007)",
+    "author": "System",
+    "filename": "v417_2026-08-31T16-23-44-057Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v416",
+    "versionNumber": 416,
+    "timestamp": "2026-08-31T16:23:44.055Z",
+    "action": "Deleted layer: Test Layer 1788193424007 Updated (testlayer_1788193424007)",
+    "author": "User",
+    "filename": "v416_2026-08-31T16-23-44-055Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v415",
+    "versionNumber": 415,
+    "timestamp": "2026-08-31T16:23:44.053Z",
+    "action": "Catalog updated: Deleted sub-layer Test SubLayer 1788193424007 Renamed from Test Layer 1788193424007 Updated",
+    "author": "System",
+    "filename": "v415_2026-08-31T16-23-44-053Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v414",
+    "versionNumber": 414,
+    "timestamp": "2026-08-31T16:23:44.052Z",
+    "action": "Deleted sub-layer Test SubLayer 1788193424007 Renamed from Test Layer 1788193424007 Updated",
+    "author": "User",
+    "filename": "v414_2026-08-31T16-23-44-052Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v413",
+    "versionNumber": 413,
+    "timestamp": "2026-08-31T16:23:44.049Z",
+    "action": "Catalog updated: Reordered capability layers and sublayers",
+    "author": "System",
+    "filename": "v413_2026-08-31T16-23-44-049Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v412",
+    "versionNumber": 412,
+    "timestamp": "2026-08-31T16:23:44.048Z",
+    "action": "Reordered capability layers and sublayers",
+    "author": "User",
+    "filename": "v412_2026-08-31T16-23-44-048Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v411",
+    "versionNumber": 411,
+    "timestamp": "2026-08-31T16:23:44.045Z",
+    "action": "Catalog updated: Updated sub-layer Test SubLayer 1788193424007 Renamed under Test Layer 1788193424007 Updated",
+    "author": "System",
+    "filename": "v411_2026-08-31T16-23-44-045Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v410",
+    "versionNumber": 410,
+    "timestamp": "2026-08-31T16:23:44.044Z",
+    "action": "Updated sub-layer Test SubLayer 1788193424007 Renamed under Test Layer 1788193424007 Updated",
+    "author": "User",
+    "filename": "v410_2026-08-31T16-23-44-044Z.yaml",
+    "size": 7012
+  },
+  {
+    "version": "v409",
+    "versionNumber": 409,
+    "timestamp": "2026-08-31T16:23:44.041Z",
+    "action": "Catalog updated: Added sub-layer Test SubLayer 1788193424007 to Test Layer 1788193424007 Updated",
+    "author": "System",
+    "filename": "v409_2026-08-31T16-23-44-041Z.yaml",
+    "size": 7008
+  },
+  {
+    "version": "v408",
+    "versionNumber": 408,
+    "timestamp": "2026-08-31T16:23:44.039Z",
+    "action": "Added sub-layer Test SubLayer 1788193424007 to Test Layer 1788193424007 Updated",
+    "author": "User",
+    "filename": "v408_2026-08-31T16-23-44-039Z.yaml",
+    "size": 7008
+  },
+  {
+    "version": "v407",
+    "versionNumber": 407,
+    "timestamp": "2026-08-31T16:23:44.035Z",
+    "action": "Catalog updated: Updated layer: Test Layer 1788193424007 Updated",
+    "author": "System",
+    "filename": "v407_2026-08-31T16-23-44-035Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v406",
+    "versionNumber": 406,
+    "timestamp": "2026-08-31T16:23:44.027Z",
+    "action": "Updated layer: Test Layer 1788193424007 Updated",
+    "author": "User",
+    "filename": "v406_2026-08-31T16-23-44-027Z.yaml",
+    "size": 6738
+  },
+  {
+    "version": "v405",
+    "versionNumber": 405,
+    "timestamp": "2026-08-31T16:23:44.020Z",
+    "action": "Catalog updated: Created new layer: Test Layer 1788193424007",
+    "author": "System",
+    "filename": "v405_2026-08-31T16-23-44-020Z.yaml",
+    "size": 6749
+  },
+  {
+    "version": "v404",
+    "versionNumber": 404,
+    "timestamp": "2026-08-31T16:23:44.019Z",
+    "action": "Created new layer: Test Layer 1788193424007",
+    "author": "User",
+    "filename": "v404_2026-08-31T16-23-44-019Z.yaml",
+    "size": 6749
+  },
+  {
+    "version": "v403",
+    "versionNumber": 403,
+    "timestamp": "2026-08-31T16:23:44.004Z",
+    "action": "Catalog updated: Imported capabilities/import-test.yaml",
+    "author": "System",
+    "filename": "v403_2026-08-31T16-23-44-004Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v402",
+    "versionNumber": 402,
+    "timestamp": "2026-08-31T16:23:43.887Z",
+    "action": "Catalog updated: Deleted provider: VitestTestDB_1788193423783",
+    "author": "System",
+    "filename": "v402_2026-08-31T16-23-43-887Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v401",
+    "versionNumber": 401,
+    "timestamp": "2026-08-31T16:23:43.864Z",
+    "action": "Catalog updated: Deprecated provider: VitestTestDB_1788193423783 (Testing deprecation flow)",
+    "author": "System",
+    "filename": "v401_2026-08-31T16-23-43-864Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v400",
+    "versionNumber": 400,
+    "timestamp": "2026-08-31T16:23:43.829Z",
+    "action": "Catalog updated: Version bump for VitestTestDB_1788193423783 (1.0.1 -> 2.0.0)",
+    "author": "System",
+    "filename": "v400_2026-08-31T16-23-43-829Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v399",
+    "versionNumber": 399,
+    "timestamp": "2026-08-31T16:23:43.819Z",
+    "action": "Catalog updated: Updated provider VitestTestDB_1788193423783",
+    "author": "System",
+    "filename": "v399_2026-08-31T16-23-43-819Z.yaml",
+    "size": 6571
+  },
+  {
+    "version": "v398",
+    "versionNumber": 398,
+    "timestamp": "2026-08-31T16:23:43.795Z",
+    "action": "Catalog updated: Added provider VitestTestDB_1788193423783",
+    "author": "System",
+    "filename": "v398_2026-08-31T16-23-43-795Z.yaml",
+    "size": 6571
+  },
+  {
     "version": "v397",
     "versionNumber": 397,
     "timestamp": "2026-08-31T16:16:44.144Z",

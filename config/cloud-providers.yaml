@@ -559,3 +559,69 @@ providers:
         placeholder: Secret token...
         isSecret: true
         desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193423727
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193696540
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token
+  - name: Linode / Akamai Cloud
+    badge: Linode Compute
+    defaultRegion: us-east
+    regions:
+      - id: us-east
+        name: Newark, NJ
+      - id: eu-west
+        name: Frankfurt, DE
+    instanceTypes:
+      - id: g6-standard-4
+        name: Dedicated 4 CPU
+        vcpu: 4
+        memGi: 16
+        category: Dev Optimized
+    id: linode---akamai-cloud-1788193924994
+    color: border-cyan-500 bg-cyan-50/50 text-cyan-700
+    credentialFields:
+      - key: apiKey
+        label: API Key / Access Token
+        placeholder: Secret token...
+        isSecret: true
+        desc: Cloud API authentication token

@@ -55,3 +55,27 @@ engines:
     defaultDiskGi: 20
     desc: Red Hat MicroShift lightweight single-node cluster
     id: microshift-sandbox-1788193003977
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193423735
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193696546
+  - name: MicroShift Sandbox
+    engineType: crio
+    category: Edge K8s
+    defaultVcpu: 2
+    defaultMemoryGi: 4
+    defaultDiskGi: 20
+    desc: Red Hat MicroShift lightweight single-node cluster
+    id: microshift-sandbox-1788193924999

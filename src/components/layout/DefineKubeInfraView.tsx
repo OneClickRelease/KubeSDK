@@ -187,6 +187,171 @@ const WIZARD_STEPS = [
   { id: 'provision', title: 'Review & Versioning', desc: 'Persist YAML, Version Control & Download' }
 ];
 
+export const LAYER_BORDER_COLORS: Record<string, string> = {
+  ingress: 'border-l-sky-500',
+  storage: 'border-l-amber-500',
+  monitoring: 'border-l-pink-500',
+  security: 'border-l-red-500',
+  gitops: 'border-l-blue-500',
+  database: 'border-l-emerald-500',
+  messaging: 'border-l-purple-500',
+  aiml: 'border-l-indigo-500',
+};
+
+export const LAYER_BG_GRADIENTS: Record<string, string> = {
+  ingress: 'from-sky-500/5 to-white',
+  storage: 'from-amber-500/5 to-white',
+  monitoring: 'from-pink-500/5 to-white',
+  security: 'from-red-500/5 to-white',
+  gitops: 'from-blue-500/5 to-white',
+  database: 'from-emerald-500/5 to-white',
+  messaging: 'from-purple-500/5 to-white',
+  aiml: 'from-indigo-500/5 to-white',
+};
+
+export const LAYER_HEX_COLORS: Record<string, string> = {
+  ingress: '#0ea5e9',
+  storage: '#f59e0b',
+  monitoring: '#ec4899',
+  security: '#ef4444',
+  gitops: '#3b82f6',
+  database: '#10b981',
+  messaging: '#8b5cf6',
+  aiml: '#6366f1',
+};
+
+export const LAYER_PILL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  ingress: { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700' },
+  storage: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+  monitoring: { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700' },
+  security: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+  gitops: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
+  database: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
+  messaging: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
+  aiml: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700' },
+};
+
+export const ThreeDHexagon = ({ 
+  label, 
+  layerId, 
+  isSelected 
+}: { 
+  label: string; 
+  layerId: string; 
+  isSelected?: boolean;
+}) => {
+  const getColors = () => {
+    switch (layerId) {
+      case 'ingress': return { top: '#0ea5e9', bottom: '#0284c7', shadow: '#0369a1' };
+      case 'storage': return { top: '#f59e0b', bottom: '#d97706', shadow: '#b45309' };
+      case 'monitoring': return { top: '#ec4899', bottom: '#db2777', shadow: '#be185d' };
+      case 'security': return { top: '#ef4444', bottom: '#dc2626', shadow: '#b91c1c' };
+      case 'gitops': return { top: '#3b82f6', bottom: '#2563eb', shadow: '#1d4ed8' };
+      case 'database': return { top: '#10b981', bottom: '#059669', shadow: '#047857' };
+      case 'messaging': return { top: '#8b5cf6', bottom: '#7c3aed', shadow: '#6d28d9' };
+      case 'aiml': return { top: '#6366f1', bottom: '#4f46e5', shadow: '#4338ca' };
+      default: return { top: '#10b981', bottom: '#059669', shadow: '#047857' };
+    }
+  };
+  const c = getColors();
+
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 180 90" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+      <defs>
+        <linearGradient id={`grad-step5-${layerId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={c.top} />
+          <stop offset="100%" stopColor={c.bottom} />
+        </linearGradient>
+      </defs>
+      
+      {/* 3D Depth Shadow under the hexagon */}
+      <path 
+        d="M 10 40 L 45 75 L 135 75 L 170 40 L 170 48 L 135 83 L 45 83 L 10 48 Z" 
+        fill={c.shadow} 
+      />
+      
+      {/* Glowing outer boundary when selected */}
+      {isSelected && (
+        <motion.path 
+          d="M 45 10 L 135 10 L 170 40 L 135 70 L 45 70 L 10 40 Z" 
+          fill="none"
+          stroke={c.top}
+          strokeWidth="6"
+          opacity="0.5"
+          animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.7, 0.3] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          style={{ transformOrigin: '90px 40px' }}
+        />
+      )}
+      
+      {/* Hexagon Top Face */}
+      <path 
+        d="M 45 10 L 135 10 L 170 40 L 135 70 L 45 70 L 10 40 Z" 
+        fill={`url(#grad-step5-${layerId})`}
+        stroke={isSelected ? "#FFF" : "white"}
+        strokeWidth={isSelected ? "2.5" : "1.5"}
+        className={cn(isSelected ? "drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]" : "")}
+      />
+      
+      {/* Text label overlay - Multi-line formatted to prevent clipping */}
+      {(() => {
+        const clean = label.toUpperCase();
+        if (clean.includes(' & ')) {
+          const [part1, ...rest] = clean.split(' & ');
+          return (
+            <text 
+              x="90" 
+              y="38" 
+              textAnchor="middle" 
+              fill="white" 
+              fontSize="7.5" 
+              fontWeight={isSelected ? "900" : "800"} 
+              letterSpacing="0.04em"
+              className="uppercase pointer-events-none drop-shadow-sm select-none"
+            >
+              <tspan x="90" dy="0">{part1} &</tspan>
+              <tspan x="90" dy="10.5">{rest.join(' & ')}</tspan>
+            </text>
+          );
+        }
+        if (clean.length > 13) {
+          const words = clean.split(' ');
+          const mid = Math.ceil(words.length / 2);
+          return (
+            <text 
+              x="90" 
+              y="38" 
+              textAnchor="middle" 
+              fill="white" 
+              fontSize="7.5" 
+              fontWeight={isSelected ? "900" : "800"} 
+              letterSpacing="0.04em"
+              className="uppercase pointer-events-none drop-shadow-sm select-none"
+            >
+              <tspan x="90" dy="0">{words.slice(0, mid).join(' ')}</tspan>
+              <tspan x="90" dy="10.5">{words.slice(mid).join(' ')}</tspan>
+            </text>
+          );
+        }
+        return (
+          <text 
+            x="90" 
+            y="44" 
+            textAnchor="middle" 
+            fill="white" 
+            fontSize="8.5" 
+            fontWeight={isSelected ? "900" : "800"} 
+            letterSpacing="0.05em"
+            className="uppercase pointer-events-none drop-shadow-sm select-none"
+          >
+            {clean}
+          </text>
+        );
+      })()}
+    </svg>
+  );
+};
+
 export const DefineKubeInfraView = ({
   onApplyCredentials,
   onNavigateToWizard
@@ -205,6 +370,10 @@ export const DefineKubeInfraView = ({
   // --- Step 5: Platform Capability Layers State ---
   const [platformLayers, setPlatformLayers] = useState<PlatformLayer[]>(DEFAULT_PLATFORM_LAYERS);
   const [layerFilter, setLayerFilter] = useState<'all' | 'enabled' | 'recommended'>('all');
+  const [collapsedLayers, setCollapsedLayers] = useState<Record<string, boolean>>({});
+  const toggleCollapseLayer = (id: string) => {
+    setCollapsedLayers(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // --- Step 2: Target-specific Configuration ---
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>('All');
@@ -1475,8 +1644,8 @@ echo "==> Ready for KubeSDK runtime connection!"
                         )}
                       >
                         <div className="flex items-start justify-between">
-                          <span className="text-xs font-bold text-[#1A1A1A] line-clamp-1">{hyp.name}</span>
-                          {isSelected && <div className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center"><Check size={10} /></div>}
+                          <span className="text-xs font-bold text-[#1A1A1A] line-clamp-2 leading-tight break-words">{hyp.name}</span>
+                          {isSelected && <div className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 ml-1"><Check size={10} /></div>}
                         </div>
                         <span className="text-[10px] text-gray-500 font-mono line-clamp-1">{hyp.engine}</span>
                       </button>
@@ -1511,35 +1680,42 @@ echo "==> Ready for KubeSDK runtime connection!"
                 {vmMode === 'asymmetrical' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#1A1A1A]">Configured VM Node Pools ({vmNodePools.length})</span>
+                      <label className="text-xs font-bold text-[#495057] uppercase">Configured Node Pools ({vmNodePools.length})</label>
                       <button
                         type="button"
                         onClick={handleAddVMPool}
-                        className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold border border-indigo-200 flex items-center gap-1"
+                        className="text-xs text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1"
                       >
                         <Plus size={13} /> Add Node Pool
                       </button>
                     </div>
 
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      {vmNodePools.map((pool, idx) => (
-                        <div key={pool.id} className="p-3.5 bg-white border border-gray-200 rounded-xl shadow-xs space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {vmNodePools.map(pool => (
+                        <div key={pool.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 flex flex-col justify-between gap-2.5">
                           <div className="flex items-center justify-between">
+                            <input
+                              type="text"
+                              value={pool.name}
+                              onChange={e => handleUpdateVMPool(pool.id, { name: e.target.value })}
+                              className="text-xs font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-600 outline-none w-full"
+                            />
+                            <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded font-mono uppercase">{pool.category}</span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono text-gray-600">
+                            <div>vCPU: <span className="font-bold text-gray-900">{pool.vcpu}</span></div>
+                            <div>RAM: <span className="font-bold text-gray-900">{pool.memoryGi}GB</span></div>
+                            <div>Disk: <span className="font-bold text-gray-900">{pool.diskGi}GB</span></div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
+                            <span className="text-gray-500 font-medium">Nodes:</span>
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">{idx + 1}</span>
-                              <input
-                                type="text"
-                                value={pool.name}
-                                onChange={e => handleUpdateVMPool(pool.id, { name: e.target.value })}
-                                className="font-bold text-xs bg-transparent border-b border-gray-300 focus:border-indigo-500 outline-none px-1"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-[#6C757D]">VM Count:</span>
                               <input
                                 type="number"
                                 min={1}
-                                max={64}
+                                max={30}
                                 value={pool.count}
                                 onChange={e => handleUpdateVMPool(pool.id, { count: parseInt(e.target.value) || 1 })}
                                 className="w-14 px-2 py-0.5 text-xs font-mono font-bold bg-gray-50 border border-gray-200 rounded text-center"
@@ -1596,8 +1772,8 @@ echo "==> Ready for KubeSDK runtime connection!"
                         )}
                       >
                         <div className="flex items-start justify-between">
-                          <span className="text-xs font-bold text-[#1A1A1A] line-clamp-1">{provider.name.split('(')[0]}</span>
-                          {isSelected && <div className="w-4 h-4 rounded-full bg-sky-600 text-white flex items-center justify-center"><Check size={10} /></div>}
+                          <span className="text-xs font-bold text-[#1A1A1A] line-clamp-2 leading-tight break-words">{provider.name.split('(')[0]}</span>
+                          {isSelected && <div className="w-4 h-4 rounded-full bg-sky-600 text-white flex items-center justify-center shrink-0 ml-1"><Check size={10} /></div>}
                         </div>
                         <span className="text-[9px] font-mono text-gray-500 bg-gray-50 px-1 py-0.2 rounded self-start">{provider.badge}</span>
                       </button>
@@ -1694,7 +1870,7 @@ echo "==> Ready for KubeSDK runtime connection!"
                                   {engine.category || 'Container'}
                                 </span>
                               </div>
-                              <h4 className="text-xs font-bold text-[#1A1A1A] mt-0.5 line-clamp-1">{engine.name}</h4>
+                              <h4 className="text-xs font-bold text-[#1A1A1A] mt-0.5 line-clamp-2 leading-snug break-words">{engine.name}</h4>
                             </div>
                           </div>
                           {isSelected && (
@@ -1992,7 +2168,7 @@ echo "==> Ready for KubeSDK runtime connection!"
               <p className="text-xs text-[#6C757D] mt-1">Choose the Kubernetes distribution matched against your compute resources and capability catalog.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {[
                 { id: 'k3s' as OrchestratorType, name: 'K3s (Rancher)', badge: 'Lightweight', desc: '512MB RAM minimal footprint single-binary distribution' },
                 { id: 'microk8s' as OrchestratorType, name: 'MicroK8s (Canonical)', badge: 'Zero-Ops', desc: 'Pure upstream Kubernetes with snap-based automatic updates' },
@@ -2015,8 +2191,8 @@ echo "==> Ready for KubeSDK runtime connection!"
                     )}
                   >
                     <div className="flex items-start justify-between">
-                      <span className="text-xs font-bold text-[#1A1A1A]">{orch.name}</span>
-                      {isSelected && <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center"><Check size={10} /></div>}
+                      <span className="text-xs font-bold text-[#1A1A1A] leading-snug break-words">{orch.name}</span>
+                      {isSelected && <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 ml-1"><Check size={10} /></div>}
                     </div>
                     <p className="text-[11px] text-[#6C757D]">{orch.desc}</p>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -2091,137 +2267,317 @@ echo "==> Ready for KubeSDK runtime connection!"
               </div>
             </div>
 
-            {/* Platform Layers Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-1">
-              {platformLayers
-                .filter(layer => layerFilter === 'all' || (layerFilter === 'enabled' && layer.enabled))
-                .map((layer) => {
-                  const activeComp = layer.components[layer.selectedComponentIndex] || layer.components[0];
+            {/* Filter toolbar & stats matching Capability Registry */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
+              <div className="flex items-center gap-3 text-xs text-[#6C757D] flex-wrap">
+                <span className="flex items-center gap-1 font-bold text-[#1A1A1A]">
+                  <Layers size={14} className="text-indigo-600" /> {platformLayers.length} Layers
+                </span>
+                <span>·</span>
+                <span>{platformLayers.reduce((acc, l) => acc + l.components.length, 0)} Components</span>
+                <span>·</span>
+                <span className="text-emerald-600 font-bold flex items-center gap-1">
+                  <CheckCircle2 size={12} /> {enabledPlatformLayers.length} Enabled
+                </span>
+              </div>
+
+              {/* Layer Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setLayerFilter('all')}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border",
+                    layerFilter === 'all'
+                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A] shadow-xs"
+                      : "bg-white text-[#6C757D] border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayerFilter('enabled')}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border",
+                    layerFilter === 'enabled'
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                      : "bg-white text-[#6C757D] border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  Enabled Only
+                </button>
+                {platformLayers.map(layer => {
+                  const colors = LAYER_PILL_COLORS[layer.id] || LAYER_PILL_COLORS['database'];
+                  const isSelected = layerFilter === layer.id;
                   return (
-                    <div
+                    <button
                       key={layer.id}
+                      type="button"
+                      onClick={() => setLayerFilter(layerFilter === layer.id ? 'all' : (layer.id as any))}
                       className={cn(
-                        "p-5 rounded-2xl border transition-all flex flex-col justify-between gap-4",
-                        layer.enabled 
-                          ? "bg-white border-indigo-200 shadow-sm ring-1 ring-indigo-500/10" 
-                          : "bg-gray-50/80 border-gray-200 opacity-75"
+                        "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border",
+                        isSelected
+                          ? `${colors.bg} ${colors.text} ${colors.border} shadow-xs font-black`
+                          : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center font-bold",
-                            layer.enabled ? "bg-indigo-600 text-white shadow-xs" : "bg-gray-200 text-gray-500"
-                          )}>
-                            {layer.id === 'ingress' && <Globe size={20} />}
-                            {layer.id === 'storage' && <HardDrive size={20} />}
-                            {layer.id === 'monitoring' && <Activity size={20} />}
-                            {layer.id === 'security' && <Shield size={20} />}
-                            {layer.id === 'gitops' && <GitBranch size={20} />}
-                            {layer.id === 'database' && <Database size={20} />}
-                            {layer.id === 'messaging' && <Zap size={20} />}
-                            {layer.id === 'aiml' && <Brain size={20} />}
-                            {!['ingress','storage','monitoring','security','gitops','database','messaging','aiml'].includes(layer.id) && <Box size={20} />}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-sm text-[#1A1A1A]">{layer.name}</h4>
-                              <span className={cn(
-                                "px-2 py-0.2 rounded-full text-[9px] font-bold uppercase",
-                                layer.enabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-600"
-                              )}>
-                                {layer.enabled ? 'Included' : 'Disabled'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-[#6C757D] mt-0.5 line-clamp-1">{layer.description}</p>
-                          </div>
-                        </div>
+                      {layer.name.split('&')[0].trim()}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLayer(layer.id)}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer",
-                              layer.enabled ? "bg-indigo-600" : "bg-gray-300"
-                            )}
-                          >
-                            <div className={cn(
-                              "w-5 h-5 rounded-full bg-white transition-transform shadow-xs",
-                              layer.enabled ? "translate-x-6" : "translate-x-0"
-                            )} />
-                          </button>
-                        </div>
+            {/* Capability Registry Pallet Layers Flow */}
+            <div className="space-y-6 max-h-[620px] overflow-y-auto pr-2 pt-1">
+              {platformLayers
+                .filter(layer => {
+                  if (layerFilter === 'all') return true;
+                  if (layerFilter === 'enabled') return layer.enabled;
+                  return layer.id === layerFilter;
+                })
+                .map((layer) => {
+                  const activeComp = layer.components[layer.selectedComponentIndex] || layer.components[0];
+                  const isCollapsed = !!collapsedLayers[layer.id];
+                  const borderLeft = LAYER_BORDER_COLORS[layer.id] || 'border-l-indigo-500';
+                  const bgGradient = LAYER_BG_GRADIENTS[layer.id] || 'from-indigo-500/5 to-white';
+                  const hexColor = LAYER_HEX_COLORS[layer.id] || '#6366f1';
+                  const pillColors = LAYER_PILL_COLORS[layer.id] || LAYER_PILL_COLORS['database'];
+
+                  return (
+                    <div key={layer.id} className="flex items-start gap-0 w-full relative">
+                      {/* Left: 3D Hexagon Visual Component */}
+                      <div className="shrink-0 w-[155px] h-[75px] flex items-center justify-center relative z-20" style={{ perspective: 1000 }}>
+                        <motion.div 
+                          className="w-[145px] h-[72px] cursor-pointer"
+                          whileHover={{ scale: 1.05, rotateY: 10, rotateX: -6, y: -2 }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => toggleCollapseLayer(layer.id)}
+                          title="Click to collapse/expand layer"
+                        >
+                          <ThreeDHexagon label={layer.name} layerId={layer.id} isSelected={layer.enabled} />
+                        </motion.div>
                       </div>
 
-                      {layer.enabled && (
-                        <div className="space-y-3 pt-3 border-t border-gray-100">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[11px] font-bold text-[#495057] uppercase tracking-wider">
-                              Selected Component Provider:
-                            </label>
+                      {/* Animated Circuit Connector Line */}
+                      <div className="w-8 h-[75px] flex items-center justify-center shrink-0 relative z-10 overflow-visible">
+                        <svg width="32" height="20" className="overflow-visible" viewBox="0 0 32 20">
+                          <motion.path
+                            d="M 0 10 L 32 10"
+                            stroke={hexColor}
+                            strokeWidth={layer.enabled ? 3 : 1.5}
+                            strokeDasharray={layer.enabled ? "6 4" : "none"}
+                            animate={layer.enabled ? { strokeDashoffset: [0, -20] } : {}}
+                            transition={layer.enabled ? { repeat: Infinity, duration: 1.5, ease: "linear" } : {}}
+                          />
+                          {layer.enabled && (
+                            <motion.circle
+                              r="3.5"
+                              fill="#FFFFFF"
+                              stroke={hexColor}
+                              strokeWidth="2"
+                              animate={{ cx: [0, 32] }}
+                              transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                            />
+                          )}
+                        </svg>
+                      </div>
+
+                      {/* Right: Horizontal Category Pallet Card */}
+                      <motion.div 
+                        layout="position"
+                        whileHover={{ y: -2, boxShadow: "0 10px 25px -8px rgba(0,0,0,0.07)" }}
+                        transition={{ duration: 0.2 }}
+                        className={cn(
+                          "flex-1 min-h-[75px] bg-white border border-l-4 rounded-2xl p-5 shadow-xs relative z-20 transition-all flex flex-col justify-center gap-4",
+                          borderLeft,
+                          layer.enabled ? ("border-gray-200 bg-gradient-to-r " + bgGradient) : "border-gray-200 bg-gray-50/70 opacity-70"
+                        )}
+                      >
+                        {/* Pallet Header Row */}
+                        <div 
+                          className="flex items-center justify-between w-full cursor-pointer select-none"
+                          onClick={() => toggleCollapseLayer(layer.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={cn("p-2 rounded-xl bg-white border border-gray-100 shadow-xs", pillColors.text)}>
+                              {layer.id === 'ingress' && <Globe size={20} />}
+                              {layer.id === 'storage' && <HardDrive size={20} />}
+                              {layer.id === 'monitoring' && <Activity size={20} />}
+                              {layer.id === 'security' && <Shield size={20} />}
+                              {layer.id === 'gitops' && <GitBranch size={20} />}
+                              {layer.id === 'database' && <Database size={20} />}
+                              {layer.id === 'messaging' && <Zap size={20} />}
+                              {layer.id === 'aiml' && <Brain size={20} />}
+                              {!['ingress','storage','monitoring','security','gitops','database','messaging','aiml'].includes(layer.id) && <Box size={20} />}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-extrabold text-[#1A1A1A] tracking-tight">{layer.name}</span>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                                  {layer.components.length} Component{layer.components.length !== 1 ? 's' : ''}
+                                </span>
+                                {layer.enabled && activeComp && (
+                                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-xs">
+                                    <CheckCircle2 size={11} className="text-emerald-600 animate-pulse" />
+                                    <span>Active: {activeComp.name}</span>
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#6C757D] mt-0.5 line-clamp-1">{layer.description}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => handleOpenAddPlatformModal('component', layer.id)}
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                              className="px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg shadow-xs transition-all flex items-center gap-1"
                             >
-                              <Plus size={12} /> Add Component
+                              <Plus size={11} />
+                              <span>+ Component</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLayer(layer.id)}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0",
+                                layer.enabled ? "bg-indigo-600" : "bg-gray-300"
+                              )}
+                              title={layer.enabled ? 'Click to disable layer' : 'Click to include layer'}
+                            >
+                              <div className={cn(
+                                "w-5 h-5 rounded-full bg-white transition-transform shadow-xs",
+                                layer.enabled ? "translate-x-6" : "translate-x-0"
+                              )} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleCollapseLayer(layer.id)}
+                              className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              {isCollapsed ? <ChevronDown size={18} /> : <ChevronRight size={18} className="rotate-90" />}
                             </button>
                           </div>
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {layer.components.map((comp, cIdx) => {
-                              const isSelected = layer.selectedComponentIndex === cIdx;
-                              return (
-                                <button
-                                  key={comp.name}
-                                  type="button"
-                                  onClick={() => handleSelectComponent(layer.id, cIdx)}
-                                  className={cn(
-                                    "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 relative",
-                                    isSelected
-                                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                  )}
-                                >
-                                  <span>{comp.name}</span>
-                                  {comp.isRecommended && (
-                                    <span className={cn(
-                                      "text-[8px] font-black px-1.5 py-0.2 rounded-full",
-                                      isSelected ? "bg-indigo-400/40 text-white" : "bg-emerald-100 text-emerald-800"
-                                    )}>
-                                      ★ Rec
-                                    </span>
-                                  )}
-                                  {layer.components.length > 1 && !comp.isDefault && (
-                                    <span
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteComponent(layer.id, cIdx);
-                                      }}
-                                      className="ml-1 text-gray-400 hover:text-red-500 font-normal"
-                                    >
-                                      ✕
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {activeComp && (
-                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5">
-                              <p className="text-[11px] text-gray-600">{activeComp.description || 'Configured platform operator'}</p>
-                              <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 flex-wrap pt-1 border-t border-gray-200/60">
-                                <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold">Ver: {activeComp.version || 'latest'}</span>
-                                <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold text-indigo-600">Namespace: {activeComp.namespace || 'default'}</span>
-                                {activeComp.port && <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold">Port: {activeComp.port}</span>}
-                                {activeComp.replicas && <span className="bg-white px-2 py-0.5 rounded border border-gray-200 font-bold">Replicas: {activeComp.replicas}</span>}
-                              </div>
-                            </div>
-                          )}
                         </div>
-                      )}
+
+                        {/* Expandable Pallet Content */}
+                        {!isCollapsed && layer.enabled && (
+                          <div className="space-y-4 pt-3 border-t border-gray-100">
+                            {/* Component Cards Grid - 3 Columns with ample width so titles are never clipped */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {layer.components.map((comp, cIdx) => {
+                                const isSelected = layer.selectedComponentIndex === cIdx;
+                                return (
+                                  <div
+                                    key={comp.name}
+                                    onClick={() => handleSelectComponent(layer.id, cIdx)}
+                                    className={cn(
+                                      "p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 relative group min-h-[145px]",
+                                      isSelected
+                                        ? "bg-white border-indigo-600 shadow-md ring-2 ring-indigo-500/20"
+                                        : "bg-white border-gray-200 hover:border-indigo-300 hover:bg-gray-50/60"
+                                    )}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                        <div className={cn(
+                                          "w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5",
+                                          isSelected ? "bg-indigo-600 text-white shadow-xs" : "bg-gray-100 text-gray-700"
+                                        )}>
+                                          {comp.name.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <h5 className="text-xs font-bold text-[#1A1A1A] leading-snug break-words" title={comp.name}>
+                                            {comp.name}
+                                          </h5>
+                                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                            <span className="text-[9px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded font-bold">
+                                              {comp.version || 'v1.0.0'}
+                                            </span>
+                                            {comp.isRecommended && (
+                                              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                                ★ Recommended
+                                              </span>
+                                            )}
+                                            {comp.isDefault && !comp.isRecommended && (
+                                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                                                Default
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {isSelected && (
+                                          <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                                            <Check size={11} />
+                                          </div>
+                                        )}
+                                        {layer.components.length > 1 && !comp.isDefault && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteComponent(layer.id, cIdx);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity p-0.5"
+                                            title="Delete Component"
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <p className="text-[11px] text-[#6C757D] line-clamp-2 leading-relaxed break-words">
+                                      {comp.description || 'Configured platform capability provider'}
+                                    </p>
+
+                                    <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100 text-[10px] font-mono text-gray-500 flex-wrap">
+                                      {comp.namespace && (
+                                        <span className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 text-indigo-700 font-bold">
+                                          ns: {comp.namespace}
+                                        </span>
+                                      )}
+                                      {comp.port && (
+                                        <span className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                          port: {comp.port}
+                                        </span>
+                                      )}
+                                      {comp.replicas && (
+                                        <span className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                          rep: {comp.replicas}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Active Component Inspector Banner - Flexible & Non-overflowing */}
+                            {activeComp && (
+                              <div className="p-3 bg-white rounded-xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                <div className="flex items-start sm:items-center gap-2 text-[#495057] min-w-0 flex-1">
+                                  <Sparkles size={14} className="text-indigo-600 shrink-0 mt-0.5 sm:mt-0" />
+                                  <span className="font-medium text-[11px] break-words leading-normal">
+                                    Active for Cluster Manifests: <strong className="text-[#1A1A1A]">{activeComp.name}</strong> ({activeComp.image || 'Official Image'}) · Target Namespace: <code className="font-mono font-bold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded">{activeComp.namespace || 'default'}</code>
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 shrink-0 self-start sm:self-auto flex-wrap">
+                                  {activeComp.replicas && <span className="bg-gray-50 px-2 py-0.5 rounded border border-gray-200 font-bold">Replicas: {activeComp.replicas}</span>}
+                                  {activeComp.port && <span className="bg-gray-50 px-2 py-0.5 rounded border border-gray-200 font-bold">Port: {activeComp.port}</span>}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </motion.div>
                     </div>
                   );
                 })}

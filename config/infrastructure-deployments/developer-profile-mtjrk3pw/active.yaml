@@ -1,0 +1,103 @@
+apiVersion: kubesdk.dev/v1alpha1
+kind: ClusterInfrastructureDefinition
+metadata:
+  name: Developer Profile
+  version: v1.0.0
+  environment: online
+  updatedAt: '2026-09-02T07:17:18.470Z'
+spec:
+  infrastructure:
+    target: docker-cluster
+    topology: single-node
+    nodes: 1
+    totalCompute:
+      vcpu: 4
+      memoryGi: 8
+      diskGi: 64
+      arch: aarch64
+    virtualContainer:
+      engine: vdi-developer-laptop
+      engineName: VDI / Developer Laptop
+      hostEnvironment: laptop-mac
+      networking: host-forward
+      workspaceMount: ~/workspace
+      socketSharing: true
+      batteryThrottling: false
+  orchestrator:
+    engine: k3s
+    networking:
+      podCidr: 10.42.0.0/16
+      serviceCidr: 10.43.0.0/16
+  platformComponents:
+    - layerId: ingress
+      layerName: Ingress & API Gateway
+      enabled: true
+      component:
+        name: Traefik Ingress
+        version: v3.0.0
+        namespace: kube-system
+        image: traefik:v3.0.0
+        replicas: 1
+    - layerId: storage
+      layerName: Storage & CSI Provisioner
+      enabled: true
+      component:
+        name: Longhorn Distributed CSI
+        version: v1.6.0
+        namespace: longhorn-system
+        image: longhornio/longhorn-manager:v1.6.0
+        replicas: 3
+    - layerId: monitoring
+      layerName: Observability & Monitoring
+      enabled: true
+      component:
+        name: Prometheus & Grafana Stack
+        version: v0.70.0
+        namespace: monitoring
+        image: quay.io/prometheus/prometheus:v2.50.0
+        replicas: 1
+    - layerId: security
+      layerName: Security & Certificate Management
+      enabled: false
+      component:
+        name: Cert-Manager TLS
+        version: v1.14.4
+        namespace: cert-manager
+        image: quay.io/jetstack/cert-manager-controller:v1.14.4
+        replicas: 1
+    - layerId: gitops
+      layerName: CI/CD & GitOps Delivery
+      enabled: false
+      component:
+        name: ArgoCD GitOps Engine
+        version: v2.10.4
+        namespace: argocd
+        image: quay.io/argoproj/argocd:v2.10.4
+        replicas: 1
+    - layerId: database
+      layerName: Database & Stateful Operators
+      enabled: false
+      component:
+        name: CloudNativePG (PostgreSQL)
+        version: v1.22.2
+        namespace: cnpg-system
+        image: ghcr.io/cloudnative-pg/cloudnative-pg:v1.22.2
+        replicas: 1
+    - layerId: messaging
+      layerName: Eventing & Streaming Brokers
+      enabled: false
+      component:
+        name: NATS JetStream Server
+        version: v2.10.12
+        namespace: nats-system
+        image: nats:2.10.12-alpine
+        replicas: 1
+    - layerId: aiml
+      layerName: AI / ML Inference & Acceleration
+      enabled: false
+      component:
+        name: Ollama Local LLM Engine
+        version: v0.1.30
+        namespace: ai-system
+        image: ollama/ollama:latest
+        replicas: 1

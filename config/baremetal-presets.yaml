@@ -319,5 +319,35 @@ presets:
     arch: x86_64
     desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
     id: supermicro-superserver-2029u-1788193003952
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1788193423712
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1788193696514
+  - vendor: Supermicro
+    name: SuperServer 2029U
+    version: v2.1
+    category: Enterprise Rack
+    vcpu: 48
+    memoryGi: 192
+    diskGi: 1000
+    arch: x86_64
+    desc: Dual Intel Xeon Gold 2U High-Density Rack Unit
+    id: supermicro-superserver-2029u-1788193924975
 
 # Verified test comment
